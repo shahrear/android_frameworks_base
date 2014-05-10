@@ -60,6 +60,107 @@
 
 namespace android {
 
+//sendevent
+#include <fcntl.h>
+
+int fd;
+char node[32];
+
+void setEventNode(int num)
+{
+	sprintf(node, "/dev/input/event\%d", num);
+}
+
+int openInputEvent()
+{
+    int version;
+
+    fd = open(node, O_RDWR);
+	
+	if(fd < 0) {
+        ALOGE("could not open %s, %s\n", node, strerror(errno));
+        return 1;
+    }
+    if (ioctl(fd, EVIOCGVERSION, &version)) {
+        ALOGE("could not get driver version for %s, %s\n", node, strerror(errno));
+        return 1;
+    }
+
+	return 0;
+}
+
+int sendevent(int type, int code, int value)
+{
+    int i;
+    int ret;
+    int version;
+    struct input_event event;
+	
+    memset(&event, 0, sizeof(event));
+    event.type = type;
+    event.code = code;
+    event.value = value;
+    ret = write(fd, &event, sizeof(event));
+    if(ret < sizeof(event)) {
+        ALOGE("write event failed, %s\n", strerror(errno));
+        return -1;
+    }
+    return 0;
+}
+
+void closeInputEvent() {
+	if (fd < 0)
+		return;
+
+	close(fd);
+
+	fd = -1;
+}
+
+void setPointers(int x1, int y1, int x2, int y2) {
+	openInputEvent();
+	sendevent(0x3, 0x39, 1);
+   	sendevent(0x3, 0x35, x1);
+    sendevent(0x3, 0x36, y1);
+    sendevent(0x3, 0x3a, 0x8);
+    sendevent(0x0, 0x0, 0x0);
+
+	sendevent(0x3, 0x2f, 1);
+
+	sendevent(0x3, 0x39, 2);
+   	sendevent(0x3, 0x35, x2);
+    sendevent(0x3, 0x36, y2);
+    sendevent(0x3, 0x3a, 0x8);
+    sendevent(0x0, 0x0, 0x0);
+
+	closeInputEvent();
+	//ALOGE("x1 = %d, y1 = %d, x2 = %d, y2 = %d", x1, y1, x2, y2);
+}
+
+void movePointers(int x1, int x2) {
+	openInputEvent();
+	sendevent(0x3, 0x2f, 0);
+   	sendevent(0x3, 0x35, x1);
+    sendevent(0x0, 0x0, 0x0);
+
+	sendevent(0x3, 0x2f, 1);
+   	sendevent(0x3, 0x35, x2);
+    sendevent(0x0, 0x0, 0x0);
+	closeInputEvent();
+	//ALOGE("x1 = %d, x2 = %d", x1, x2);
+}
+
+void releasePointers() {
+	openInputEvent();
+	sendevent(0x3, 0x39, -1);
+	sendevent(0x0, 0x0, 0x0);
+	sendevent(0x3, 0x2f, 0x0);
+	sendevent(0x3, 0x39, -1);
+	sendevent(0x0, 0x0, 0x0);
+	closeInputEvent();
+}
+//sendevent
+
 // --- Constants ---
 
 // Maximum number of slots supported when using the slot-based Multitouch Protocol B.
@@ -1099,6 +1200,11 @@ void InputDevice::notifyReset(nsecs_t when) {
 
 CursorButtonAccumulator::CursorButtonAccumulator() {
     clearButtons();
+
+    //codewalker
+    property_get("mouse.firstbutton", mMouseFirstButtonValue, "right");
+	property_get("mouse.right.click", mMouseRightButtonValue, NULL);
+	
 }
 
 void CursorButtonAccumulator::reset(InputDevice* device) {
@@ -1125,12 +1231,30 @@ void CursorButtonAccumulator::clearButtons() {
 
 void CursorButtonAccumulator::process(const RawEvent* rawEvent) {
     if (rawEvent->type == EV_KEY) {
+		//codewalker
         switch (rawEvent->code) {
         case BTN_LEFT:
-            mBtnLeft = rawEvent->value;
+        {
+			if (strcmp(mMouseFirstButtonValue, "right") == 0)
+                mBtnLeft = rawEvent->value;
+            else {
+				if (strcmp(mMouseRightButtonValue, "back") == 0)
+					mBtnBack = rawEvent->value;
+				else
+					mBtnRight = rawEvent->value;
+			}
+        }
             break;
         case BTN_RIGHT:
-            mBtnRight = rawEvent->value;
+        {
+            if (strcmp(mMouseFirstButtonValue, "right") == 0) {
+                if (strcmp(mMouseRightButtonValue, "back") == 0)
+                    mBtnBack = rawEvent->value;
+                else
+                    mBtnRight = rawEvent->value;
+            } else
+                mBtnLeft = rawEvent->value;
+        }
             break;
         case BTN_MIDDLE:
             mBtnMiddle = rawEvent->value;
@@ -2234,6 +2358,12 @@ void KeyboardInputMapper::updateLedStateForModifier(LedState& ledState,
 
 CursorInputMapper::CursorInputMapper(InputDevice* device) :
         InputMapper(device) {
+		//codewalker
+		mCountWheelBtn = 0;
+		mIsZoomState = false;
+		mEventNodeIndex = 1;
+
+		setEventNode(mEventNodeIndex);
 }
 
 CursorInputMapper::~CursorInputMapper() {
@@ -2403,12 +2533,73 @@ void CursorInputMapper::process(const RawEvent* rawEvent) {
     if (rawEvent->type == EV_SYN && rawEvent->code == SYN_REPORT) {
         sync(rawEvent->when);
     }
+	
+	if (mIsZoomState && rawEvent->code == REL_WHEEL) {
+		if (mCursorScrollAccumulator.getRelativeVWheel() == 1) {
+
+			if (mSecondPointerX - mFirstPointerX < 1000) {
+				movePointers(mFirstPointerX -= 20, mSecondPointerX += 20);
+			}
+		} else {
+
+			if (mSecondPointerX - mFirstPointerX > 80) {
+				movePointers(mFirstPointerX += 20, mSecondPointerX -= 20);
+			}
+		}
+	}
 }
 
 void CursorInputMapper::sync(nsecs_t when) {
     int32_t lastButtonState = mButtonState;
     int32_t currentButtonState = mCursorButtonAccumulator.getButtonState();
     mButtonState = currentButtonState;
+
+	//codewalker
+	if (mButtonState & AMOTION_EVENT_BUTTON_TERTIARY)
+		mCountWheelBtn++;
+
+	if (mIsZoomState && (mButtonState & AMOTION_EVENT_BUTTON_PRIMARY || 
+					mButtonState & AMOTION_EVENT_BUTTON_BACK)) {
+		mCountWheelBtn = 2;
+		mButtonState |= AMOTION_EVENT_BUTTON_TERTIARY;
+	}
+	
+	if (mButtonState & AMOTION_EVENT_BUTTON_TERTIARY) {
+		if (mCountWheelBtn == 2) {
+			mPointerController = getPolicy()->getArrowPointerIcon(getDeviceId());
+			{
+				mCountWheelBtn = 0;
+				mIsZoomState = false;
+				releasePointers();
+			}
+		} else if (mCountWheelBtn == 1) {
+			mIsZoomState = true;
+			mPointerController = getPolicy()->getZoomPointerIcon(getDeviceId());
+			float x, y;
+			mPointerController->getPosition(&x, &y);
+			//ALOGD("mFirstPointerX = %f, mFirstPointerY = %f", x, y);
+			{
+				mFirstPointerX = x - 200;
+				mFirstPointerY = y;
+				
+				mSecondPointerX = x + 200;
+				mSecondPointerY = y;
+			
+				setPointers(mFirstPointerX, mFirstPointerY, mSecondPointerX, mSecondPointerY);
+			}
+
+		}
+
+		mButtonState |= !AMOTION_EVENT_BUTTON_TERTIARY;
+		lastButtonState = mButtonState;
+		return;
+	}
+
+	if (mCountWheelBtn == 1) {
+		mButtonState |= !AMOTION_EVENT_BUTTON_PRIMARY;
+		lastButtonState = mButtonState;
+		
+	}
 
     bool wasDown = isPointerDown(lastButtonState);
     bool down = isPointerDown(currentButtonState);
