@@ -1722,7 +1722,48 @@ public final class Settings {
          */
         @Deprecated
         public static final String WIFI_STATIC_DNS2 = "wifi_static_dns2";
-
+        
+		        /**
+		         * Whether to use static IP and other static network attributes.
+		         * @hide
+		         * Set to 1 for true and 0 for false.
+		         */
+		        public static final String ETHERNET_USE_STATIC_IP = "ethernet_use_static_ip";
+		
+		        /**
+		         * The static IP address.
+		         * @hide
+		         * Example: "192.168.1.51"
+		         */
+		        public static final String ETHERNET_STATIC_IP = "ethernet_static_ip";
+	
+		        /**
+		         * If using static IP, the gateway's IP address.
+		         * @hide
+		         * Example: "192.168.1.1"
+		         */
+		        public static final String ETHERNET_STATIC_GATEWAY = "ethernet_static_gateway";
+		
+		        /**
+		         * If using static IP, the net mask.
+		         * @hide
+		         * Example: "255.255.255.0"
+		         */
+		        public static final String ETHERNET_STATIC_NETMASK = "ethernet_static_netmask";
+		
+		        /**
+		         * If using static IP, the primary DNS's IP address.
+		         * @hide
+		         * Example: "192.168.1.1"
+		         */
+		        public static final String ETHERNET_STATIC_DNS1 = "ethernet_static_dns1";
+		
+		        /**
+		         * If using static IP, the secondary DNS's IP address.
+		         * @hide
+		         * Example: "192.168.1.2"
+		         */
+		        public static final String ETHERNET_STATIC_DNS2 = "ethernet_static_dns2";
 
         /**
          * Determines whether remote devices may discover and/or connect to
@@ -2511,6 +2552,12 @@ public final class Settings {
         public static final String DATA_ROAMING = Global.DATA_ROAMING;
 
         /**
+         *
+         * @hide
+         */
+        public static final String ETHERNET_ON = "ethernet_on";
+
+        /**			
          * @deprecated Use {@link android.provider.Settings.Global#DEVICE_PROVISIONED} instead
          */
         @Deprecated
@@ -3531,6 +3578,11 @@ public final class Settings {
          */
         public static final String TOUCH_EXPLORATION_GRANTED_ACCESSIBILITY_SERVICES =
             "touch_exploration_granted_accessibility_services";
+	        /**
+         *
+         * @hide
+         */
+        public static final String ETHERNET_ON = "ethernet_on";	
 
         /**
          * Whether to speak passwords while in accessibility mode.
