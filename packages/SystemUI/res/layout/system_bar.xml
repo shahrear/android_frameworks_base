@@ -76,6 +76,35 @@
                     android:contentDescription="@string/accessibility_recent"
                     systemui:glowBackground="@drawable/ic_sysbar_highlight"
                     />
+				<com.android.systemui.statusbar.policy.KeyButtonView android:id="@+id/vol_minus"
+                    android:layout_width="@dimen/navigation_key_width"
+                    android:layout_height="match_parent"
+                    android:src="@drawable/ic_sysbar_minus"
+                    android:contentDescription="@string/accessibility_recent"
+                    systemui:glowBackground="@drawable/ic_sysbar_highlight"
+                    />
+				<com.android.systemui.statusbar.policy.KeyButtonView android:id="@+id/vol_plus"
+                    android:layout_width="@dimen/navigation_key_width"
+                    android:layout_height="match_parent"
+                    android:src="@drawable/ic_sysbar_plus"
+                    android:contentDescription="@string/accessibility_recent"
+                    systemui:glowBackground="@drawable/ic_sysbar_highlight"
+                    />				
+				<com.android.systemui.statusbar.policy.KeyButtonView android:id="@+id/shutdown"
+                    android:layout_width="@dimen/navigation_key_width"
+                    android:layout_height="match_parent"
+                    android:src="@drawable/ic_sysbar_shutdown"
+                    android:contentDescription="@string/accessibility_recent"
+                    systemui:glowBackground="@drawable/ic_sysbar_highlight"
+                    />	
+				<com.android.systemui.statusbar.policy.KeyButtonView android:id="@+id/screenshot"
+                    android:layout_width="@dimen/navigation_key_width"
+                    android:layout_height="match_parent"
+                    android:src="@drawable/ic_sysbar_screenshot"
+                    android:contentDescription="@string/accessibility_recent"
+                    systemui:glowBackground="@drawable/ic_sysbar_highlight"
+                    />	
+
                 <com.android.systemui.statusbar.policy.KeyButtonView android:id="@+id/menu"
                     android:layout_width="@dimen/navigation_menu_key_width"
                     android:layout_height="match_parent"

@@ -30,6 +30,7 @@ import android.os.Message;
 import android.view.Gravity;
 import android.view.View;
 import android.view.WindowManager;
+import android.util.Log;
 
 public class LoadAverageService extends Service {
     private View mView;
@@ -65,7 +66,7 @@ public class LoadAverageService extends Service {
                     mStats.update();
                     updateDisplay();
                     Message m = obtainMessage(1);
-                    sendMessageDelayed(m, 2000);
+                    sendMessageDelayed(m, 1000);
                 }
             }
         };
@@ -73,10 +74,12 @@ public class LoadAverageService extends Service {
         private final Stats mStats;
         
         private Paint mLoadPaint;
+        private Paint mInfoPaint;
         private Paint mAddedPaint;
         private Paint mRemovedPaint;
         private Paint mShadowPaint;
         private Paint mShadow2Paint;
+        private Paint mShadow3Paint;
         private Paint mIrqPaint;
         private Paint mSystemPaint;
         private Paint mUserPaint;
@@ -111,6 +114,11 @@ public class LoadAverageService extends Service {
             mLoadPaint.setTextSize(textSize);
             mLoadPaint.setARGB(255, 255, 255, 255);
 
+            mInfoPaint = new Paint();
+            mInfoPaint.setAntiAlias(true);
+            mInfoPaint.setTextSize(textSize + 5);
+            mInfoPaint.setARGB(180, 255, 255, 255);
+
             mAddedPaint = new Paint();
             mAddedPaint.setAntiAlias(true);
             mAddedPaint.setTextSize(textSize);
@@ -135,6 +143,13 @@ public class LoadAverageService extends Service {
             //mShadow2Paint.setFakeBoldText(true);
             mShadow2Paint.setARGB(192, 0, 0, 0);
             mLoadPaint.setShadowLayer(2, 0, 0, 0xff000000);
+
+			mShadow3Paint = new Paint();
+            mShadow3Paint.setAntiAlias(true);
+            mShadow3Paint.setTextSize(textSize + 5);
+            //mShadow2Paint.setFakeBoldText(true);
+            mShadow2Paint.setARGB(192, 0, 0, 0);
+            mInfoPaint.setShadowLayer(2, 0, 0, 0xff000000);
 
             mIrqPaint = new Paint();
             mIrqPaint.setARGB(0x80, 0, 0, 0xff);
@@ -172,6 +187,13 @@ public class LoadAverageService extends Service {
             setMeasuredDimension(resolveSize(mNeededWidth, widthMeasureSpec),
                     resolveSize(mNeededHeight, heightMeasureSpec));
         }
+
+		private String clock;
+		private String temp;
+		private int[] core_usage = new int[4];
+		private String[] usage = new String[4];
+		//private String[] avw = new String[12];
+		boolean check_energy_monitor = true;
 
         @Override
         public void onDraw(Canvas canvas) {
@@ -224,6 +246,31 @@ public class LoadAverageService extends Service {
             canvas.drawText(stats.mLoadText, RIGHT-mPaddingRight-stats.mLoadWidth,
                     y, mLoadPaint);
 
+			clock = InfoUtils.GetCPUCurFreq();
+			if (clock == null)
+				Log.e("LoadAverageService", "Not availabled CPU clock");
+			temp = InfoUtils.GetTemperature();
+			if (temp == null)
+				Log.e("LoadAverageService", "Not availabled temperature");
+			InfoUtils.GetCPUUsage(core_usage);
+			for (int i = 0; i < 4; i++)
+				usage[i] = Integer.toString(core_usage[i]);
+
+			int mFH2 = mFH * 2;
+
+			String str = "CPU : " + clock + "MHz, " + temp + "°C";
+            canvas.drawText(str, 2, y+mFH2-1, mShadow3Paint);
+            canvas.drawText(str, 2, y+mFH2+1, mShadow3Paint);
+            canvas.drawText(str, 1, y+mFH2, mInfoPaint);
+
+			str = "Usage : CPU1 " + usage[0] + "%, CPU2 " + usage[1] + "%, CPU3 " + usage[2] + "%, CPU4 " + usage[3] + "%";
+            //canvas.drawText(str, 0, y+mFH2*2-1, mShadow3Paint);
+            //canvas.drawText(str, 0, y+mFH2*2+1, mShadow3Paint);
+            canvas.drawText(str, 2, y+mFH2*2-1, mShadow3Paint);
+            canvas.drawText(str, 2, y+mFH2*2+1, mShadow3Paint);
+            canvas.drawText(str, 1, y+mFH2*2, mInfoPaint);
+
+
             int N = stats.countWorkingStats();
             for (int i=0; i<N; i++) {
                 Stats.Stats st = stats.getWorkingStats(i);
@@ -271,11 +318,13 @@ public class LoadAverageService extends Service {
             }
             
             int neededWidth = mPaddingLeft + mPaddingRight + maxWidth;
-            int neededHeight = mPaddingTop + mPaddingBottom + (mFH*(1+NW));
+            int neededHeight = mPaddingTop + mPaddingBottom + (mFH * 2 * 9 *(1+NW));
             if (neededWidth != mNeededWidth || neededHeight != mNeededHeight) {
                 mNeededWidth = neededWidth;
                 mNeededHeight = neededHeight;
                 requestLayout();
+				//codewalker
+				invalidate();
             } else {
                 invalidate();
             }

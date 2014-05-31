@@ -24,9 +24,11 @@ import android.app.Notification;
 import android.app.PendingIntent;
 import android.app.StatusBarManager;
 import android.content.BroadcastReceiver;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.ServiceConnection;
 import android.content.SharedPreferences;
 import android.content.res.Configuration;
 import android.content.res.Resources;
@@ -35,10 +37,14 @@ import android.graphics.Point;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.LayerDrawable;
 import android.inputmethodservice.InputMethodService;
+import android.media.AudioManager;
+import android.os.Handler;
 import android.os.IBinder;
 import android.os.Message;
+import android.os.Messenger;
 import android.os.RemoteException;
 import android.os.ServiceManager;
+import android.os.storage.StorageManager;
 import android.text.TextUtils;
 import android.util.Slog;
 import android.view.Display;
@@ -141,6 +147,11 @@ public class TabletStatusBar extends BaseStatusBar implements
     View mMenuButton;
     View mRecentButton;
     private boolean mAltBackButtonEnabledForIme;
+		//codewalker
+    View mVolMinusButton;
+    View mVolPlusButton;
+    View mShutdownButton;
+    View mScreenshotButton;
 
     ViewGroup mFeedbackIconArea; // notification icons, IME icon, compat icon
     InputMethodButton mInputMethodSwitchButton;
@@ -189,6 +200,9 @@ public class TabletStatusBar extends BaseStatusBar implements
 
     private int mShowSearchHoldoff = 0;
 
+	//codewalker
+	AudioManager mAudioManager;
+	
     public Context getContext() { return mContext; }
 
     private Runnable mShowSearchPanel = new Runnable() {
@@ -393,6 +407,12 @@ public class TabletStatusBar extends BaseStatusBar implements
     @Override
     public void start() {
         super.start(); // will add the main bar view
+		
+		// storage codewalker
+        StorageManager mStorageManager;                
+        mStorageManager = (StorageManager) mContext.getSystemService(Context.STORAGE_SERVICE);
+        mStorageManager.registerListener(
+                new com.android.systemui.usb.StorageNotification(mContext));
     }
 
     @Override
@@ -524,6 +544,15 @@ public class TabletStatusBar extends BaseStatusBar implements
         mMenuButton = mNavigationArea.findViewById(R.id.menu);
         mRecentButton = mNavigationArea.findViewById(R.id.recent_apps);
         mRecentButton.setOnClickListener(mOnClickListener);
+		//codewalker
+		mVolMinusButton = mNavigationArea.findViewById(R.id.vol_minus);
+        mVolMinusButton.setOnClickListener(mOnClickListener);
+		mVolPlusButton = mNavigationArea.findViewById(R.id.vol_plus);
+        mVolPlusButton.setOnClickListener(mOnClickListener);
+		mShutdownButton = mNavigationArea.findViewById(R.id.shutdown);
+        mShutdownButton.setOnClickListener(mOnClickListener);
+		mScreenshotButton = mNavigationArea.findViewById(R.id.screenshot);
+        mScreenshotButton.setOnClickListener(mOnClickListener);
 
         LayoutTransition lt = new LayoutTransition();
         lt.setDuration(250);
@@ -975,6 +1004,11 @@ public class TabletStatusBar extends BaseStatusBar implements
         mBackButton.setVisibility(disableBack ? View.INVISIBLE : View.VISIBLE);
         mHomeButton.setVisibility(disableHome ? View.INVISIBLE : View.VISIBLE);
         mRecentButton.setVisibility(disableRecent ? View.INVISIBLE : View.VISIBLE);
+		//codewalker
+        mVolMinusButton.setVisibility(disableRecent ? View.INVISIBLE : View.VISIBLE);
+        mVolPlusButton.setVisibility(disableRecent ? View.INVISIBLE : View.VISIBLE);
+        mShutdownButton.setVisibility(disableRecent ? View.INVISIBLE : View.VISIBLE);
+        mScreenshotButton.setVisibility(disableRecent ? View.INVISIBLE : View.VISIBLE);
 
         mInputMethodSwitchButton.setScreenLocked(
                 (visibility & StatusBarManager.DISABLE_SYSTEM_INFO) != 0);
@@ -1241,15 +1275,106 @@ public class TabletStatusBar extends BaseStatusBar implements
 
     private View.OnClickListener mOnClickListener = new View.OnClickListener() {
         public void onClick(View v) {
+		//codewalker
+			if (mAudioManager == null)
+				mAudioManager = (AudioManager)getContext().getSystemService(Context.AUDIO_SERVICE);
             if (v == mRecentButton) {
                 onClickRecentButton();
             } else if (v == mInputMethodSwitchButton) {
                 onClickInputMethodSwitchButton();
             } else if (v == mCompatModeButton) {
                 onClickCompatModeButton();
+            } 
+			//codewalker
+			else if (v == mVolMinusButton) {
+				KeyEvent event = new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_VOLUME_DOWN);
+				mAudioManager.handleKeyDown(event, AudioManager.STREAM_MUSIC);
+			} else if (v == mVolPlusButton) {
+				KeyEvent event = new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_VOLUME_UP);
+				mAudioManager.handleKeyDown(event, AudioManager.STREAM_MUSIC);
+			} else if (v == mShutdownButton) {
+				PoweroffUtils.Poweroff();
+			} else if (v == mScreenshotButton) {
+				mHandler.postDelayed(mScreenshotChordLongPress,
+						ViewConfiguration.getGlobalActionKeyTimeout());
+			}
+        }
+    };
+
+	//codewalker
+	private final Runnable mScreenshotChordLongPress = new Runnable() {
+        public void run() {
+            takeScreenshot();
+        }
+    };
+
+	final Object mScreenshotLock = new Object();
+    ServiceConnection mScreenshotConnection = null;
+
+    final Runnable mScreenshotTimeout = new Runnable() {
+        @Override public void run() {
+            synchronized (mScreenshotLock) {
+                if (mScreenshotConnection != null) {
+                    mContext.unbindService(mScreenshotConnection);
+                    mScreenshotConnection = null;
+                }
             }
         }
     };
+
+    // Assume this is called from the Handler thread.
+    private void takeScreenshot() {
+        synchronized (mScreenshotLock) {
+            if (mScreenshotConnection != null) {
+                return;
+            }
+            ComponentName cn = new ComponentName("com.android.systemui",
+                    "com.android.systemui.screenshot.TakeScreenshotService");
+            Intent intent = new Intent();
+            intent.setComponent(cn);
+            ServiceConnection conn = new ServiceConnection() {
+                @Override
+                public void onServiceConnected(ComponentName name, IBinder service) {
+                    synchronized (mScreenshotLock) {
+                        if (mScreenshotConnection != this) {
+                            return;
+                        }
+                        Messenger messenger = new Messenger(service);
+                        Message msg = Message.obtain(null, 1);
+                        final ServiceConnection myConn = this;
+                        Handler h = new Handler(mHandler.getLooper()) {
+                            @Override
+                            public void handleMessage(Message msg) {
+                                synchronized (mScreenshotLock) {
+                                    if (mScreenshotConnection == myConn) {
+                                        mContext.unbindService(mScreenshotConnection);
+                                        mScreenshotConnection = null;
+                                        mHandler.removeCallbacks(mScreenshotTimeout);
+                                    }
+                                }
+                            }
+                        };
+                        msg.replyTo = new Messenger(h);
+                        msg.arg1 = msg.arg2 = 0;
+                        //if (mStatusBar != null && mStatusBar.isVisibleLw())
+                            msg.arg1 = 1;
+                        //if (mNavigationBar != null && mNavigationBar.isVisibleLw())
+                            msg.arg2 = 1;
+                        try {
+                            messenger.send(msg);
+                        } catch (RemoteException e) {
+                        }
+                    }
+                }
+                @Override
+                public void onServiceDisconnected(ComponentName name) {}
+            };
+            if (mContext.bindService(intent, conn, Context.BIND_AUTO_CREATE)) {
+                mScreenshotConnection = conn;
+                mHandler.postDelayed(mScreenshotTimeout, 10000);
+            }
+        }
+    }
 
     public void onClickRecentButton() {
         if (DEBUG) Slog.d(TAG, "clicked recent apps; disabled=" + mDisabled);

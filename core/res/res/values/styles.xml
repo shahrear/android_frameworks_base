@@ -2411,6 +2411,8 @@ please see styles_device_defaults.xml.
         <item name="android:pointerIconSpotHover">@android:drawable/pointer_spot_hover_icon</item>
         <item name="android:pointerIconSpotTouch">@android:drawable/pointer_spot_touch_icon</item>
         <item name="android:pointerIconSpotAnchor">@android:drawable/pointer_spot_anchor_icon</item>
+		<!-- codewalker -->
+        <item name="android:pointerIconZoom">@android:drawable/pointer_zoom_icon</item>
     </style>
 
     <!-- Wifi dialog styles -->

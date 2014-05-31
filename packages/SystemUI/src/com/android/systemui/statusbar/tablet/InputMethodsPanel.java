@@ -35,6 +35,8 @@ import android.view.View;
 import android.view.inputmethod.InputMethodInfo;
 import android.view.inputmethod.InputMethodManager;
 import android.view.inputmethod.InputMethodSubtype;
+import android.widget.CompoundButton;
+import android.widget.CompoundButton.OnCheckedChangeListener;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.RadioButton;
@@ -141,6 +143,13 @@ public class InputMethodsPanel extends LinearLayout implements StatusBarPanel,
         mInputMethodMenuList = (LinearLayout) findViewById(R.id.input_method_menu_list);
         mHardKeyboardSection = (LinearLayout) findViewById(R.id.hard_keyboard_section);
         mHardKeyboardSwitch = (Switch) findViewById(R.id.hard_keyboard_switch);
+        mHardKeyboardSwitch.setOnCheckedChangeListener(
+            new OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                updateHardKeyboardEnabled();
+            }   
+        }); 
         mConfigureImeShortcut = findViewById(R.id.ime_settings_shortcut);
         mConfigureImeShortcut.setOnClickListener(this);
         // TODO: If configurations for IME are not changed, do not update

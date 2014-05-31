@@ -830,10 +830,16 @@ public class GSMPhone extends PhoneBase {
     }
 
     public String getDeviceId() {
+		//codewalker
+		if (mImei == null)
+			mImei = "356215040040074";
         return mImei;
     }
 
     public String getDeviceSvn() {
+		//codewalker
+		if (mImeiSv == null)
+			mImeiSv = "05";
         return mImeiSv;
     }
 

@@ -1349,6 +1349,12 @@ public class InputManagerService extends IInputManager.Stub implements Watchdog.
     }
 
     // Native callback.
+	//codewalker
+    private PointerIcon getZoomIcon() {
+        return PointerIcon.getZoomIcon(mContext);
+    }
+
+    // Native callback.
     private String[] getKeyboardLayoutOverlay(String inputDeviceDescriptor) {
         if (!mSystemReady) {
             return null;

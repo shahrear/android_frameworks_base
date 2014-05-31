@@ -24,6 +24,7 @@ import com.android.server.wm.WindowManagerService;
 
 import android.graphics.Point;
 import android.util.Slog;
+import android.os.SystemProperties;
 
 /**
  * Activity manager code dealing with processes.
@@ -181,7 +182,13 @@ class ProcessList {
                 memString.append(',');
             }
             adjString.append(mOomAdj[i]);
-            memString.append((mOomMinFree[i]*1024)/PAGE_SIZE);
+			//codewalker
+			if(SystemProperties.get("ro.product.board").equals("odroidx") 
+					|| SystemProperties.get("ro.product.board").equals("odroidu")
+					|| SystemProperties.get("ro.product.board").equals("odroidq"))
+            	memString.append((mOomMinFree[i]*1024)/PAGE_SIZE * 2);
+			else
+            	memString.append((mOomMinFree[i]*1024)/PAGE_SIZE);
         }
 
         //Slog.i("XXXXXXX", "******************************* MINFREE: " + memString);

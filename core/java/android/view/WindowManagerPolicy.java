@@ -393,6 +393,8 @@ public interface WindowManagerPolicy {
 
         public void shutdown();
         public void rebootSafeMode();
+		//codewalker
+        public void reboot();
     }
 
     /**

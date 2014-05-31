@@ -11,6 +11,9 @@ LOCAL_JAVA_LIBRARIES := services
 LOCAL_STATIC_JAVA_LIBRARIES := android-common-carousel
 
 LOCAL_PACKAGE_NAME := SystemUI
+
+LOCAL_REQUIRED_MODULES := libpoweroff_jni
+
 LOCAL_CERTIFICATE := platform
 
 LOCAL_PROGUARD_FLAG_FILES := proguard.flags
