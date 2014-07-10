@@ -27,6 +27,7 @@ import static android.net.ConnectivityManager.TYPE_ETHERNET;
 import static android.net.ConnectivityManager.TYPE_MOBILE;
 import static android.net.ConnectivityManager.TYPE_WIFI;
 import static android.net.ConnectivityManager.TYPE_WIMAX;
+import static android.net.ConnectivityManager.TYPE_PPPOE;
 import static android.net.ConnectivityManager.getNetworkTypeName;
 import static android.net.ConnectivityManager.isNetworkTypeValid;
 import static android.net.NetworkPolicyManager.RULE_ALLOW_ALL;
@@ -47,6 +48,7 @@ import android.net.CaptivePortalTracker;
 import android.net.ConnectivityManager;
 import android.net.DummyDataStateTracker;
 import android.net.EthernetDataTracker;
+import android.net.pppoe.PppoeStateTracker;
 import android.net.IConnectivityManager;
 import android.net.INetworkManagementEventObserver;
 import android.net.INetworkPolicyListener;
@@ -68,6 +70,7 @@ import android.net.ProxyProperties;
 import android.net.RouteInfo;
 import android.net.wifi.WifiStateTracker;
 import android.net.wimax.WimaxManagerConstants;
+import android.net.pppoe.PppoeStateTracker;
 import android.os.Binder;
 import android.os.FileUtils;
 import android.os.Handler;
@@ -585,6 +588,8 @@ public class ConnectivityService extends IConnectivityManager.Stub {
                     return makeWimaxStateTracker(mContext, mTrackerHandler);
                 case TYPE_ETHERNET:
                     return EthernetDataTracker.getInstance();
+                case TYPE_PPPOE:
+                    return PppoeStateTracker.getInstance();
                 default:
                     throw new IllegalArgumentException(
                             "Trying to create a NetworkStateTracker for an unknown radio type: "
@@ -2011,6 +2016,11 @@ public class ConnectivityService extends IConnectivityManager.Stub {
         if (mNetConfigs[newNetType].isDefault()) {
             if (mActiveDefaultNetwork != -1 && mActiveDefaultNetwork != newNetType) {
                 if (isNewNetTypePreferredOverCurrentNetType(newNetType)) {
+		if ((newNetType == ConnectivityManager.TYPE_PPPOE) &&
+			((mActiveDefaultNetwork == ConnectivityManager.TYPE_ETHERNET) ||
+			(mActiveDefaultNetwork == ConnectivityManager.TYPE_WIFI) ) ) {
+			return;
+		}
                     // tear down the other
                     NetworkStateTracker otherNet =
                             mNetTrackers[mActiveDefaultNetwork];

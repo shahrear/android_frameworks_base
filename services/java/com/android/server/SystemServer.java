@@ -37,6 +37,9 @@ import android.os.ServiceManager;
 import android.os.StrictMode;
 import android.os.SystemClock;
 import android.os.SystemProperties;
+import android.provider.Settings;
+import android.server.BluetoothA2dpService;
+import android.server.BluetoothService;
 import android.os.UserHandle;
 import android.server.search.SearchManagerService;
 import android.service.dreams.DreamService;
@@ -45,6 +48,7 @@ import android.util.EventLog;
 import android.util.Log;
 import android.util.Slog;
 import android.view.WindowManager;
+import android.provider.Settings;
 
 import com.android.internal.os.BinderInternal;
 import com.android.internal.os.SamplingProfilerIntegration;
@@ -136,11 +140,14 @@ class ServerThread extends Thread {
         ConnectivityService connectivity = null;
         WifiP2pService wifiP2p = null;
         WifiService wifi = null;
+        EthernetService eth = null;
+        PppoeService pppoe = null;
         NsdService serviceDiscovery= null;
         IPackageManager pm = null;
         Context context = null;
         WindowManagerService wm = null;
-        BluetoothManagerService bluetooth = null;
+        BluetoothService bluetooth = null;
+        BluetoothA2dpService bluetoothA2dp = null;
         DockObserver dock = null;
         UsbService usb = null;
         SerialService serial = null;
@@ -332,9 +339,23 @@ class ServerThread extends Thread {
             } else if (factoryTest == SystemServer.FACTORY_TEST_LOW_LEVEL) {
                 Slog.i(TAG, "No Bluetooth Service (factory test)");
             } else {
-                Slog.i(TAG, "Bluetooth Manager Service");
-                bluetooth = new BluetoothManagerService(context);
-                ServiceManager.addService(BluetoothAdapter.BLUETOOTH_MANAGER_SERVICE, bluetooth);
+                Slog.i(TAG, "Bluetooth Service");
+                bluetooth = new BluetoothService(context);
+                ServiceManager.addService(BluetoothAdapter.BLUETOOTH_SERVICE, bluetooth);
+                bluetooth.initAfterRegistration();
+
+                if (!"0".equals(SystemProperties.get("system_init.startaudioservice"))) {
+                    bluetoothA2dp = new BluetoothA2dpService(context, bluetooth);
+                    ServiceManager.addService(BluetoothA2dpService.BLUETOOTH_A2DP_SERVICE,
+                                              bluetoothA2dp);
+                    bluetooth.initAfterA2dpRegistration();
+                }
+
+                int bluetoothOn = Settings.Global.getInt(mContentResolver,
+                    Settings.Global.BLUETOOTH_ON, 0);
+                if (bluetoothOn != 0) {
+                    bluetooth.enable();
+                }
             }
 
         } catch (RuntimeException e) {
@@ -503,6 +524,22 @@ class ServerThread extends Thread {
                 reportWtf("starting Connectivity Service", e);
             }
 
+            try {
+                Slog.i(TAG, "Ethernet Service");
+                eth = new EthernetService(context);
+                ServiceManager.addService(Context.ETHERNET_SERVICE, eth);
+            } catch (Throwable e) {
+                reportWtf("starting Ethernet Service", e);
+            }
+            int ethOn = Settings.Secure.getInt(mContentResolver, Settings.Secure.ETHERNET_ON, 0);
+            eth.setEthernetEnabled(false);
+            try {
+                Slog.i(TAG, "Pppoe Service");
+                pppoe = new PppoeService(context);
+                ServiceManager.addService(Context.PPPOE_SERVICE, pppoe);
+            } catch (Throwable e) {
+                reportWtf("starting Pppoe Service", e);
+            }
             try {
                 Slog.i(TAG, "Network Service Discovery Service");
                 serviceDiscovery = NsdService.create(context);
@@ -747,6 +784,11 @@ class ServerThread extends Thread {
                 } catch (Throwable e) {
                     reportWtf("starting DreamManagerService", e);
                 }
+            }
+            if (ethOn == 1) {
+                eth.setEthernetEnabled(true);
+            } else  {
+                eth.setEthernetEnabled(false);
             }
         }
 

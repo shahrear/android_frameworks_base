@@ -31,7 +31,6 @@ import android.util.Log;
 import android.util.Pair;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
@@ -74,8 +73,7 @@ import java.util.UUID;
  */
 public final class BluetoothAdapter {
     private static final String TAG = "BluetoothAdapter";
-    private static final boolean DBG = true;
-    private static final boolean VDBG = false;
+    private static final boolean DBG = false;
 
     /**
      * Sentinel error value for this class. Guaranteed to not equal any other
@@ -345,7 +343,7 @@ public final class BluetoothAdapter {
     public static final int STATE_DISCONNECTING = 3;
 
     /** @hide */
-    public static final String BLUETOOTH_MANAGER_SERVICE = "bluetooth_manager";
+    public static final String BLUETOOTH_SERVICE = "bluetooth";
 
     private static final int ADDRESS_LENGTH = 17;
 
@@ -355,8 +353,7 @@ public final class BluetoothAdapter {
      */
     private static BluetoothAdapter sAdapter;
 
-    private final IBluetoothManager mManagerService;
-    private IBluetooth mService;
+    private final IBluetooth mService;
 
     private Handler mServiceRecordHandler;
 
@@ -370,12 +367,10 @@ public final class BluetoothAdapter {
      */
     public static synchronized BluetoothAdapter getDefaultAdapter() {
         if (sAdapter == null) {
-            IBinder b = ServiceManager.getService(BLUETOOTH_MANAGER_SERVICE);
+            IBinder b = ServiceManager.getService(BluetoothAdapter.BLUETOOTH_SERVICE);
             if (b != null) {
-                IBluetoothManager managerService = IBluetoothManager.Stub.asInterface(b);
-                sAdapter = new BluetoothAdapter(managerService);
-            } else {
-                Log.e(TAG, "Bluetooth binder is null");
+                IBluetooth service = IBluetooth.Stub.asInterface(b);
+                sAdapter = new BluetoothAdapter(service);
             }
         }
         return sAdapter;
@@ -383,16 +378,13 @@ public final class BluetoothAdapter {
 
     /**
      * Use {@link #getDefaultAdapter} to get the BluetoothAdapter instance.
+     * @hide
      */
-    BluetoothAdapter(IBluetoothManager managerService) {
-
-        if (managerService == null) {
-            throw new IllegalArgumentException("bluetooth manager service is null");
+    public BluetoothAdapter(IBluetooth service) {
+        if (service == null) {
+            throw new IllegalArgumentException("service is null");
         }
-        try {
-            mService = managerService.registerAdapter(mManagerCallback);
-        } catch (RemoteException e) {Log.e(TAG, "", e);}
-        mManagerService = managerService;
+        mService = service;
         mServiceRecordHandler = null;
     }
 
@@ -440,11 +432,8 @@ public final class BluetoothAdapter {
      * @return true if the local adapter is turned on
      */
     public boolean isEnabled() {
-
         try {
-            synchronized(mManagerCallback) {
-                if (mService != null) return mService.isEnabled();
-            }
+            return mService.isEnabled();
         } catch (RemoteException e) {Log.e(TAG, "", e);}
         return false;
     }
@@ -462,18 +451,8 @@ public final class BluetoothAdapter {
      */
     public int getState() {
         try {
-            synchronized(mManagerCallback) {
-                if (mService != null)
-                {
-                    int state=  mService.getState();
-                    if (VDBG) Log.d(TAG, "" + hashCode() + ": getState(). Returning " + state);
-                    return state;
-                }
-                // TODO(BT) there might be a small gap during STATE_TURNING_ON that
-                //          mService is null, handle that case
-            }
+            return mService.getBluetoothState();
         } catch (RemoteException e) {Log.e(TAG, "", e);}
-        if (DBG) Log.d(TAG, "" + hashCode() + ": getState() :  mService = null. Returning STATE_OFF");
         return STATE_OFF;
     }
 
@@ -505,12 +484,8 @@ public final class BluetoothAdapter {
      *         immediate error
      */
     public boolean enable() {
-        if (isEnabled() == true){
-            if (DBG) Log.d(TAG, "enable(): BT is already enabled..!");
-            return true;
-        }
         try {
-            return mManagerService.enable();
+            return mService.enable();
         } catch (RemoteException e) {Log.e(TAG, "", e);}
         return false;
     }
@@ -541,25 +516,7 @@ public final class BluetoothAdapter {
      */
     public boolean disable() {
         try {
-            return mManagerService.disable(true);
-        } catch (RemoteException e) {Log.e(TAG, "", e);}
-        return false;
-    }
-
-    /**
-     * Turn off the local Bluetooth adapter and don't persist the setting.
-     *
-     * <p>Requires the {@link android.Manifest.permission#BLUETOOTH_ADMIN}
-     * permission
-     *
-     * @return true to indicate adapter shutdown has begun, or false on
-     *         immediate error
-     * @hide
-     */
-    public boolean disable(boolean persist) {
-
-        try {
-            return mManagerService.disable(persist);
+            return mService.disable(true);
         } catch (RemoteException e) {Log.e(TAG, "", e);}
         return false;
     }
@@ -573,7 +530,7 @@ public final class BluetoothAdapter {
      */
     public String getAddress() {
         try {
-            return mManagerService.getAddress();
+            return mService.getAddress();
         } catch (RemoteException e) {Log.e(TAG, "", e);}
         return null;
     }
@@ -587,7 +544,7 @@ public final class BluetoothAdapter {
      */
     public String getName() {
         try {
-            return mManagerService.getName();
+            return mService.getName();
         } catch (RemoteException e) {Log.e(TAG, "", e);}
         return null;
     }
@@ -603,11 +560,39 @@ public final class BluetoothAdapter {
     public ParcelUuid[] getUuids() {
         if (getState() != STATE_ON) return null;
         try {
-            synchronized(mManagerCallback) {
-                if (mService != null) return mService.getUuids();
-            }
+            return mService.getUuids();
         } catch (RemoteException e) {Log.e(TAG, "", e);}
         return null;
+    }
+
+    /** @hide */
+    public static String getStateName(int state) {
+        switch (state) {
+            case STATE_OFF:
+                return "STATE_OFF";
+            case STATE_TURNING_ON:
+                return "STATE_TURNING_ON";
+            case STATE_ON:
+                return "STATE_ON";
+            case STATE_TURNING_OFF:
+                return "STATE_TURNING_OFF";
+            default:
+                return "UNKNOWN";
+        }
+    }
+
+    /** @hide */
+    public static String getScanMode(int mode) {
+        switch (mode) {
+            case SCAN_MODE_NONE:
+                return "SCAN_MODE_NONE";
+            case SCAN_MODE_CONNECTABLE:
+                return "SCAN_MODE_CONNECTABLE";
+            case SCAN_MODE_CONNECTABLE_DISCOVERABLE:
+                return "SCAN_MODE_CONNECTABLE_DISCOVERABLE";
+            default:
+                return "UNKNOWN";
+        }
     }
 
     /**
@@ -628,9 +613,7 @@ public final class BluetoothAdapter {
     public boolean setName(String name) {
         if (getState() != STATE_ON) return false;
         try {
-            synchronized(mManagerCallback) {
-                if (mService != null) return mService.setName(name);
-            }
+            return mService.setName(name);
         } catch (RemoteException e) {Log.e(TAG, "", e);}
         return false;
     }
@@ -654,9 +637,7 @@ public final class BluetoothAdapter {
     public int getScanMode() {
         if (getState() != STATE_ON) return SCAN_MODE_NONE;
         try {
-            synchronized(mManagerCallback) {
-                if (mService != null) return mService.getScanMode();
-            }
+            return mService.getScanMode();
         } catch (RemoteException e) {Log.e(TAG, "", e);}
         return SCAN_MODE_NONE;
     }
@@ -692,9 +673,7 @@ public final class BluetoothAdapter {
     public boolean setScanMode(int mode, int duration) {
         if (getState() != STATE_ON) return false;
         try {
-            synchronized(mManagerCallback) {
-                if (mService != null) return mService.setScanMode(mode, duration);
-            }
+            return mService.setScanMode(mode, duration);
         } catch (RemoteException e) {Log.e(TAG, "", e);}
         return false;
     }
@@ -702,17 +681,14 @@ public final class BluetoothAdapter {
     /** @hide */
     public boolean setScanMode(int mode) {
         if (getState() != STATE_ON) return false;
-        /* getDiscoverableTimeout() to use the latest from NV than use 0 */
-        return setScanMode(mode, getDiscoverableTimeout());
+        return setScanMode(mode, 120);
     }
 
     /** @hide */
     public int getDiscoverableTimeout() {
         if (getState() != STATE_ON) return -1;
         try {
-            synchronized(mManagerCallback) {
-                if (mService != null) return mService.getDiscoverableTimeout();
-            }
+            return mService.getDiscoverableTimeout();
         } catch (RemoteException e) {Log.e(TAG, "", e);}
         return -1;
     }
@@ -721,9 +697,7 @@ public final class BluetoothAdapter {
     public void setDiscoverableTimeout(int timeout) {
         if (getState() != STATE_ON) return;
         try {
-            synchronized(mManagerCallback) {
-                if (mService != null) mService.setDiscoverableTimeout(timeout);
-            }
+            mService.setDiscoverableTimeout(timeout);
         } catch (RemoteException e) {Log.e(TAG, "", e);}
     }
 
@@ -760,9 +734,7 @@ public final class BluetoothAdapter {
     public boolean startDiscovery() {
         if (getState() != STATE_ON) return false;
         try {
-            synchronized(mManagerCallback) {
-                if (mService != null) return mService.startDiscovery();
-            }
+            return mService.startDiscovery();
         } catch (RemoteException e) {Log.e(TAG, "", e);}
         return false;
     }
@@ -787,9 +759,7 @@ public final class BluetoothAdapter {
     public boolean cancelDiscovery() {
         if (getState() != STATE_ON) return false;
         try {
-            synchronized(mManagerCallback) {
-                if (mService != null) return mService.cancelDiscovery();
-            }
+            return mService.cancelDiscovery();
         } catch (RemoteException e) {Log.e(TAG, "", e);}
         return false;
     }
@@ -816,9 +786,7 @@ public final class BluetoothAdapter {
     public boolean isDiscovering() {
         if (getState() != STATE_ON) return false;
         try {
-            synchronized(mManagerCallback) {
-                if (mService != null ) return mService.isDiscovering();
-            }
+            return mService.isDiscovering();
         } catch (RemoteException e) {Log.e(TAG, "", e);}
         return false;
     }
@@ -836,13 +804,10 @@ public final class BluetoothAdapter {
      */
     public Set<BluetoothDevice> getBondedDevices() {
         if (getState() != STATE_ON) {
-            return toDeviceSet(new BluetoothDevice[0]);
+            return toDeviceSet(new String[0]);
         }
         try {
-            synchronized(mManagerCallback) {
-                if (mService != null) return toDeviceSet(mService.getBondedDevices());
-            }
-            return toDeviceSet(new BluetoothDevice[0]);
+            return toDeviceSet(mService.listBonds());
         } catch (RemoteException e) {Log.e(TAG, "", e);}
         return null;
     }
@@ -863,9 +828,7 @@ public final class BluetoothAdapter {
     public int getConnectionState() {
         if (getState() != STATE_ON) return BluetoothAdapter.STATE_DISCONNECTED;
         try {
-            synchronized(mManagerCallback) {
-                if (mService != null) return mService.getAdapterConnectionState();
-            }
+            return mService.getAdapterConnectionState();
         } catch (RemoteException e) {Log.e(TAG, "getConnectionState:", e);}
         return BluetoothAdapter.STATE_DISCONNECTED;
     }
@@ -888,13 +851,56 @@ public final class BluetoothAdapter {
     public int getProfileConnectionState(int profile) {
         if (getState() != STATE_ON) return BluetoothProfile.STATE_DISCONNECTED;
         try {
-            synchronized(mManagerCallback) {
-                if (mService != null) return mService.getProfileConnectionState(profile);
-            }
+            return mService.getProfileConnectionState(profile);
         } catch (RemoteException e) {
             Log.e(TAG, "getProfileConnectionState:", e);
         }
         return BluetoothProfile.STATE_DISCONNECTED;
+    }
+
+    /**
+    /**
+     * Picks RFCOMM channels until none are left.
+     * Avoids reserved channels.
+     */
+    private static class RfcommChannelPicker {
+        private static final int[] RESERVED_RFCOMM_CHANNELS =  new int[] {
+            10,  // HFAG
+            11,  // HSAG
+            12,  // OPUSH
+            19,  // PBAP
+        };
+        private static LinkedList<Integer> sChannels;  // master list of non-reserved channels
+        private static Random sRandom;
+
+        private final LinkedList<Integer> mChannels;  // local list of channels left to try
+
+        private final UUID mUuid;
+
+        public RfcommChannelPicker(UUID uuid) {
+            synchronized (RfcommChannelPicker.class) {
+                if (sChannels == null) {
+                    // lazy initialization of non-reserved rfcomm channels
+                    sChannels = new LinkedList<Integer>();
+                    for (int i = 1; i <= BluetoothSocket.MAX_RFCOMM_CHANNEL; i++) {
+                        sChannels.addLast(new Integer(i));
+                    }
+                    for (int reserved : RESERVED_RFCOMM_CHANNELS) {
+                        sChannels.remove(new Integer(reserved));
+                    }
+                    sRandom = new Random();
+                }
+                mChannels = (LinkedList<Integer>)sChannels.clone();
+            }
+            mUuid = uuid;
+        }
+        /* Returns next random channel, or -1 if we're out */
+        public int nextChannel() {
+            if (mChannels.size() == 0) {
+                return -1;
+            }
+            return mChannels.remove(sRandom.nextInt(mChannels.size()));
+        }
     }
 
     /**
@@ -916,10 +922,10 @@ public final class BluetoothAdapter {
                 BluetoothSocket.TYPE_RFCOMM, true, true, channel);
         int errno = socket.mSocket.bindListen();
         if (errno != 0) {
-            //TODO(BT): Throw the same exception error code
-            // that the previous code was using.
-            //socket.mSocket.throwErrnoNative(errno);
-            throw new IOException("Error: " + errno);
+            try {
+                socket.close();
+            } catch (IOException e) {}
+            socket.mSocket.throwErrnoNative(errno);
         }
         return socket;
     }
@@ -1020,22 +1026,69 @@ public final class BluetoothAdapter {
         return createNewRfcommSocketAndRecord(name, uuid, false, true);
     }
 
-
     private BluetoothServerSocket createNewRfcommSocketAndRecord(String name, UUID uuid,
             boolean auth, boolean encrypt) throws IOException {
+        RfcommChannelPicker picker = new RfcommChannelPicker(uuid);
+
         BluetoothServerSocket socket;
-        socket = new BluetoothServerSocket(BluetoothSocket.TYPE_RFCOMM, auth,
-                        encrypt, new ParcelUuid(uuid));
-        socket.setServiceName(name);
-        int errno = socket.mSocket.bindListen();
-        if (errno != 0) {
-            //TODO(BT): Throw the same exception error code
-            // that the previous code was using.
-            //socket.mSocket.throwErrnoNative(errno);
-            throw new IOException("Error: " + errno);
+        int channel;
+        int errno;
+        while (true) {
+            channel = picker.nextChannel();
+
+            if (channel == -1) {
+                throw new IOException("No available channels");
+            }
+
+            socket = new BluetoothServerSocket(
+                    BluetoothSocket.TYPE_RFCOMM, auth, encrypt, channel);
+            errno = socket.mSocket.bindListen();
+            if (errno == 0) {
+                if (DBG) Log.d(TAG, "listening on RFCOMM channel " + channel);
+                break;  // success
+            } else if (errno == BluetoothSocket.EADDRINUSE) {
+                if (DBG) Log.d(TAG, "RFCOMM channel " + channel + " in use");
+                try {
+                    socket.close();
+                } catch (IOException e) {}
+                continue;  // try another channel
+            } else {
+                try {
+                    socket.close();
+                } catch (IOException e) {}
+                socket.mSocket.throwErrnoNative(errno);  // Exception as a result of bindListen()
+            }
         }
+
+        int handle = -1;
+        try {
+            handle = mService.addRfcommServiceRecord(name, new ParcelUuid(uuid), channel,
+                    new Binder());
+        } catch (RemoteException e) {Log.e(TAG, "", e);}
+        if (handle == -1) {
+            try {
+                socket.close();
+            } catch (IOException e) {}
+            throw new IOException("Not able to register SDP record for " + name);
+        }
+
+        if (mServiceRecordHandler == null) {
+            mServiceRecordHandler = new Handler(Looper.getMainLooper()) {
+                    public void handleMessage(Message msg) {
+                        /* handle socket closing */
+                        int handle = msg.what;
+                        try {
+                            if (DBG) Log.d(TAG, "Removing service record " +
+                                           Integer.toHexString(handle));
+                            mService.removeServiceRecord(handle);
+                        } catch (RemoteException e) {Log.e(TAG, "", e);}
+                    }
+                };
+        }
+        socket.setCloseHandler(mServiceRecordHandler, handle);
         return socket;
     }
+
 
     /**
      * Construct an unencrypted, unauthenticated, RFCOMM server socket.
@@ -1050,10 +1103,10 @@ public final class BluetoothAdapter {
                 BluetoothSocket.TYPE_RFCOMM, false, false, port);
         int errno = socket.mSocket.bindListen();
         if (errno != 0) {
-            //TODO(BT): Throw the same exception error code
-            // that the previous code was using.
-            //socket.mSocket.throwErrnoNative(errno);
-            throw new IOException("Error: " + errno);
+            try {
+                socket.close();
+            } catch (IOException e) {}
+            socket.mSocket.throwErrnoNative(errno);
         }
         return socket;
     }
@@ -1071,11 +1124,11 @@ public final class BluetoothAdapter {
         BluetoothServerSocket socket = new BluetoothServerSocket(
                 BluetoothSocket.TYPE_RFCOMM, false, true, port);
         int errno = socket.mSocket.bindListen();
-        if (errno < 0) {
-            //TODO(BT): Throw the same exception error code
-            // that the previous code was using.
-            //socket.mSocket.throwErrnoNative(errno);
-            throw new IOException("Error: " + errno);
+        if (errno != 0) {
+            try {
+                socket.close();
+            } catch (IOException e) {}
+            socket.mSocket.throwErrnoNative(errno);
         }
         return socket;
     }
@@ -1092,10 +1145,11 @@ public final class BluetoothAdapter {
         BluetoothServerSocket socket = new BluetoothServerSocket(
                 BluetoothSocket.TYPE_SCO, false, false, -1);
         int errno = socket.mSocket.bindListen();
-        if (errno < 0) {
-            //TODO(BT): Throw the same exception error code
-            // that the previous code was using.
-            //socket.mSocket.throwErrnoNative(errno);
+        if (errno != 0) {
+            try {
+                socket.close();
+            } catch (IOException e) {}
+            socket.mSocket.throwErrnoNative(errno);
         }
         return socket;
     }
@@ -1110,8 +1164,6 @@ public final class BluetoothAdapter {
      */
     public Pair<byte[], byte[]> readOutOfBandData() {
         if (getState() != STATE_ON) return null;
-        //TODO(BT
-        /*
         try {
             byte[] hash;
             byte[] randomizer;
@@ -1129,7 +1181,7 @@ public final class BluetoothAdapter {
             }
             return new Pair<byte[], byte[]>(hash, randomizer);
 
-        } catch (RemoteException e) {Log.e(TAG, "", e);}*/
+        } catch (RemoteException e) {Log.e(TAG, "", e);}
         return null;
     }
 
@@ -1209,53 +1261,14 @@ public final class BluetoothAdapter {
         }
     }
 
-    final private IBluetoothManagerCallback mManagerCallback =
-        new IBluetoothManagerCallback.Stub() {
-            public void onBluetoothServiceUp(IBluetooth bluetoothService) {
-                if (VDBG) Log.d(TAG, "onBluetoothServiceUp: " + bluetoothService);
-                synchronized (mManagerCallback) {
-                    mService = bluetoothService;
-                    for (IBluetoothManagerCallback cb : mProxyServiceStateCallbacks ){
-                        try {
-                            if (cb != null) {
-                                cb.onBluetoothServiceUp(bluetoothService);
-                            } else {
-                                Log.d(TAG, "onBluetoothServiceUp: cb is null!!!");
-                            }
-                        } catch (Exception e)  { Log.e(TAG,"",e);}
-                    }
-                }
-            }
-
-            public void onBluetoothServiceDown() {
-                if (VDBG) Log.d(TAG, "onBluetoothServiceDown: " + mService);
-                synchronized (mManagerCallback) {
-                    mService = null;
-                    for (IBluetoothManagerCallback cb : mProxyServiceStateCallbacks ){
-                        try {
-                            if (cb != null) {
-                                cb.onBluetoothServiceDown();
-                            } else {
-                                Log.d(TAG, "onBluetoothServiceDown: cb is null!!!");
-                            }
-                        } catch (Exception e)  { Log.e(TAG,"",e);}
-                    }
-                }
-            }
-    };
-
     /**
      * Enable the Bluetooth Adapter, but don't auto-connect devices
      * and don't persist state. Only for use by system applications.
      * @hide
      */
     public boolean enableNoAutoConnect() {
-        if (isEnabled() == true){
-            if (DBG) Log.d(TAG, "enableNoAutoConnect(): BT is already enabled..!");
-            return true;
-        }
         try {
-            return mManagerService.enableNoAutoConnect();
+            return mService.enableNoAutoConnect();
         } catch (RemoteException e) {Log.e(TAG, "", e);}
         return false;
     }
@@ -1293,14 +1306,12 @@ public final class BluetoothAdapter {
                                                    BluetoothStateChangeCallback callback) {
         if (callback == null) return false;
 
-        //TODO(BT)
-        /*
         try {
             return mService.changeApplicationBluetoothState(on, new
                     StateChangeCallbackWrapper(callback), new Binder());
         } catch (RemoteException e) {
             Log.e(TAG, "changeBluetoothState", e);
-        }*/
+        }
         return false;
     }
 
@@ -1328,21 +1339,13 @@ public final class BluetoothAdapter {
         }
     }
 
-    private Set<BluetoothDevice> toDeviceSet(BluetoothDevice[] devices) {
-        Set<BluetoothDevice> deviceSet = new HashSet<BluetoothDevice>(Arrays.asList(devices));
-        return Collections.unmodifiableSet(deviceSet);
-    }
-
-    protected void finalize() throws Throwable {
-        try {
-            mManagerService.unregisterAdapter(mManagerCallback);
-        } catch (RemoteException e) {
-            Log.e(TAG, "", e);
-        } finally {
-            super.finalize();
+    private Set<BluetoothDevice> toDeviceSet(String[] addresses) {
+        Set<BluetoothDevice> devices = new HashSet<BluetoothDevice>(addresses.length);
+        for (int i = 0; i < addresses.length; i++) {
+            devices.add(getRemoteDevice(addresses[i]));
         }
+        return Collections.unmodifiableSet(devices);
     }
-
 
     /**
      * Validate a String Bluetooth address, such as "00:43:A8:23:10:F0"
@@ -1373,28 +1376,5 @@ public final class BluetoothAdapter {
             }
         }
         return true;
-    }
-
-    /*package*/ IBluetoothManager getBluetoothManager() {
-            return mManagerService;
-    }
-
-    private ArrayList<IBluetoothManagerCallback> mProxyServiceStateCallbacks = new ArrayList<IBluetoothManagerCallback>();
-
-    /*package*/ IBluetooth getBluetoothService(IBluetoothManagerCallback cb) {
-        synchronized (mManagerCallback) {
-            if (cb == null) {
-                Log.w(TAG, "getBluetoothService() called with no BluetoothManagerCallback");
-            } else if (!mProxyServiceStateCallbacks.contains(cb)) {
-                mProxyServiceStateCallbacks.add(cb);
-            }
-        }
-        return mService;
-    }
-
-    /*package*/ void removeServiceStateCallback(IBluetoothManagerCallback cb) {
-        synchronized (mManagerCallback) {
-            mProxyServiceStateCallbacks.remove(cb);
-        }
     }
 }

@@ -782,6 +782,10 @@ public class WindowManagerService extends IWindowManager.Stub
                 mAnimator.mAboveUniverseLayer = mPolicy.getAboveUniverseLayer()
                         * TYPE_LAYER_MULTIPLIER
                         + TYPE_LAYER_OFFSET;
+
+                //codewalker
+                //set default screen orientation as portrait.
+                //mPolicy.rotationForOrientationLw(ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE, ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
             }
         }, 0);
     }
@@ -5460,6 +5464,12 @@ public class WindowManagerService extends IWindowManager.Stub
         ShutdownThread.rebootSafeMode(mContext, confirm);
     }
 
+	//codewalker
+    @Override
+    public void reboot() {
+		ShutdownThread.reboot(mContext, null, true);
+	}
+	
     public void setInputFilter(IInputFilter filter) {
         if (!checkCallingPermission(android.Manifest.permission.FILTER_EVENTS, "setInputFilter()")) {
             throw new SecurityException("Requires FILTER_EVENTS permission");

@@ -847,6 +847,19 @@ public abstract class PackageManager {
      */
     @SdkConstant(SdkConstantType.FEATURE)
     public static final String FEATURE_CAMERA_FLASH = "android.hardware.camera.flash";
+    /**
+     * Feature for {@link #getSystemAvailableFeatures} and
+     * {@link #hasSystemFeature}: The device supports Ethernet networking.
+     */
+    @SdkConstant(SdkConstantType.FEATURE)
+    public static final String FEATURE_ETHERNET = "android.hardware.ethernet";
+
+    /**
+     * Feature for {@link #getSystemAvailableFeatures} and
+     * {@link #hasSystemFeature}: The device supports PPPoE networking.
+     */
+    @SdkConstant(SdkConstantType.FEATURE)
+    public static final String FEATURE_PPPOE = "android.software.pppoe";
 
     /**
      * Feature for {@link #getSystemAvailableFeatures} and

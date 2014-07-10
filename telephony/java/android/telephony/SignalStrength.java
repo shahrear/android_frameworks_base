@@ -444,10 +444,14 @@ public class SignalStrength implements Parcelable {
         int level;
 
         if (isGsm) {
-            level = getLteLevel();
-            if (level == SIGNAL_STRENGTH_NONE_OR_UNKNOWN) {
+           // level = getLteLevel();
+            //if (level == SIGNAL_STRENGTH_NONE_OR_UNKNOWN) {
+              if ( (mLteSignalStrength==99)&&(mLteCqi==-1)&&(mLteRssnr==-1)) {
                 level = getGsmLevel();
-            }
+            } else{
+            	
+            	level = getLteLevel();
+              }
         } else {
             int cdmaLevel = getCdmaLevel();
             int evdoLevel = getEvdoLevel();
@@ -474,7 +478,9 @@ public class SignalStrength implements Parcelable {
     public int getAsuLevel() {
         int asuLevel;
         if (isGsm) {
-            if (getLteLevel() == SIGNAL_STRENGTH_NONE_OR_UNKNOWN) {
+            //if (getLteLevel() == SIGNAL_STRENGTH_NONE_OR_UNKNOWN) {
+              //  asuLevel = getGsmAsuLevel();
+             if((mLteSignalStrength==99)&&(mLteCqi==-1)&&(mLteRssnr==-1)){ 
                 asuLevel = getGsmAsuLevel();
             } else {
                 asuLevel = getLteAsuLevel();
@@ -506,7 +512,9 @@ public class SignalStrength implements Parcelable {
         int dBm;
 
         if(isGsm()) {
-            if (getLteLevel() == SIGNAL_STRENGTH_NONE_OR_UNKNOWN) {
+            //if (getLteLevel() == SIGNAL_STRENGTH_NONE_OR_UNKNOWN) {
+              //  dBm = getGsmDbm();
+            if((mLteSignalStrength==99)&&(mLteCqi==-1)&&(mLteRssnr==-1)){  
                 dBm = getGsmDbm();
             } else {
                 dBm = getLteDbm();

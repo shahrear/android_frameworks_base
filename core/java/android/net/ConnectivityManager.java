@@ -321,12 +321,13 @@ public class ConnectivityManager {
      * {@hide}
      */
     public static final int TYPE_WIFI_P2P    = 13;
+    public static final int TYPE_PPPOE    = 14;
+	
+    /** {@hide} */
+    public static final int MAX_RADIO_TYPE   = TYPE_PPPOE;
 
     /** {@hide} */
-    public static final int MAX_RADIO_TYPE   = TYPE_WIFI_P2P;
-
-    /** {@hide} */
-    public static final int MAX_NETWORK_TYPE = TYPE_WIFI_P2P;
+    public static final int MAX_NETWORK_TYPE = TYPE_PPPOE;
 
     public static final int DEFAULT_NETWORK_PREFERENCE = TYPE_WIFI;
 

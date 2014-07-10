@@ -41,15 +41,19 @@ public class SignalClusterView
 
     private boolean mWifiVisible = false;
     private int mWifiStrengthId = 0, mWifiActivityId = 0;
+    private boolean mEthVisible = false;
+    private int mEthStrengthId = 0;
+    private boolean mPppoeVisible = false;
+    private int mPppoeStrengthId = 0;
     private boolean mMobileVisible = false;
     private int mMobileStrengthId = 0, mMobileActivityId = 0, mMobileTypeId = 0;
     private boolean mIsAirplaneMode = false;
     private int mAirplaneIconId = 0;
     private String mWifiDescription, mMobileDescription, mMobileTypeDescription;
 
-    ViewGroup mWifiGroup, mMobileGroup;
-    ImageView mWifi, mMobile, mWifiActivity, mMobileActivity, mMobileType, mAirplane;
-    View mSpacer;
+    ViewGroup mWifiGroup, mMobileGroup,mEthGroup,mPppoeGroup;
+    ImageView mWifi, mMobile, mWifiActivity, mMobileActivity, mMobileType, mAirplane, mEth,mPppoe;
+    View mSpacer,mSpacer1, mSpacer2;
 
     public SignalClusterView(Context context) {
         this(context, null);
@@ -82,6 +86,12 @@ public class SignalClusterView
         mSpacer         =             findViewById(R.id.spacer);
         mAirplane       = (ImageView) findViewById(R.id.airplane);
 
+        mSpacer1         =             findViewById(R.id.spacer1);
+        mEthGroup      = (ViewGroup) findViewById(R.id.eth_combo);
+        mEth			= (ImageView) findViewById(R.id.eth_state);
+		mSpacer2         =             findViewById(R.id.spacer2);
+		mPppoeGroup      = (ViewGroup) findViewById(R.id.pppoe_combo);
+		mPppoe			= (ImageView) findViewById(R.id.pppoe_state);
         apply();
     }
 
@@ -97,6 +107,10 @@ public class SignalClusterView
         mSpacer         = null;
         mAirplane       = null;
 
+        mEthGroup		= null;
+        mEth			= null;
+		mPppoeGroup		= null;
+		mPppoe			= null;
         super.onDetachedFromWindow();
     }
 
@@ -108,6 +122,17 @@ public class SignalClusterView
         mWifiActivityId = activityIcon;
         mWifiDescription = contentDescription;
 
+        apply();
+    }
+    public void setEthIndicators(boolean visible, int stateIcon) {
+        mEthVisible = visible;
+        mEthStrengthId = stateIcon;
+        apply();
+    }
+
+    public void setPppoeIndicators(boolean visible, int stateIcon) {
+        mPppoeVisible = visible;
+        mPppoeStrengthId = stateIcon;
         apply();
     }
 
@@ -156,6 +181,31 @@ public class SignalClusterView
             mWifiGroup.setVisibility(View.GONE);
         }
 
+		if(mEthVisible)
+		{
+			mEthGroup.setVisibility(View.VISIBLE);
+			mEth.setVisibility(View.VISIBLE);
+			mEth.setImageResource(mEthStrengthId);
+			mSpacer1.setVisibility(View.INVISIBLE);
+		}
+		else
+		{
+            mEthGroup.setVisibility(View.GONE);
+			mSpacer1.setVisibility(View.GONE);
+		}
+
+		if(mPppoeVisible)
+		{
+			mPppoeGroup.setVisibility(View.VISIBLE);
+			mPppoe.setVisibility(View.VISIBLE);
+			mPppoe.setImageResource(mPppoeStrengthId);
+			mSpacer2.setVisibility(View.INVISIBLE);
+		}
+		else
+		{
+            mPppoeGroup.setVisibility(View.GONE);
+			mSpacer2.setVisibility(View.GONE);
+		}
         if (DEBUG) Slog.d(TAG,
                 String.format("wifi: %s sig=%d act=%d",
                     (mWifiVisible ? "VISIBLE" : "GONE"),

@@ -147,6 +147,23 @@ public class NavigationBarView extends LinearLayout {
     public View getHomeButton() {
         return mCurrentView.findViewById(R.id.home);
     }
+	
+	//codewalker
+	public View getVolDownButton() {
+        return mCurrentView.findViewById(R.id.vol_minus);
+    }
+	
+	public View getVolUpButton() {
+        return mCurrentView.findViewById(R.id.vol_plus);
+    }
+
+	public View getShutdownButton() {
+        return mCurrentView.findViewById(R.id.shutdown);
+    }
+
+	public View getScreenshotButton() {
+        return mCurrentView.findViewById(R.id.screenshot);
+    }
 
     // for when home is disabled, but search isn't
     public View getSearchLight() {
@@ -220,6 +237,19 @@ public class NavigationBarView extends LinearLayout {
         getRecentsButton().setAlpha(
             (0 != (hints & StatusBarManager.NAVIGATION_HINT_RECENT_NOP)) ? 0.5f : 1.0f);
 
+		//codewalker
+		if (getVolUpButton() != null) {
+			getVolDownButton().setAlpha(
+				(0 != (hints & StatusBarManager.NAVIGATION_HINT_RECENT_NOP)) ? 0.5f : 1.0f);
+			getVolUpButton().setAlpha(
+				(0 != (hints & StatusBarManager.NAVIGATION_HINT_RECENT_NOP)) ? 0.5f : 1.0f);
+			getShutdownButton().setAlpha(
+				(0 != (hints & StatusBarManager.NAVIGATION_HINT_RECENT_NOP)) ? 0.5f : 1.0f);
+			getScreenshotButton().setAlpha(
+				(0 != (hints & StatusBarManager.NAVIGATION_HINT_RECENT_NOP)) ? 0.5f : 1.0f);
+		}
+
+
         ((ImageView)getBackButton()).setImageDrawable(
             (0 != (hints & StatusBarManager.NAVIGATION_HINT_BACK_ALT))
                 ? (mVertical ? mBackAltLandIcon : mBackAltIcon)
@@ -260,6 +290,13 @@ public class NavigationBarView extends LinearLayout {
         getBackButton()   .setVisibility(disableBack       ? View.INVISIBLE : View.VISIBLE);
         getHomeButton()   .setVisibility(disableHome       ? View.INVISIBLE : View.VISIBLE);
         getRecentsButton().setVisibility(disableRecent     ? View.INVISIBLE : View.VISIBLE);
+
+        if (getVolUpButton() != null) {
+            getVolDownButton().setVisibility(disableRecent     ? View.INVISIBLE : View.VISIBLE);
+            getVolUpButton().setVisibility(disableRecent     ? View.INVISIBLE : View.VISIBLE);
+            getShutdownButton().setVisibility(disableRecent     ? View.INVISIBLE : View.VISIBLE);
+            getScreenshotButton().setVisibility(disableRecent     ? View.INVISIBLE : View.VISIBLE);
+        }
 
         getSearchLight().setVisibility((disableHome && !disableSearch) ? View.VISIBLE : View.GONE);
     }
@@ -390,7 +427,8 @@ public class NavigationBarView extends LinearLayout {
     @Override
     protected void onLayout(boolean changed, int l, int t, int r, int b) {
         super.onLayout(changed, l, t, r, b);
-        mDelegateHelper.setInitialTouchRegion(getHomeButton(), getBackButton(), getRecentsButton());
+        mDelegateHelper.setInitialTouchRegion(getHomeButton(), getBackButton(), getRecentsButton(),
+				getVolDownButton(), getVolUpButton(), getShutdownButton(), getScreenshotButton());
     }
 
     @Override
@@ -490,6 +528,15 @@ public class NavigationBarView extends LinearLayout {
         final View back = getBackButton();
         final View home = getHomeButton();
         final View recent = getRecentsButton();
+
+		//codewalker
+		/*
+		final View voldown = getVolDownButton();
+		final View volup = getVolUpButton();
+		final View shutdown = getShutdownButton();
+		final View screenshot = getScreenshotButton();
+		*/
+
         final View menu = getMenuButton();
 
         pw.println("      back: "

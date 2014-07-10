@@ -291,6 +291,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                     Settings.Secure.ADB_ENABLED,
                     Settings.Secure.ANDROID_ID,
                     Settings.Secure.BLUETOOTH_ON,
+                    Settings.Secure.ETHERNET_ON,
                     Settings.Secure.DATA_ROAMING,
                     Settings.Secure.DEVICE_PROVISIONED,
                     Settings.Secure.HTTP_PROXY,
@@ -2001,6 +2002,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             stmt = db.compileStatement("INSERT OR IGNORE INTO secure(name,value)"
                     + " VALUES(?,?);");
 
+			loadBooleanSetting(stmt, Settings.Secure.ETHERNET_ON,
+					R.bool.def_ethernet_on);
             loadStringSetting(stmt, Settings.Secure.LOCATION_PROVIDERS_ALLOWED,
                     R.string.def_location_providers_allowed);
 

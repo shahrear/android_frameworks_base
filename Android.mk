@@ -91,13 +91,7 @@ LOCAL_SRC_FILES += \
 	core/java/android/bluetooth/IBluetoothA2dp.aidl \
 	core/java/android/bluetooth/IBluetoothCallback.aidl \
 	core/java/android/bluetooth/IBluetoothHeadset.aidl \
-	core/java/android/bluetooth/IBluetoothHeadsetPhone.aidl \
-	core/java/android/bluetooth/IBluetoothHealth.aidl \
 	core/java/android/bluetooth/IBluetoothHealthCallback.aidl \
-	core/java/android/bluetooth/IBluetoothInputDevice.aidl \
-	core/java/android/bluetooth/IBluetoothPan.aidl \
-	core/java/android/bluetooth/IBluetoothManager.aidl \
-	core/java/android/bluetooth/IBluetoothManagerCallback.aidl \
 	core/java/android/bluetooth/IBluetoothPbap.aidl \
 	core/java/android/bluetooth/IBluetoothStateChangeCallback.aidl \
 	core/java/android/content/IClipboard.aidl \
@@ -222,7 +216,9 @@ LOCAL_SRC_FILES += \
 	wifi/java/android/net/wifi/p2p/IWifiP2pManager.aidl \
 	voip/java/android/net/sip/ISipSession.aidl \
 	voip/java/android/net/sip/ISipSessionListener.aidl \
-	voip/java/android/net/sip/ISipService.aidl
+	voip/java/android/net/sip/ISipService.aidl \
+	ethernet/java/android/net/ethernet/IEthernetManager.aidl \
+	pppoe/java/android/net/pppoe/IPppoeManager.aidl
 #
 
 
