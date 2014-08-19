@@ -117,7 +117,8 @@ import android.app.admin.DevicePolicyManager;
 import com.android.internal.annotations.GuardedBy;
 import com.android.internal.app.IAppOpsService;
 import com.android.internal.os.IDropBoxManagerService;
-
+import android.net.ethernet.EthernetManager;
+import android.net.ethernet.IEthernetManager;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -547,6 +548,12 @@ class ContextImpl extends Context {
                     IWifiP2pManager service = IWifiP2pManager.Stub.asInterface(b);
                     return new WifiP2pManager(service);
                 }});
+		         registerService(ETHERNET_SERVICE, new ServiceFetcher() {
+				        public Object createService(ContextImpl ctx) {
+						            IBinder b = ServiceManager.getService(ETHERNET_SERVICE);
+					                IEthernetManager service = IEthernetManager.Stub.asInterface(b);
+						            return new EthernetManager(service, ctx.mMainThread.getHandler());
+				                }});
 
         registerService(WINDOW_SERVICE, new ServiceFetcher() {
                 Display mDefaultDisplay;
