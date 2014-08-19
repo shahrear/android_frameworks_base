@@ -98,8 +98,6 @@ public class NavigationBarView extends LinearLayout {
 
     private int mOrientation = Configuration.ORIENTATION_LANDSCAPE ;
 
-	
-
     // workaround for LayoutTransitions leaving the nav buttons in a weird state (bug 5549288)
     final static boolean WORKAROUND_INVALID_LAYOUT = true;
     final static int MSG_CHECK_INVALID_LAYOUT = 8686;
@@ -293,6 +291,22 @@ public class NavigationBarView extends LinearLayout {
 
     public View getHomeButton() {
         return mCurrentView.findViewById(R.id.home);
+    }
+
+    public View getVolDownButton() {
+        return mCurrentView.findViewById(R.id.vol_minus);
+    }
+
+    public View getVolUpButton() {
+        return mCurrentView.findViewById(R.id.vol_plus);
+    }
+
+    public View getShutdownButton() {
+        return mCurrentView.findViewById(R.id.shutdown);
+    }
+
+    public View getScreenshotButton() {
+        return mCurrentView.findViewById(R.id.screenshot);
     }
 
     // for when home is disabled, but search isn't
@@ -539,21 +553,21 @@ public class NavigationBarView extends LinearLayout {
     }
 
     protected void setViewLayout(View view){
-	Resources resources = getResources(); 
-	if (mOrientation == Configuration.ORIENTATION_LANDSCAPE) { 
-           view.setPadding((int)resources.getDimension(R.dimen.navigation_key_land_width_space), 0,(int)resources.getDimension(R.dimen.navigation_key_land_width_space), 0);
-	   view.setLayoutParams(new LinearLayout.LayoutParams((int)resources.getDimension(R.dimen.navigation_key_land_width),ViewGroup.LayoutParams.FILL_PARENT));
-        } else  if (mOrientation == Configuration.ORIENTATION_PORTRAIT) { 
-	   view.setPadding((int)resources.getDimension(R.dimen.navigation_key_port_width_space), 0,(int)resources.getDimension(R.dimen.navigation_key_port_width_space), 0);
-	   view.setLayoutParams(new LinearLayout.LayoutParams((int)resources.getDimension(R.dimen.navigation_key_port_width),ViewGroup.LayoutParams.FILL_PARENT));
-        } 	 	 
+        Resources resources = getResources();
+        if (mOrientation == Configuration.ORIENTATION_LANDSCAPE) {
+            view.setPadding((int)resources.getDimension(R.dimen.navigation_key_land_width_space), 0,(int)resources.getDimension(R.dimen.navigation_key_land_width_space), 0);
+            view.setLayoutParams(new LinearLayout.LayoutParams((int)resources.getDimension(R.dimen.navigation_key_land_width),ViewGroup.LayoutParams.FILL_PARENT));
+        } else  if (mOrientation == Configuration.ORIENTATION_PORTRAIT) {
+            view.setPadding((int)resources.getDimension(R.dimen.navigation_key_port_width_space), 0,(int)resources.getDimension(R.dimen.navigation_key_port_width_space), 0);
+            view.setLayoutParams(new LinearLayout.LayoutParams((int)resources.getDimension(R.dimen.navigation_key_port_width),ViewGroup.LayoutParams.FILL_PARENT));
+        }
     }
-
 
     @Override
     protected void onLayout(boolean changed, int l, int t, int r, int b) {
         super.onLayout(changed, l, t, r, b);
-        mDelegateHelper.setInitialTouchRegion(getHomeButton(), getBackButton(), getRecentsButton());
+        mDelegateHelper.setInitialTouchRegion(getHomeButton(), getBackButton(), getRecentsButton(),
+                getVolDownButton(), getVolUpButton(), getShutdownButton(), getScreenshotButton());
     }
 
     @Override

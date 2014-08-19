@@ -28,6 +28,7 @@ import android.os.Message;
 import android.view.Gravity;
 import android.view.View;
 import android.view.WindowManager;
+import android.util.Log;
 
 import com.android.internal.os.ProcessCpuTracker;
 
@@ -65,7 +66,7 @@ public class LoadAverageService extends Service {
                     mStats.update();
                     updateDisplay();
                     Message m = obtainMessage(1);
-                    sendMessageDelayed(m, 2000);
+                    sendMessageDelayed(m, 1000);
                 }
             }
         };
@@ -73,10 +74,12 @@ public class LoadAverageService extends Service {
         private final CpuTracker mStats;
 
         private Paint mLoadPaint;
+        private Paint mInfoPaint;
         private Paint mAddedPaint;
         private Paint mRemovedPaint;
         private Paint mShadowPaint;
         private Paint mShadow2Paint;
+        private Paint mShadow3Paint;
         private Paint mIrqPaint;
         private Paint mSystemPaint;
         private Paint mUserPaint;
@@ -111,6 +114,11 @@ public class LoadAverageService extends Service {
             mLoadPaint.setTextSize(textSize);
             mLoadPaint.setARGB(255, 255, 255, 255);
 
+            mInfoPaint = new Paint();
+            mInfoPaint.setAntiAlias(true);
+            mInfoPaint.setTextSize(textSize + 5);
+            mInfoPaint.setARGB(180, 255, 255, 255);
+
             mAddedPaint = new Paint();
             mAddedPaint.setAntiAlias(true);
             mAddedPaint.setTextSize(textSize);
@@ -125,16 +133,20 @@ public class LoadAverageService extends Service {
             mShadowPaint = new Paint();
             mShadowPaint.setAntiAlias(true);
             mShadowPaint.setTextSize(textSize);
-            //mShadowPaint.setFakeBoldText(true);
             mShadowPaint.setARGB(192, 0, 0, 0);
             mLoadPaint.setShadowLayer(4, 0, 0, 0xff000000);
 
             mShadow2Paint = new Paint();
             mShadow2Paint.setAntiAlias(true);
             mShadow2Paint.setTextSize(textSize);
-            //mShadow2Paint.setFakeBoldText(true);
             mShadow2Paint.setARGB(192, 0, 0, 0);
             mLoadPaint.setShadowLayer(2, 0, 0, 0xff000000);
+
+            mShadow3Paint = new Paint();
+            mShadow3Paint.setAntiAlias(true);
+            mShadow3Paint.setTextSize(textSize + 5);
+            mShadow2Paint.setARGB(192, 0, 0, 0);
+            mInfoPaint.setShadowLayer(2, 0, 0, 0xff000000);
 
             mIrqPaint = new Paint();
             mIrqPaint.setARGB(0x80, 0, 0, 0xff);
@@ -172,6 +184,11 @@ public class LoadAverageService extends Service {
             setMeasuredDimension(resolveSize(mNeededWidth, widthMeasureSpec),
                     resolveSize(mNeededHeight, heightMeasureSpec));
         }
+
+        private String clock;
+        private String temp;
+        private int[] core_usage = new int[4];
+        private String[] usage = new String[4];
 
         @Override
         public void onDraw(Canvas canvas) {
@@ -224,6 +241,55 @@ public class LoadAverageService extends Service {
             canvas.drawText(stats.mLoadText, RIGHT-mPaddingRight-stats.mLoadWidth,
                     y, mLoadPaint);
 
+            String gpu = InfoUtils.GetGPUCurFreq();
+            clock = InfoUtils.GetCPUCurFreq();
+            if (clock == null) {
+                Log.e("LoadAverageService", "Not availabled CPU clock");
+                clock = "N/A ";
+            }
+            temp = InfoUtils.GetTemperature();
+            InfoUtils.GetCPUUsage(core_usage);
+            for (int i = 0; i < 4; i++)
+                usage[i] = Integer.toString(core_usage[i]);
+
+            int mFH2 = mFH * 2;
+
+            String str = "";
+            if (gpu == null) {
+                Log.e("LoadAverageService", "Not availabled GPU clock");
+                gpu = "N/A ";
+            }
+
+            str = "Clock CPU: " + clock + "MHz, GPU : " + gpu + "MHz";
+            canvas.drawText(str, 2, y-1, mShadow3Paint);
+            canvas.drawText(str, 2, y+1, mShadow3Paint);
+            canvas.drawText(str, 1, y, mInfoPaint);
+
+            str = "CPU1 : " + usage[0] + "%";
+            canvas.drawText(str, 2, y+mFH2-1, mShadow3Paint);
+            canvas.drawText(str, 2, y+mFH2+1, mShadow3Paint);
+            canvas.drawText(str, 1, y+mFH2, mInfoPaint);
+
+            str = "CPU2 : " + usage[1] + "%";
+            canvas.drawText(str, 2, y+mFH2*2-1, mShadow3Paint);
+            canvas.drawText(str, 2, y+mFH2*2+1, mShadow3Paint);
+            canvas.drawText(str, 1, y+mFH2*2, mInfoPaint);
+
+            str = "CPU3 : " + usage[2] + "%";
+            canvas.drawText(str, 2, y+mFH2*3+1, mShadow3Paint);
+            canvas.drawText(str, 2, y+mFH2*3-1, mShadow3Paint);
+            canvas.drawText(str, 1, y+mFH2*3, mInfoPaint);
+
+            str = "CPU4 : " + usage[3] + "%";
+            canvas.drawText(str, 2, y+mFH2*4-1, mShadow3Paint);
+            canvas.drawText(str, 2, y+mFH2*4+1, mShadow3Paint);
+            canvas.drawText(str, 1, y+mFH2*4, mInfoPaint);
+
+            str = "CPU Temperature : " + temp + "°C";
+            canvas.drawText(str, 2, y+mFH2*5-1, mShadow3Paint);
+            canvas.drawText(str, 2, y+mFH2*5+1, mShadow3Paint);
+            canvas.drawText(str, 1, y+mFH2*5, mInfoPaint);
+
             int N = stats.countWorkingStats();
             for (int i=0; i<N; i++) {
                 CpuTracker.Stats st = stats.getWorkingStats(i);
@@ -271,11 +337,12 @@ public class LoadAverageService extends Service {
             }
 
             int neededWidth = mPaddingLeft + mPaddingRight + maxWidth;
-            int neededHeight = mPaddingTop + mPaddingBottom + (mFH*(1+NW));
+            int neededHeight = mPaddingTop + mPaddingBottom + (mFH * 2 * 9 *(1+NW));
             if (neededWidth != mNeededWidth || neededHeight != mNeededHeight) {
                 mNeededWidth = neededWidth;
                 mNeededHeight = neededHeight;
                 requestLayout();
+                invalidate();
             } else {
                 invalidate();
             }
@@ -310,5 +377,4 @@ public class LoadAverageService extends Service {
     public IBinder onBind(Intent intent) {
         return null;
     }
-
 }
