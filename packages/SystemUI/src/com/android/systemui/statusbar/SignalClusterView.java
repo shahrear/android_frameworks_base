@@ -42,14 +42,18 @@ public class SignalClusterView
     private int mWifiStrengthId = 0;
     private boolean mMobileVisible = false;
     private int mMobileStrengthId = 0, mMobileTypeId = 0;
-    private boolean mIsAirplaneMode = false;
+	private boolean mEthVisible = false;
+    private int mEthStrengthId = 0;    
+	private boolean mIsAirplaneMode = false;
     private int mAirplaneIconId = 0;
     private String mWifiDescription, mMobileDescription, mMobileTypeDescription;
 
-    ViewGroup mWifiGroup, mMobileGroup;
-    ImageView mWifi, mMobile, mMobileType, mAirplane;
-    View mSpacer;
-
+//    ViewGroup mWifiGroup, mMobileGroup;
+//    ImageView mWifi, mMobile, mMobileType, mAirplane;
+//    View mSpacer;
+    ViewGroup mWifiGroup, mMobileGroup, mEthGroup;
+    ImageView mWifi, mMobile, mWifiActivity, mMobileActivity, mMobileType, mAirplane, mEth;
+    View mSpacer, mSpacer1;
     public SignalClusterView(Context context) {
         this(context, null);
     }
@@ -78,7 +82,9 @@ public class SignalClusterView
         mMobileType     = (ImageView) findViewById(R.id.mobile_type);
         mSpacer         =             findViewById(R.id.spacer);
         mAirplane       = (ImageView) findViewById(R.id.airplane);
-
+	    mEthGroup      = (ViewGroup) findViewById(R.id.eth_combo);
+	     mSpacer1         =             findViewById(R.id.spacer1);
+		mEth			= (ImageView) findViewById(R.id.eth_state);
         apply();
     }
 
@@ -91,7 +97,8 @@ public class SignalClusterView
         mMobileType     = null;
         mSpacer         = null;
         mAirplane       = null;
-
+        mEthGroup		= null;
+        mEth			= null;
         super.onDetachedFromWindow();
     }
 
@@ -103,7 +110,11 @@ public class SignalClusterView
 
         apply();
     }
-
+    public void setEthIndicators(boolean visible, int stateIcon) {
+					        mEthVisible = visible;
+					        mEthStrengthId = stateIcon;
+					        apply();
+					    }
     @Override
     public void setMobileDataIndicators(boolean visible, int strengthIcon,
             int typeIcon, String contentDescription, String typeContentDescription) {
@@ -170,7 +181,18 @@ public class SignalClusterView
         } else {
             mWifiGroup.setVisibility(View.GONE);
         }
-
+				if(mEthVisible)
+				{
+									mEthGroup.setVisibility(View.VISIBLE);
+									mEth.setVisibility(View.VISIBLE);
+									mEth.setImageResource(mEthStrengthId);
+									mSpacer1.setVisibility(View.INVISIBLE);
+								}
+								else
+								{
+										            mEthGroup.setVisibility(View.GONE);
+													mSpacer1.setVisibility(View.GONE);
+												}
         if (DEBUG) Log.d(TAG,
                 String.format("wifi: %s sig=%d",
                     (mWifiVisible ? "VISIBLE" : "GONE"),
