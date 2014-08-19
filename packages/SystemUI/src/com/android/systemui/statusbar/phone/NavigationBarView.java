@@ -280,6 +280,23 @@ public class NavigationBarView extends LinearLayout {
     public View getHomeButton() {
         return mCurrentView.findViewById(R.id.home);
     }
+	
+	//codewalker
+	public View getVolDownButton() {
+        return mCurrentView.findViewById(R.id.vol_minus);
+    }
+	
+	public View getVolUpButton() {
+        return mCurrentView.findViewById(R.id.vol_plus);
+    }
+
+	public View getShutdownButton() {
+        return mCurrentView.findViewById(R.id.shutdown);
+    }
+
+	public View getScreenshotButton() {
+        return mCurrentView.findViewById(R.id.screenshot);
+    }
 
     // for when home is disabled, but search isn't
     public View getSearchLight() {
@@ -527,7 +544,8 @@ public class NavigationBarView extends LinearLayout {
     @Override
     protected void onLayout(boolean changed, int l, int t, int r, int b) {
         super.onLayout(changed, l, t, r, b);
-        mDelegateHelper.setInitialTouchRegion(getHomeButton(), getBackButton(), getRecentsButton());
+        mDelegateHelper.setInitialTouchRegion(getHomeButton(), getBackButton(), getRecentsButton(),
+				getVolDownButton(), getVolUpButton(), getShutdownButton(), getScreenshotButton());
     }
 
     @Override
