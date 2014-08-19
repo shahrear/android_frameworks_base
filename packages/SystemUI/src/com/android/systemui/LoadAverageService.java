@@ -28,6 +28,7 @@ import android.os.Message;
 import android.view.Gravity;
 import android.view.View;
 import android.view.WindowManager;
+import android.util.Log;
 
 import com.android.internal.os.ProcessCpuTracker;
 
@@ -65,7 +66,7 @@ public class LoadAverageService extends Service {
                     mStats.update();
                     updateDisplay();
                     Message m = obtainMessage(1);
-                    sendMessageDelayed(m, 2000);
+                    sendMessageDelayed(m, 1000);
                 }
             }
         };
@@ -73,10 +74,12 @@ public class LoadAverageService extends Service {
         private final CpuTracker mStats;
 
         private Paint mLoadPaint;
+        private Paint mInfoPaint;
         private Paint mAddedPaint;
         private Paint mRemovedPaint;
         private Paint mShadowPaint;
         private Paint mShadow2Paint;
+        private Paint mShadow3Paint;
         private Paint mIrqPaint;
         private Paint mSystemPaint;
         private Paint mUserPaint;
@@ -111,6 +114,11 @@ public class LoadAverageService extends Service {
             mLoadPaint.setTextSize(textSize);
             mLoadPaint.setARGB(255, 255, 255, 255);
 
+            mInfoPaint = new Paint();
+            mInfoPaint.setAntiAlias(true);
+            mInfoPaint.setTextSize(textSize + 5);
+            mInfoPaint.setARGB(180, 255, 255, 255);
+
             mAddedPaint = new Paint();
             mAddedPaint.setAntiAlias(true);
             mAddedPaint.setTextSize(textSize);
@@ -135,6 +143,13 @@ public class LoadAverageService extends Service {
             //mShadow2Paint.setFakeBoldText(true);
             mShadow2Paint.setARGB(192, 0, 0, 0);
             mLoadPaint.setShadowLayer(2, 0, 0, 0xff000000);
+
+			mShadow3Paint = new Paint();
+            mShadow3Paint.setAntiAlias(true);
+            mShadow3Paint.setTextSize(textSize + 5);
+            //mShadow2Paint.setFakeBoldText(true);
+            mShadow2Paint.setARGB(192, 0, 0, 0);
+            mInfoPaint.setShadowLayer(2, 0, 0, 0xff000000);
 
             mIrqPaint = new Paint();
             mIrqPaint.setARGB(0x80, 0, 0, 0xff);
@@ -172,6 +187,13 @@ public class LoadAverageService extends Service {
             setMeasuredDimension(resolveSize(mNeededWidth, widthMeasureSpec),
                     resolveSize(mNeededHeight, heightMeasureSpec));
         }
+
+		private String[] clock = new String[8];
+		private String[] temp = new String[5];
+		private int[] core_usage = new int[8];
+		private String[] usage = new String[8];
+		private float[] data = new float[12];
+		boolean check_energy_monitor = true;
 
         @Override
         public void onDraw(Canvas canvas) {
@@ -224,6 +246,110 @@ public class LoadAverageService extends Service {
             canvas.drawText(stats.mLoadText, RIGHT-mPaddingRight-stats.mLoadWidth,
                     y, mLoadPaint);
 
+			String gpu = InfoUtils.GetGPUCurFreq();
+			int pwm_duty = InfoUtils.GetPWMDuty();
+			clock = InfoUtils.GetCPUCurFreq();
+			if (clock == null)
+				Log.e("LoadAverageService", "Not availabled CPU clock");
+			temp = InfoUtils.GetTemperature();
+			if (temp == null)
+				Log.e("LoadAverageService", "Not availabled temperature");
+			InfoUtils.GetCPUUsage(core_usage);
+			for (int i = 0; i < 8; i++)
+				usage[i] = Integer.toString(core_usage[i]);
+
+			if (INA231 >= 0)
+				InfoUtils.GetINA231(data);
+			else
+				Log.e("LoadAverageService", "Not availabled Energy Monitor");
+	
+			String Fan_Speed = Integer.toString(pwm_duty);
+	
+			int mFH2 = mFH * 2;
+
+			String str = "";
+            if (gpu != null) {
+                str = "GPU : " + gpu + "MHz " + temp[4] + "°C";
+                canvas.drawText(str, 2, y-1, mShadow3Paint);
+                canvas.drawText(str, 2, y+1, mShadow3Paint);
+                canvas.drawText(str, 1, y, mInfoPaint);
+            }
+
+			str = "CPU1 : " + clock[0] + "MHz, " + usage[0] + "%";
+            canvas.drawText(str, 2, y+mFH2-1, mShadow3Paint);
+            canvas.drawText(str, 2, y+mFH2+1, mShadow3Paint);
+            canvas.drawText(str, 1, y+mFH2, mInfoPaint);
+
+			str = "CPU2 : " + clock[1] + "MHz, " + usage[1] + "%";
+            canvas.drawText(str, 2, y+mFH2*2-1, mShadow3Paint);
+            canvas.drawText(str, 2, y+mFH2*2+1, mShadow3Paint);
+            canvas.drawText(str, 1, y+mFH2*2, mInfoPaint);
+
+			str = "CPU3 : " + clock[2] + "MHz, " + usage[2] + "%";
+            canvas.drawText(str, 2, y+mFH2*3+1, mShadow3Paint);
+            canvas.drawText(str, 2, y+mFH2*3-1, mShadow3Paint);
+            canvas.drawText(str, 1, y+mFH2*3, mInfoPaint);
+
+			str = "CPU4 : " + clock[3] + "MHz, " + usage[3] + "%";
+            canvas.drawText(str, 2, y+mFH2*4-1, mShadow3Paint);
+            canvas.drawText(str, 2, y+mFH2*4+1, mShadow3Paint);
+            canvas.drawText(str, 1, y+mFH2*4, mInfoPaint);
+
+            str = "CPU5 : " + clock[4] + "MHz, " + usage[4] + "% " + temp[0] + "°C";
+            canvas.drawText(str, 2, y+mFH2*5-1, mShadow3Paint);
+            canvas.drawText(str, 2, y+mFH2*5+1, mShadow3Paint);
+            canvas.drawText(str, 1, y+mFH2*5, mInfoPaint);
+
+            str = "CPU6 : " + clock[5] + "MHz, " + usage[5] + "% " + temp[1] + "°C";
+
+            canvas.drawText(str, 2, y+mFH2*6-1, mShadow3Paint);
+            canvas.drawText(str, 2, y+mFH2*6+1, mShadow3Paint);
+            canvas.drawText(str, 1, y+mFH2*6, mInfoPaint);
+
+            str = "CPU7 : " + clock[6] + "MHz, " + usage[6] + "% " + temp[2] + "°C";
+            canvas.drawText(str, 2, y+mFH2*7-1, mShadow3Paint);
+            canvas.drawText(str, 2, y+mFH2*7+1, mShadow3Paint);
+            canvas.drawText(str, 1, y+mFH2*7, mInfoPaint);
+
+            str = "CPU8 : " + clock[7] + "MHz, " + usage[7] + "% " + temp[3] + "°C";
+            canvas.drawText(str, 2, y+mFH2*8-1, mShadow3Paint);
+            canvas.drawText(str, 2, y+mFH2*8+1, mShadow3Paint);
+            canvas.drawText(str, 1, y+mFH2*8, mInfoPaint);
+
+            /*
+			str = "Fan Speed : " + Fan_Speed + "%";
+			canvas.drawText(str, 2, y+mFH2*5-1, mShadow3Paint);
+			canvas.drawText(str, 2, y+mFH2*5+1, mShadow3Paint);
+			canvas.drawText(str, 1, y+mFH2*5, mInfoPaint);
+            */
+
+			if (INA231 >= 0) {
+				str = "A15 Power : " + data[0] + "V, " + data[1] + "A, " + data[2] + "W";
+				canvas.drawText(str, 2, y+mFH2*9-1, mShadow3Paint);
+				canvas.drawText(str, 2, y+mFH2*9+1, mShadow3Paint);
+				canvas.drawText(str, 1, y+mFH2*9, mInfoPaint);
+
+				str = "A7  Power : " + data[3] + "V, " + data[4] + "A, " + data[5] + "W";
+				canvas.drawText(str, 2, y+mFH2*10-1, mShadow3Paint);
+				canvas.drawText(str, 2, y+mFH2*10+1, mShadow3Paint);
+				canvas.drawText(str, 1, y+mFH2*10, mInfoPaint);
+
+				str = "GPU Power : " + data[6] + "V, " + data[7] + "A, " + data[8] + "W";
+				canvas.drawText(str, 2, y+mFH2*11-1, mShadow3Paint);
+				canvas.drawText(str, 2, y+mFH2*11+1, mShadow3Paint);
+				canvas.drawText(str, 1, y+mFH2*11, mInfoPaint);
+
+				str = "MEM Power : " + data[9] + "V, " + data[10] + "A, " + data[11] + "W";
+				canvas.drawText(str, 2, y+mFH2*12-1, mShadow3Paint);
+				canvas.drawText(str, 2, y+mFH2*12+1, mShadow3Paint);
+				canvas.drawText(str, 1, y+mFH2*12, mInfoPaint);
+			} else {
+				str = "Energy Monitor not supported";
+				canvas.drawText(str, 2, y+mFH2*9-1, mShadow3Paint);
+				canvas.drawText(str, 2, y+mFH2*9+1, mShadow3Paint);
+				canvas.drawText(str, 1, y+mFH2*9, mInfoPaint);
+			}
+
             int N = stats.countWorkingStats();
             for (int i=0; i<N; i++) {
                 CpuTracker.Stats st = stats.getWorkingStats(i);
@@ -271,20 +397,25 @@ public class LoadAverageService extends Service {
             }
 
             int neededWidth = mPaddingLeft + mPaddingRight + maxWidth;
-            int neededHeight = mPaddingTop + mPaddingBottom + (mFH*(1+NW));
+            int neededHeight = mPaddingTop + mPaddingBottom + (mFH * 2 * 9 *(1+NW));
             if (neededWidth != mNeededWidth || neededHeight != mNeededHeight) {
                 mNeededWidth = neededWidth;
                 mNeededHeight = neededHeight;
                 requestLayout();
+				//codewalker
+				invalidate();
             } else {
                 invalidate();
             }
         }
     }
 
+	private int INA231 = -1;
+
     @Override
     public void onCreate() {
         super.onCreate();
+		INA231 = InfoUtils.OpenINA231();
         mView = new LoadView(this);
         WindowManager.LayoutParams params = new WindowManager.LayoutParams(
             WindowManager.LayoutParams.MATCH_PARENT,
@@ -301,6 +432,7 @@ public class LoadAverageService extends Service {
 
     @Override
     public void onDestroy() {
+		InfoUtils.CloseINA231();
         super.onDestroy();
         ((WindowManager)getSystemService(WINDOW_SERVICE)).removeView(mView);
         mView = null;

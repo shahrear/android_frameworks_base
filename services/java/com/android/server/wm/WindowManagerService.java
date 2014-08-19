@@ -5196,6 +5196,11 @@ public class WindowManagerService extends IWindowManager.Stub
     }
 
     @Override
+    public void reboot() {
+		ShutdownThread.reboot(mContext, null, true);
+	}
+	
+    @Override
     public void setInputFilter(IInputFilter filter) {
         if (!checkCallingPermission(android.Manifest.permission.FILTER_EVENTS, "setInputFilter()")) {
             throw new SecurityException("Requires FILTER_EVENTS permission");
