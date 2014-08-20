@@ -30,6 +30,7 @@
 #include <utils/RefBase.h>
 #include <utils/String8.h>
 #include <utils/BitSet.h>
+#include <cutils/properties.h>
 
 #include <stddef.h>
 #include <unistd.h>
@@ -604,6 +605,8 @@ public:
     uint32_t getButtonState() const;
 
 private:
+    char mMouseFirstButtonValue[PROPERTY_VALUE_MAX];
+    char mMouseRightButtonValue[PROPERTY_VALUE_MAX];
     bool mBtnLeft;
     bool mBtnRight;
     bool mBtnMiddle;
