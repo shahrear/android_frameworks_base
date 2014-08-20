@@ -1099,6 +1099,9 @@ void InputDevice::notifyReset(nsecs_t when) {
 
 CursorButtonAccumulator::CursorButtonAccumulator() {
     clearButtons();
+    property_get("mouse.firstbutton", mMouseFirstButtonValue, "right");
+    property_get("mouse.right.click", mMouseRightButtonValue, "back");
+
 }
 
 void CursorButtonAccumulator::reset(InputDevice* device) {
@@ -1127,10 +1130,23 @@ void CursorButtonAccumulator::process(const RawEvent* rawEvent) {
     if (rawEvent->type == EV_KEY) {
         switch (rawEvent->code) {
         case BTN_LEFT:
-            mBtnLeft = rawEvent->value;
+            if (strcmp(mMouseFirstButtonValue, "right") == 0)
+                mBtnLeft = rawEvent->value;
+            else {
+                if (strcmp(mMouseRightButtonValue, "back") == 0)
+                    mBtnBack = rawEvent->value;
+                else
+                    mBtnRight = rawEvent->value;
+            }
             break;
         case BTN_RIGHT:
-            mBtnRight = rawEvent->value;
+            if (strcmp(mMouseFirstButtonValue, "right") == 0) {
+                if (strcmp(mMouseRightButtonValue, "back") == 0)
+                    mBtnBack = rawEvent->value;
+                else
+                    mBtnRight = rawEvent->value;
+            } else
+                mBtnLeft = rawEvent->value;
             break;
         case BTN_MIDDLE:
             mBtnMiddle = rawEvent->value;
