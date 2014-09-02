@@ -137,6 +137,13 @@ public class AudioManager {
         "android.media.MASTER_MUTE_CHANGED_ACTION";
 
     /**
+     * @hide Broadcast intent when a2dp routing changes
+     */
+    @SdkConstant(SdkConstantType.BROADCAST_INTENT_ACTION)
+    public static final String A2DP_ROUTE_CHANGED_ACTION =
+        "android.media.A2DP_ROUTE_CHANGED_ACTION";
+
+    /**
      * The new vibrate setting for a particular type.
      *
      * @see #VIBRATE_SETTING_CHANGED_ACTION
@@ -197,6 +204,28 @@ public class AudioManager {
      */
     public static final String EXTRA_MASTER_VOLUME_MUTED =
         "android.media.EXTRA_MASTER_VOLUME_MUTED";
+
+
+    /**
+     * @hide Broadcast intent when RemoteControlClient list is updated.
+     */
+    @SdkConstant(SdkConstantType.BROADCAST_INTENT_ACTION)
+    public static final String RCC_CHANGED_ACTION = "org.codeaurora.bluetooth.RCC_CHANGED_ACTION";
+
+    /**
+     * @hide Used for sharing the calling package name
+     */
+    public static final String EXTRA_CALLING_PACKAGE_NAME = "org.codeaurora.bluetooth.EXTRA_CALLING_PACKAGE_NAME";
+
+    /**
+     * @hide Used for sharing the focus changed value
+     */
+    public static final String EXTRA_FOCUS_CHANGED_VALUE = "org.codeaurora.bluetooth.EXTRA_FOCUS_CHANGED_VALUE";
+
+    /**
+     * @hide Used for sharing the availability changed value
+     */
+    public static final String EXTRA_AVAILABLITY_CHANGED_VALUE = "org.codeaurora.bluetooth.EXTRA_AVAILABLITY_CHANGED_VALUE";
 
     /** The audio stream for phone calls */
     public static final int STREAM_VOICE_CALL = AudioSystem.STREAM_VOICE_CALL;
