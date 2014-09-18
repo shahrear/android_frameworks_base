@@ -165,6 +165,9 @@ final class LocalDisplayAdapter extends DisplayAdapter {
                     // In the future we might allow the user to configure this directly.
                     if ("portrait".equals(SystemProperties.get("persist.demo.hdmirotation"))) {
                         mInfo.rotation = Surface.ROTATION_270;
+                        if ("90".equals(SystemProperties.get("ro.sf.hwrotation"))) {
+                            mInfo.rotation = Surface.ROTATION_90;
+                        }
                     }
                 }
             }
