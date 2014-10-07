@@ -139,7 +139,7 @@ class ServerThread {
         NetworkPolicyManagerService networkPolicy = null;
         ConnectivityService connectivity = null;
         EthernetService eth = null;
-		WifiP2pService wifiP2p = null;
+        WifiP2pService wifiP2p = null;
         WifiService wifi = null;
         NsdService serviceDiscovery= null;
         IPackageManager pm = null;
@@ -524,23 +524,25 @@ class ServerThread {
                 } catch (Throwable e) {
                     reportWtf("starting Connectivity Service", e);
                 }
-            if (SystemProperties.get("ro.rk.ethernet_enable", "true").equals("true")) {
-							try {
-												 Slog.i(TAG, "Ethernet Service");
-												 eth = new EthernetService(context);
-												 ServiceManager.addService(Context.ETHERNET_SERVICE, eth);
-											 } catch (Throwable e) {
-																 reportWtf("starting Ethernet Service", e);
-															 }
-															 
-															 /*int ethOn = Settings.Secure.getInt(mContentResolver,
-																 Settings.Secure.ETHERNET_ON, 1);
-															 if (ethOn == 1) {
-										eth.setEthernetEnabled(true);
-																			 } else  {
-																 eth.setEthernetEnabled(false);
-																							 }*/
-																				            }		
+
+                if (SystemProperties.get("ro.rk.ethernet_enable", "true").equals("true")) {
+                    try {
+                        Slog.i(TAG, "Ethernet Service");
+                        eth = new EthernetService(context);
+                        ServiceManager.addService(Context.ETHERNET_SERVICE, eth);
+                    } catch (Throwable e) {
+                        reportWtf("starting Ethernet Service", e);
+                    }
+
+                    /*int ethOn = Settings.Secure.getInt(mContentResolver,
+                        Settings.Secure.ETHERNET_ON, 1);
+                    if (ethOn == 1) {
+                        eth.setEthernetEnabled(true);
+                    } else {
+                        eth.setEthernetEnabled(false);
+                    }*/
+                }
+
                 try {
                     Slog.i(TAG, "Network Service Discovery Service");
                     serviceDiscovery = NsdService.create(context);
