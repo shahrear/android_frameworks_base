@@ -82,6 +82,7 @@ import android.view.animation.AccelerateInterpolator;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
 import android.view.animation.DecelerateInterpolator;
+import android.view.Surface;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -915,6 +916,29 @@ public class PhoneStatusBar extends BaseStatusBar implements DemoMode {
             mNavigationBarView.getVolUpButton().setOnClickListener(mVolUpClickListener);
             mNavigationBarView.getShutdownButton().setOnClickListener(mShutdownClickListener);
             mNavigationBarView.getScreenshotButton().setOnClickListener(mScreenshotClickListener);
+            int rotation = mDisplay.getRotation();
+            if (mNavigationBarView.getWidth() <= 1280
+                    && (rotation == Surface.ROTATION_90 || rotation == Surface.ROTATION_270)) {
+                View view = mNavigationBarView.getVolUpButton();
+                view.setLayoutParams(new LinearLayout.LayoutParams(
+                            40, LayoutParams.MATCH_PARENT));
+                view.setPadding(0, view.getPaddingTop(), 0, view.getPaddingBottom());
+
+                view = mNavigationBarView.getVolDownButton();
+                view.setLayoutParams(new LinearLayout.LayoutParams(
+                            40, LayoutParams.MATCH_PARENT));
+                view.setPadding(0, view.getPaddingTop(), 0, view.getPaddingBottom());
+
+                view = mNavigationBarView.getShutdownButton();
+                view.setLayoutParams(new LinearLayout.LayoutParams(
+                            40, LayoutParams.MATCH_PARENT));
+                view.setPadding(0, view.getPaddingTop(), 0, view.getPaddingBottom());
+
+                view = mNavigationBarView.getScreenshotButton();
+                view.setLayoutParams(new LinearLayout.LayoutParams(
+                            40, LayoutParams.MATCH_PARENT));
+                view.setPadding(0, view.getPaddingTop(), 0, view.getPaddingBottom());
+            }
         }
 
         updateSearchPanel();
