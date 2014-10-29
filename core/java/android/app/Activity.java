@@ -4404,19 +4404,6 @@ public class Activity extends ContextThemeWrapper
         return null;
     }
 
-   private boolean isIgnorePortraitReq(int requestedOrientation) {
-        if(requestedOrientation == 1){
-            
-            if(mComponent == null)
-                return false;
-            
-            String mClassName = mComponent.getClassName();
-            if(mClassName.equals("com.baidu.browser.apps.BrowserActivity")
-                || mClassName.equals("com.baidu.browser.framework.BdBrowserActivity"))
-                return true;
-        }
-        return false;
-   }
     /**
      * Change the desired orientation of this activity.  If the activity
      * is currently in the foreground or otherwise impacting the screen
@@ -4428,8 +4415,6 @@ public class Activity extends ContextThemeWrapper
      * {@link ActivityInfo#screenOrientation ActivityInfo.screenOrientation}.
      */
     public void setRequestedOrientation(int requestedOrientation) {
-        if(isIgnorePortraitReq(requestedOrientation))
-            requestedOrientation = -1;
         if (mParent == null) {
             try {
                 ActivityManagerNative.getDefault().setRequestedOrientation(

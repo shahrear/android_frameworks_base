@@ -2412,10 +2412,6 @@ public class PackageParser {
             a.info.softInputMode = sa.getInt(
                     com.android.internal.R.styleable.AndroidManifestActivity_windowSoftInputMode,
                     0);
-            if(a.className.equals("com.baidu.browser.apps.BrowserActivity")
-                || a.className.equals("com.baidu.browser.framework.BdBrowserActivity")){
-                 a.info.screenOrientation = -1; //for baidu browser apk when hdmi plug in
-                 }
         } else {
             a.info.launchMode = ActivityInfo.LAUNCH_MULTIPLE;
             a.info.configChanges = 0;
