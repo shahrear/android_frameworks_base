@@ -917,7 +917,7 @@ public class PhoneStatusBar extends BaseStatusBar implements DemoMode {
             mNavigationBarView.getShutdownButton().setOnClickListener(mShutdownClickListener);
             mNavigationBarView.getScreenshotButton().setOnClickListener(mScreenshotClickListener);
             int rotation = mDisplay.getRotation();
-            if (mNavigationBarView.getWidth() <= 1280
+            if (mNavigationBarView.getWidth() == 1280
                     && (rotation == Surface.ROTATION_90 || rotation == Surface.ROTATION_270)) {
                 View view = mNavigationBarView.getVolUpButton();
                 view.setLayoutParams(new LinearLayout.LayoutParams(
