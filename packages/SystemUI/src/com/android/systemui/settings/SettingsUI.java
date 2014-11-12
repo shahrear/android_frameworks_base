@@ -21,10 +21,10 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.os.Handler;
 import android.os.UserHandle;
 import android.util.Log;
-
 import com.android.systemui.SystemUI;
 
 import java.io.FileDescriptor;
@@ -36,6 +36,9 @@ public class SettingsUI extends SystemUI {
 
     private final Handler mHandler = new Handler();
     private BrightnessDialog mBrightnessDialog;
+    private SharedPreferences mSharedPrefs;
+    private static final String sSharedPreferencesKey = "float.cling.prefs";
+    private static final String HINT_CLING_DISMISSED_KEY = "cling.hint.dismissed";
 
     private BroadcastReceiver mIntentReceiver = new BroadcastReceiver() {
         @Override
@@ -58,7 +61,36 @@ public class SettingsUI extends SystemUI {
                     mBrightnessDialog.show();
                 }
 
-            } else {
+            } else if(action.equals(Intent.ACTION_ONEKEY_CLEAN)){
+                RocketView Rocketview = new RocketView(context.getApplicationContext());
+                Rocketview.CreateView();
+                Rocketview = null;
+            } else if(action.equals("android.intent.action.gSensorBroadcast")){
+                boolean show = intent.getBooleanExtra("show", false);
+                Log.d(TAG,"show floatview : "+show);
+                String  pkgname = intent.getStringExtra("pkgname");
+                int  version = intent.getIntExtra("version", -1);
+                
+                if(show){
+                    mSharedPrefs = mContext.getSharedPreferences(sSharedPreferencesKey,Context.MODE_PRIVATE);
+                    if(!mSharedPrefs.getBoolean(HINT_CLING_DISMISSED_KEY, false)){
+                        MyWindowManager.createHintWindow(context.getApplicationContext(),pkgname,version);  
+                        new Thread("dismissHintThread") {
+                            public void run() {
+                                SharedPreferences.Editor editor = mSharedPrefs.edit();
+                                editor.putBoolean(HINT_CLING_DISMISSED_KEY, true);
+                                editor.commit();
+                            }
+                        }.start();
+                    }else{
+                       MyWindowManager.createConfigWindow(context.getApplicationContext(),pkgname,version); 
+                    }
+
+                }else{
+                    MyWindowManager.removeHintWindow(context);
+                    MyWindowManager.removeConfigWindow(context);
+                }
+            }else{
                 Log.w(TAG, "unknown intent: " + intent);
             }
         }
@@ -67,6 +99,8 @@ public class SettingsUI extends SystemUI {
     public void start() {
         IntentFilter filter = new IntentFilter();
         filter.addAction(Intent.ACTION_SHOW_BRIGHTNESS_DIALOG);
+        filter.addAction("android.intent.action.OnekeyClean");
+        filter.addAction("android.intent.action.gSensorBroadcast");
         mContext.registerReceiverAsUser(mIntentReceiver, UserHandle.ALL, filter, null, mHandler);
     }
 

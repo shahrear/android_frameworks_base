@@ -360,7 +360,7 @@ public final class URLUtil {
                 }
             }
         } else {
-            if (mimeType != null) {
+            /*if (mimeType != null) {
                 // Compare the last segment of the extension against the mime type.
                 // If there's a mismatch, discard the entire extension.
                 int lastDotIndex = filename.lastIndexOf('.');
@@ -376,10 +376,10 @@ public final class URLUtil {
             if (extension == null) {
                 extension = filename.substring(dotIndex);
             }
-            filename = filename.substring(0, dotIndex);
+            filename = filename.substring(0, dotIndex);*/
         }
 
-        return filename + extension;
+        return extension != null ? filename + extension : filename;
     }
 
     /** Regex used to parse content-disposition headers */

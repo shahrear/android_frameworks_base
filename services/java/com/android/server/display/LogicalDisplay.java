@@ -25,7 +25,8 @@ import java.io.PrintWriter;
 import java.util.List;
 
 import libcore.util.Objects;
-
+import android.os.SystemProperties;
+import android.util.Log;
 /**
  * Describes how a logical display is configured.
  * <p>
@@ -262,10 +263,13 @@ final class LogicalDisplay {
                 && (displayDeviceInfo.flags & DisplayDeviceInfo.FLAG_ROTATES_WITH_CONTENT) != 0) {
             orientation = displayInfo.rotation;
         }
-
         // Apply the physical rotation of the display device itself.
         orientation = (orientation + displayDeviceInfo.rotation) % 4;
 
+        if(SystemProperties.getBoolean("ro.screen.portrait", false)){
+            orientation = SystemProperties.getInt("sys.portrait.orientation", orientation);
+        }
+        
         // Set the frame.
         // The frame specifies the rotated physical coordinates into which the viewport
         // is mapped.  We need to take care to preserve the aspect ratio of the viewport.
@@ -294,8 +298,40 @@ final class LogicalDisplay {
             displayRectWidth = displayInfo.logicalWidth * physHeight / displayInfo.logicalHeight;
             displayRectHeight = physHeight;
         }
+        
         int displayRectTop = (physHeight - displayRectHeight) / 2;
         int displayRectLeft = (physWidth - displayRectWidth) / 2;
+        
+        if (SystemProperties.getBoolean("ro.platform.has.realoutputmode",false)){
+            
+            displayRectWidth = displayInfo.logicalWidth;
+            displayRectHeight = displayInfo.logicalHeight;
+
+            String old_mode = SystemProperties.get("ubootenv.var.outputmode","1080p");
+            int[] curPosition = { 0, 0, 1920, 1080,};
+            if (SystemProperties.getBoolean("ro.platform.has.native720",false)){
+                curPosition = get720pNativePosition(old_mode);
+            } else {
+                curPosition = get1080pNativePosition(old_mode);
+            }
+            
+            if(SystemProperties.getBoolean("ubootenv.var.disp.fromleft",true)){
+                if(orientation == Surface.ROTATION_270){
+                    displayRectLeft = physWidth - curPosition[3];
+                    displayRectTop = 0;
+                }else if(orientation == Surface.ROTATION_90){
+                    displayRectLeft = 0;
+                    displayRectTop = physHeight - curPosition[2];
+                }else{
+                    displayRectLeft = 0;
+                    displayRectTop = 0;
+                } 
+            }else{
+                displayRectTop = (curPosition[3]-displayRectHeight) / 2;
+                displayRectLeft = (curPosition[2] - displayRectWidth) / 2; 
+            }
+        }
+        
         mTempDisplayRect.set(displayRectLeft, displayRectTop,
                 displayRectLeft + displayRectWidth, displayRectTop + displayRectHeight);
 
@@ -334,4 +370,90 @@ final class LogicalDisplay {
         pw.println("mBaseDisplayInfo=" + mBaseDisplayInfo);
         pw.println("mOverrideDisplayInfo=" + mOverrideDisplayInfo);
     }
+    private int[] get1080pNativePosition(String mode) {
+		int[] curPosition = { 0, 0, 1920, 1080,};
+        String[] mOutputModeList = {"480i","480p","576i","576p","720p","1080i","1080p","720p50hz","1080i50hz","1080p50hz","480cvbs","576cvbs","4k2k24hz","4k2k25hz","4k2k30hz","4k2ksmpte","1080p24hz"};
+        
+		int index = 6; // 1080p
+		for (int i = 0; i < mOutputModeList.length; i++) {
+			if (mode.equalsIgnoreCase(mOutputModeList[i]))
+				index = i;
+		}
+		switch (index) {
+		case 0: // 480i
+		case 10: // 480cvbs
+		case 1: // 480p
+		case 2: // 576i
+		case 11: // 576cvbs
+		case 3: // 576p
+		case 4: // 720p
+		case 7: // 720p50hz
+		case 5: // 1080i
+		case 8: // 1080i50hz
+		case 6: // 1080p
+		case 9: // 1080p50hz
+		case 16://1080p24hz
+		    curPosition[0] = 0;
+            curPosition[1] = 0;
+            curPosition[2] = 1920;
+            curPosition[3] = 1080;
+		    break;
+		case 12: // 4k2k24hz
+    	case 13: // 4k2k25hz
+    	case 14: // 4k2k30hz
+        case 15: // 4k2ksmpte
+            if(!SystemProperties.getBoolean("ro.platform.has.native4k2k",false)){
+                curPosition[0] = 0;
+    			curPosition[1] = 0;
+    			curPosition[2] = 1920;
+    			curPosition[3] = 1080;
+            } else {
+    		    curPosition[0] = 0;
+                curPosition[1] = 0;
+                curPosition[2] = 3840;
+                curPosition[3] = 2160;
+            }
+            break;
+		default: // 1080p
+            curPosition[0] = 0;
+            curPosition[1] = 0;
+            curPosition[2] = 1920;
+            curPosition[3] = 1080;
+			break;
+		}
+		return curPosition;
+	} 
+
+     private int[] get720pNativePosition(String mode) {
+		int[] curPosition = { 0, 0, 1280, 720,};
+        String[] mOutputModeList = {"480i","480p","576i","576p","720p","1080i","1080p","720p50hz","1080i50hz","1080p50hz","480cvbs","576cvbs","1080p24hz"};
+        
+		int index = 6; // 1080p
+		for (int i = 0; i < mOutputModeList.length; i++) {
+			if (mode.equalsIgnoreCase(mOutputModeList[i]))
+				index = i;
+		}
+		switch (index) {
+		case 0: // 480i
+		case 10: // 480cvbs
+		case 1: // 480p
+		case 2: // 576i
+		case 11: // 576cvbs
+		case 3: // 576p
+		case 4: // 720p
+		case 7: // 720p50hz
+		case 5: // 1080i
+		case 8: // 1080i50hz
+		case 6: // 1080p
+		case 9: // 1080p50hz
+		case 12://1080p24hz
+		default: // 1080p
+            curPosition[0] = 0;
+            curPosition[1] = 0;
+            curPosition[2] = 1280;
+            curPosition[3] = 720;
+			break;
+		}
+		return curPosition;
+	} 
 }

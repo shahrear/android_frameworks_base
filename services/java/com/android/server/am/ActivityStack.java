@@ -43,6 +43,7 @@ import com.android.server.am.ActivityManagerService.ItemMatcher;
 import com.android.server.wm.AppTransition;
 import com.android.server.wm.TaskGroup;
 import com.android.server.wm.WindowManagerService;
+import com.amlogic.view.DisplaySetting;
 
 import android.app.Activity;
 import android.app.ActivityManager;
@@ -75,14 +76,23 @@ import android.os.UserHandle;
 import android.util.EventLog;
 import android.util.Slog;
 import android.view.Display;
+import android.view.WindowManagerImpl;
+import android.view.WindowManagerPolicy;
 
+import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import android.os.SystemProperties;
 
+import android.content.res.Resources;
+import android.content.res.XmlResourceParser;
+import org.xmlpull.v1.XmlPullParserException;
 /**
  * State and management of a single stack of activities.
  */
@@ -223,6 +233,8 @@ final class ActivityStack {
     private ActivityRecord mLastScreenshotActivity = null;
     private Bitmap mLastScreenshotBitmap = null;
 
+    final DisplaySetting mDisSetting = new DisplaySetting();
+    
     int mThumbnailWidth = -1;
     int mThumbnailHeight = -1;
 
@@ -239,6 +251,13 @@ final class ActivityStack {
     static final int STOP_TIMEOUT_MSG = ActivityManagerService.FIRST_ACTIVITY_STACK_MSG + 4;
     static final int DESTROY_ACTIVITIES_MSG = ActivityManagerService.FIRST_ACTIVITY_STACK_MSG + 5;
     static final int TRANSLUCENT_TIMEOUT_MSG = ActivityManagerService.FIRST_ACTIVITY_STACK_MSG + 6;
+    
+    private Object FreescaleLocked = new Object();
+    /*
+    *Add for sendbroadcast to systemUI hide setRotbutton
+    */
+    private static final String setRotShow = "android.intent.action.RECORD_ROTATION_SHOW";
+    private static final String setRotStr = "rot_setting";
 
     static class ScheduleDestroyArgs {
         final ProcessRecord mOwner;
@@ -948,6 +967,8 @@ final class ActivityStack {
         }
     }
 
+    private native int nativeOptimization(ActivityRecord next, String clsName, String[] runPkgName);
+    public native int nativeOptimization(ActivityRecord next, String clsName, String url, String[] runPkgName);
     /**
      * Once we know that we have asked an application to put an activity in
      * the resumed state (either by launching it or explicitly telling it),
@@ -967,6 +988,8 @@ final class ActivityStack {
 
         mStackSupervisor.reportResumedActivityLocked(next);
 
+        mService.setFocusedActivityLocked(next);
+        
         next.resumeKeyDispatchingLocked();
         mNoAnimActivities.clear();
 
@@ -979,6 +1002,57 @@ final class ActivityStack {
             }
         } else {
             next.cpuTimeAtResume = 0; // Couldn't get the cpu time of process
+        }
+
+    	if(SystemProperties.getBoolean("ro.app.optimization",false)){
+			if (!(next.packageName.equals("com.android.cts.stub") 
+				&& (next.realActivity.getClassName().startsWith("android.app.cts") 
+				|| next.realActivity.getClassName().startsWith("android.view.animation.cts"))))
+
+			{
+				String[] runPkgName = getRunPkgName();	
+	    		int ret = nativeOptimization(next, next.realActivity.getClassName(), runPkgName);
+	            if(ret >= 0){
+	                mService.killAllBackgroundProcesses();
+	                //killBackgroundProcess();
+	            }
+			}
+    	}
+    }
+
+    private String[] getRunPkgName() {
+        ActivityManager mActivityMgr = (ActivityManager)mContext.getSystemService(Activity.ACTIVITY_SERVICE);
+        List list= mActivityMgr.getRunningTasks(1024);
+        int N = list != null ? list.size() : -1;
+        String[] runPkgName = new String[N];
+        if(N != -1) {
+            for (int i=0; i<N; i++) {
+                ActivityManager.RunningTaskInfo info = (ActivityManager.RunningTaskInfo)list.get(i);
+                runPkgName[i]=info.baseActivity.getPackageName();
+                //Log.i(TAG,"runPkgName["+i+"]:"+runPkgName[i]);
+            }
+        }
+
+        return runPkgName;
+    }
+
+    private void killBackgroundProcess(){
+        ActivityManager am = (ActivityManager)mContext.getSystemService(Activity.ACTIVITY_SERVICE);
+        List<ActivityManager.RunningAppProcessInfo> list=am.getRunningAppProcesses(); 
+        if(list!=null) {   
+            for(int i=0;i<list.size();i++) {          
+                ActivityManager.RunningAppProcessInfo apinfo=list.get(i); 
+                //System.out.println("pid"+apinfo.pid);  
+                //System.out.println("processName"+apinfo.processName);  
+                //System.out.println("importance"+apinfo.importance);    
+                String[] pkgList=apinfo.pkgList;                 
+                if(apinfo.importance>ActivityManager.RunningAppProcessInfo.IMPORTANCE_SERVICE) {             
+                    for(int j=0;j<pkgList.length;j++) {                  
+                        if (DEBUG_VISBILITY) Slog.v(TAG, "killBackgroundProcesses:"+pkgList[j]);
+                        am.killBackgroundProcesses(pkgList[j]);  
+                    }        
+                }     
+            }
         }
     }
 
@@ -1232,6 +1306,108 @@ final class ActivityStack {
                 }
             }
         }
+    }
+    
+    final int GetDisplayMode()
+    {
+        String DisplayMode = SystemProperties.get("ubootenv.var.outputmode");
+        if(DisplayMode.contains("1080p")||DisplayMode.contains("1080P")){
+        	  return mDisSetting.REQUEST_DISPLAY_FORMAT_1080P;
+        }
+        else if(DisplayMode.contains("1080i")||DisplayMode.contains("1080I")){
+        	  return mDisSetting.REQUEST_DISPLAY_FORMAT_1080I;
+        }
+        else if(DisplayMode.contains("720p")||DisplayMode.contains("720P")){
+        	  return mDisSetting.REQUEST_DISPLAY_FORMAT_720P;
+        }        
+        else if(DisplayMode.contains("576p")||DisplayMode.contains("576P")){
+        	  return mDisSetting.REQUEST_DISPLAY_FORMAT_576P;
+        }
+        else if(DisplayMode.contains("576i")||DisplayMode.contains("576I")||DisplayMode.contains("576cvbs")){
+        	  return mDisSetting.REQUEST_DISPLAY_FORMAT_576I;
+        }
+        else if(DisplayMode.contains("480p")||DisplayMode.contains("480P")){
+        	  return mDisSetting.REQUEST_DISPLAY_FORMAT_480P;
+        }
+        else if(DisplayMode.contains("480i")||DisplayMode.contains("480I")||DisplayMode.contains("480cvbs")){
+        	  return mDisSetting.REQUEST_DISPLAY_FORMAT_480I;
+        }
+        return mDisSetting.REQUEST_DISPLAY_FORMAT_720P;
+    }
+    
+    
+    final boolean readXml(Context mContext , int file , String classname , String packagename){
+        Resources r = mContext.getResources();
+        XmlResourceParser xrp = r.getXml(file);
+        HashMap<String,List<String>> map = new HashMap<String,List<String>>();
+        List<String> listclass = new ArrayList<String>();
+        map.clear();
+        String XmlPackageName = null;
+        String XmlClassName = null;
+        boolean backValue = false;
+        try {
+            while(xrp.getEventType() != XmlResourceParser.END_DOCUMENT){
+                if(xrp.getEventType() == XmlResourceParser.START_TAG){ 
+                    String name = xrp.getName();
+                    if(name.equals("FilterActivity")){
+                        int count = xrp.getAttributeCount();
+                        //Log.d(TAG , "count is : "+count);
+                        if(count == 1){
+                            XmlPackageName = xrp.getAttributeValue(0);
+                        }
+                    }
+                    else if(name.equals("Class")){
+                        int next = xrp.getAttributeCount();
+                        //Log.d(TAG , "next is : "+next);
+                        if(next == 1){
+                            XmlClassName = xrp.getAttributeValue(0);
+                            //Log.d(TAG , "class name is--->"+XmlClassName);
+                            listclass.add(XmlClassName);
+                        }
+                    }
+                }
+                else if(xrp.getEventType() == XmlResourceParser.END_TAG){
+                    //Log.d(TAG , xrp.getName()+"--------end");
+                    if(xrp.getName().equals("FilterActivity")){
+                        if(XmlPackageName != null)
+                            map.put(XmlPackageName , listclass);
+                        listclass = new ArrayList<String>();
+                        XmlPackageName = null;
+                    }
+                }
+                xrp.next();
+            }
+        } 
+        catch (XmlPullParserException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        } 
+        catch (Exception e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+        if(map.size() > 0){
+            Iterator iter = map.entrySet().iterator();
+            while (iter.hasNext()) {
+                Map.Entry entry = (Map.Entry)iter.next();
+                String key = (String)entry.getKey();
+                List<String> val = (List<String>)entry.getValue();
+                if(val.size() > 0){
+                    for(String typeclass : val){
+                        //Log.d(TAG , "typeclass is : "+typeclass);
+                        if(key.equals(packagename) && typeclass.equals(classname))
+                        return true;
+                    }
+                }
+                else{
+                    if(key.equals(packagename))
+                        return true;
+                }
+            }
+        }
+        else
+            Slog.w(TAG , "map not have packagename");
+        return backValue;
     }
 
     /**
@@ -1533,6 +1709,19 @@ final class ActivityStack {
             updateLRUListLocked(next);
             mService.updateOomAdjLocked();
 
+    	    if(SystemProperties.getBoolean("ro.app.optimization",false)){
+				if (!(next.packageName.equals("com.android.cts.stub") 
+					&& (next.realActivity.getClassName().startsWith("android.app.cts") 
+					|| next.realActivity.getClassName().startsWith("android.view.animation.cts"))))
+				{
+				 	String[] runPkgName = getRunPkgName();
+	    		    int ret = nativeOptimization(next, next.realActivity.getClassName(), runPkgName);
+	                if(ret >= 0){
+	    	            mService.killAllBackgroundProcesses();
+	    	            //killBackgroundProcess();
+	    	        }
+    	        }
+    	    }
             // Have the window manager re-evaluate the orientation of
             // the screen based on the new activity order.
             boolean notUpdated = true;
@@ -1629,7 +1818,75 @@ final class ActivityStack {
             try {
                 next.visible = true;
                 completeResumeLocked(next);
-            } catch (Exception e) {
+                if(next.realActivity != null) {
+                    String resumeClassName = next.realActivity.getClassName();
+                    String resumePackageName = next.realActivity.getPackageName();
+                    String prevClassName = null;
+                    String prevPackageName = null;
+                    boolean isprevInWhiteFilter = false;
+                    boolean isresumWhiteFilter = false;
+                    Slog.d(TAG, "resumeClassName is " + resumeClassName);
+                    Slog.d(TAG, "resumePackageName is " + resumePackageName);
+                    if (prev != null){
+                        prevClassName = prev.realActivity.getClassName();
+                        prevPackageName = prev.realActivity.getPackageName();
+                    }
+    
+                    //final ContentResolver resolver = mContext.getContentResolver();
+
+ 
+                    if(SystemProperties.getBoolean("media.p2pplay.enable", false)){
+                        
+                        Runnable disrunnable = new Runnable(){
+                            public void run(){   
+                                synchronized(FreescaleLocked){
+                                    Slog.d(TAG, "--------------------disableFreeScaleMBX runnable");
+                                    mDisSetting.setDisplaySize(GetDisplayMode());
+                                }
+                            }
+                        };
+                        Runnable enrunnable = new Runnable(){
+                            public void run(){   
+                                synchronized(FreescaleLocked){
+                                    Slog.d(TAG, "--------------------enableFreeScaleMBX runnable");  
+                                    mDisSetting.setDisplaySize(mDisSetting.REQUEST_DISPLAY_FORMAT_720I);
+                                }
+                            }
+                        };
+                        
+                        if(readXml(mContext , com.android.internal.R.xml.whitepackagefilter , 
+                           resumeClassName , resumePackageName)){
+                            isresumWhiteFilter = true;     	
+                        }
+                        if(prevClassName != null && prevPackageName != null){
+                            if(readXml(mContext , com.android.internal.R.xml.whitepackagefilter , 
+                            prevClassName , prevPackageName)){
+                                isprevInWhiteFilter = true;     	
+                            }
+                        }
+                        if((isresumWhiteFilter == false) && (isprevInWhiteFilter == false))
+                        {
+                           if(readXml(mContext , com.android.internal.R.xml.blackpackagefilter , 
+                               resumeClassName , resumePackageName))
+                           {
+                               if(!readXml(mContext , com.android.internal.R.xml.blackpackagefilter , 
+                               prevClassName , prevPackageName))
+                               {
+                                    Thread DisableFreeScaleThread = new Thread(disrunnable); 
+                                    DisableFreeScaleThread.start();
+                               }
+                           }
+                           else
+                           {
+                               Thread EnableFreeScaleThread = new Thread(enrunnable); 
+                               EnableFreeScaleThread.start();	
+                           }	
+                           
+                        }
+                    }
+                }
+            }
+            catch (Exception e) {
                 // If any exception gets thrown, toss away this
                 // activity and try the next one.
                 Slog.w(TAG, "Exception thrown during resume of " + next, e);
@@ -1662,6 +1919,16 @@ final class ActivityStack {
 
         if (DEBUG_STACK) mStackSupervisor.validateTopActivitiesLocked();
         return true;
+    }
+
+    private final void hideRotBtnBroadcast(){
+        Context cxt = mService.mContext;
+        if (null != cxt){
+            //Slog.d("rot","sendbroadcast sysContext");
+            Intent rotIntent = new Intent(setRotShow);
+            rotIntent.putExtra(setRotStr, -1);
+            cxt.sendBroadcast(rotIntent);
+        }
     }
 
     private void insertTaskAtTop(TaskRecord task) {
@@ -1729,8 +1996,8 @@ final class ActivityStack {
                     startIt = false;
                 }
             }
-        }
-
+        } 
+        
         // Place a new activity at top of stack, so it is next to interact
         // with the user.
 
@@ -3442,15 +3709,17 @@ final class ActivityStack {
 
                 // Add 'r' into the current task.
                 numActivities++;
-                if (r.app != null && r.app.thread != null) {
+                if (r != null && r.app != null && r.app.thread != null) {
                     numRunning++;
                 }
 
                 if (localLOGV) Slog.v(
-                    TAG, r.intent.getComponent().flattenToShortString()
+                    TAG, (r != null ? r.intent.getComponent().flattenToShortString() : "")
                     + ": task=" + r.task);
             }
 
+            if (r == null || top == null)
+                return null;
             RunningTaskInfo ci = new RunningTaskInfo();
             ci.id = task.taskId;
             ci.baseActivity = r.intent.getComponent();

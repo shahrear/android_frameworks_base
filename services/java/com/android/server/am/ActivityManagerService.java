@@ -171,9 +171,12 @@ import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.WindowManager;
+import android.view.WindowManagerPolicy;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.File;
@@ -181,6 +184,7 @@ import java.io.FileDescriptor;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
@@ -199,6 +203,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import com.android.server.MasterClearReceiver;
 
 public final class ActivityManagerService extends ActivityManagerNative
         implements Watchdog.Monitor, BatteryStatsImpl.BatteryCallback {
@@ -332,11 +337,19 @@ public final class ActivityManagerService extends ActivityManagerNative
     public IntentFirewall mIntentFirewall;
 
     private final boolean mHeadless;
+	//for tv_begin
+    private  boolean mStartedTvMainService = false;
+	//for tv_end
+
+	private final String ACTION_REALVIDEO_OFF = "android.intent.action.REALVIDEO_OFF";
 
     // Whether we should show our dialogs (ANR, crash, etc) or just perform their
     // default actuion automatically.  Important for devices without direct input
     // devices.
     private boolean mShowDialogs = true;
+
+    private static final ArrayList<String> mHighPriorityBroadcastArray = new ArrayList<String>();
+    private static final String[] mHighPriorityBroadcastList = new String[] { "android.intent.action.MASTER_CLEAR_NOTIFICATION" }; 
 
     /**
      * Description of a request to start a new activity, which has been held
@@ -2880,9 +2893,17 @@ public final class ActivityManagerService extends ActivityManagerNative
             ProcessRecord app = getProcessRecordLocked(aInfo.processName,
                     aInfo.applicationInfo.uid, true);
             if (app == null || app.instrumentationClass == null) {
-                intent.setFlags(intent.getFlags() | Intent.FLAG_ACTIVITY_NEW_TASK);
-                mStackSupervisor.startHomeActivity(intent, aInfo);
-            }
+            //for tv_begin
+		     if( !mStartedTvMainService && SystemProperties.getBoolean("ro.tv.shortcutkey", false)) {
+                  Intent intent_tvmainservice  = new Intent("com.amlogic.tv.enter.TvMainService") ;
+                    startService( null , intent_tvmainservice , null ,0);
+                     mStartedTvMainService = true ;
+					 return true;
+               }
+			 // for tv_end
+            intent.setFlags(intent.getFlags() | Intent.FLAG_ACTIVITY_NEW_TASK);
+              mStackSupervisor.startHomeActivity(intent, aInfo);
+           }
         }
 
         return true;
@@ -3595,7 +3616,53 @@ public final class ActivityManagerService extends ActivityManagerNative
             Binder.restoreCallingIdentity(origId);
         }
     }
-
+        
+    /// patch for videoplayer crashed
+    private static final String OSD_BLANK_PATH = "/sys/class/graphics/fb0/blank";
+    private static final String OSD_BLOCK_MODE_PATH = "/sys/class/graphics/fb0/block_mode";
+    
+    private static int writeSysfs(String path, String val) {
+        if (!new File(path).exists()) {
+            Log.e(TAG, "File not found: " + path);
+            return 1; 
+        }
+        
+        try {
+            BufferedWriter writer = new BufferedWriter(new FileWriter(path), 64);
+            try {
+                writer.write(val);
+            } finally {
+                writer.close();
+            }    		
+            return 0;
+        		
+        } catch (IOException e) { 
+            Log.e(TAG, "IO Exception when write: " + path, e);
+            return 1;
+        }                 
+    }
+        
+    private void onVideoPlayerCrashed(ProcessRecord app) {
+        Intent intent = new Intent("android.intent.action.APP_CRASH");
+        intent.putExtra("componentName", app.processName);
+        if (!mProcessesReady) {
+            intent.addFlags(Intent.FLAG_RECEIVER_REGISTERED_ONLY
+                    | Intent.FLAG_RECEIVER_FOREGROUND);
+        }
+        mContext.sendBroadcast(intent);
+        Log.d(TAG,"send app_CRASH broadcast, packageName:" + app.processName);
+        /*
+        if (app.processName.equals("com.farcore.videoplayer")) {
+            Slog.w(TAG, "VideoPlayer Crashed!!!");
+            mContext.sendBroadcast(new Intent("com.farcore.videoplayer.PLAYER_CRASHED"));
+            SystemProperties.set("sys.statusbar.forcehide","false");
+            SystemProperties.set("vplayer.hideStatusBar.enable","false");
+            writeSysfs(OSD_BLANK_PATH, "0");
+            writeSysfs(OSD_BLOCK_MODE_PATH, "0");  
+        }*/
+    }
+    /// patch for videoplayer crashed    
+    
     /**
      * Main function for removing an existing process from the activity manager
      * as a result of that process going away.  Clears out all connections
@@ -3611,6 +3678,8 @@ public final class ActivityManagerService extends ActivityManagerNative
         if (mProfileProc == app) {
             clearProfilerLocked();
         }
+
+        onVideoPlayerCrashed(app);
 
         // Remove this application's activities from active lists.
         boolean hasVisibleActivities = mStackSupervisor.handleAppDiedLocked(app);
@@ -9189,9 +9258,102 @@ public final class ActivityManagerService extends ActivityManagerNative
             }
         }
     }
-    
+
+    public final int broadcastSpecificIntentLocked(ProcessRecord callerApp,
+            String callerPackage, Intent intent, String resolvedType,
+            IIntentReceiver resultTo, int resultCode, String resultData,
+            Bundle map, String requiredPermission,
+            List receivers, List<BroadcastFilter> registeredReceivers) {
+            
+        intent = new Intent(intent);
+        int NR = registeredReceivers != null ? registeredReceivers.size() : 0;        
+        
+        if ( NR > 0) {
+            BroadcastQueue queue = broadcastQueueForIntent(intent);
+            BroadcastRecord r = new BroadcastRecord(queue, intent, callerApp,
+                    callerPackage, MY_PID, Process.SYSTEM_UID, resolvedType, requiredPermission, AppOpsManager.OP_NONE,
+                    registeredReceivers, resultTo, resultCode, resultData, map,
+                    false, false, false, 0);
+            
+            Slog.v(TAG, "Enqueueing parallel broadcast " + r
+                    + ": prev Parallel had " + queue.mParallelBroadcasts.size());
+           
+            queue.enqueueParallelBroadcastLocked(r);
+            queue.scheduleBroadcastsLocked();
+            registeredReceivers = null;
+            NR = 0;
+        }
+
+        // Merge into one list.
+        int ir = 0;
+        if (receivers != null) {
+
+            int NT = receivers != null ? receivers.size() : 0;
+            int it = 0;
+            ResolveInfo curt = null;
+            BroadcastFilter curr = null;
+            while (it < NT && ir < NR) {
+                if (curt == null) {
+                    curt = (ResolveInfo)receivers.get(it);
+                }
+                if (curr == null) {
+                    curr = registeredReceivers.get(ir);
+                }
+                if (curr.getPriority() >= curt.priority) {
+                    // Insert this broadcast record into the final list.
+                    receivers.add(it, curr);
+                    ir++;
+                    curr = null;
+                    it++;
+                    NT++;
+                } else {
+                    // Skip to the next ResolveInfo in the final list.
+                    it++;
+                    curt = null;
+                }
+            }
+        }
+        while (ir < NR) {
+            if (receivers == null) {
+                receivers = new ArrayList();
+            }
+            receivers.add(registeredReceivers.get(ir));
+            ir++;
+        }
+
+        if ((receivers != null && receivers.size() > 0)
+                || resultTo != null) {
+            BroadcastQueue queue = broadcastQueueForIntent(intent);
+            BroadcastRecord r = new BroadcastRecord(queue, intent, callerApp,
+                    callerPackage, MY_PID, Process.SYSTEM_UID, resolvedType, requiredPermission, AppOpsManager.OP_NONE,
+                    receivers, resultTo, resultCode, resultData, map, false,
+                    false, false, 0);
+            
+            Slog.v(TAG, "Enqueueing ordered broadcast " + r + ": prev Ordered had " 
+                    + queue.mOrderedBroadcasts.size() + " receiver.size() = " + receivers.size());            
+
+            queue.enqueueOrderedBroadcastLocked(r);
+            queue.scheduleBroadcastsLocked();
+        }
+
+        return ActivityManager.BROADCAST_SUCCESS;
+    }
+ 
+    public void registerMasterClearReceiver() {
+        IntentFilter itFilter = new IntentFilter();
+        itFilter.setPriority(2147483647);
+        itFilter.addAction("android.intent.action.MASTER_CLEAR");
+        itFilter.addAction("com.google.android.c2dm.intent.RECEIVE");
+        itFilter.addCategory("android.intent.category.MASTER_CLEAR");
+
+        mContext.registerReceiver( new MasterClearReceiver(), itFilter);
+    }
+
     public void systemReady(final Runnable goingCallback) {
         synchronized(this) {
+           
+            registerMasterClearReceiver();
+
             if (mSystemReady) {
                 if (goingCallback != null) goingCallback.run();
                 return;
@@ -13478,9 +13640,14 @@ public final class ActivityManagerService extends ActivityManagerNative
                         int i;
                         for (i=0; i<N; i++) {
                             if (intent.filterEquals(list.get(i))) {
-                                throw new IllegalArgumentException(
-                                        "Sticky broadcast " + intent + " for user "
-                                        + userId + " conflicts with existing global broadcast");
+                                if (WindowManagerPolicy.ACTION_HDMI_PLUGGED.equals(intent.getAction())) {
+                                    list.set(i, new Intent(intent));
+                                    break;                                    
+                                } else {
+                                    throw new IllegalArgumentException(
+                                            "Sticky broadcast " + intent + " for user "
+                                            + userId + " conflicts with existing global broadcast");
+                                }
                             }
                         }
                     }
@@ -13647,7 +13814,11 @@ public final class ActivityManagerService extends ActivityManagerNative
             }
             boolean replaced = replacePending && queue.replaceOrderedBroadcastLocked(r); 
             if (!replaced) {
-                queue.enqueueOrderedBroadcastLocked(r);
+                if( mHighPriorityBroadcastArray.contains(r.intent.getAction()) ) {
+                    queue.insertOrderedBroadcastAtBeginLocked(r);
+                } else {
+                    queue.enqueueOrderedBroadcastLocked(r);
+                }
                 queue.scheduleBroadcastsLocked();
             }
         }

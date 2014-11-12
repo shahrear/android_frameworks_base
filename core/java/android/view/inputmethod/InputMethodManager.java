@@ -460,6 +460,9 @@ public final class InputMethodManager {
                                     startInputInner(null, 0, 0, 0);
                                 }
                             }
+                        }else{
+                            /*receive MSG_SET_ACTIVE and current is active mHasBeenInactive should be reset*/
+                            mHasBeenInactive = false;
                         }
                     }
                     return;

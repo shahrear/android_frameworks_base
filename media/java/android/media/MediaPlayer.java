@@ -16,6 +16,8 @@
 
 package android.media;
 
+import android.app.ActivityManager;
+import android.app.ActivityManager.RunningServiceInfo;
 import android.content.BroadcastReceiver;
 import android.content.ContentResolver;
 import android.content.Context;
@@ -34,6 +36,7 @@ import android.os.Parcelable;
 import android.os.ParcelFileDescriptor;
 import android.os.Process;
 import android.os.PowerManager;
+import android.os.SystemProperties;
 import android.util.Log;
 import android.view.Surface;
 import android.view.SurfaceHolder;
@@ -53,11 +56,28 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.lang.Runnable;
 import java.net.InetSocketAddress;
+import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
 import java.util.Set;
 import java.util.Vector;
 import java.lang.ref.WeakReference;
+
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.content.BroadcastReceiver;
+
+import android.os.RemoteException;
+import android.content.ServiceConnection;
+import com.amlogic.SubTitleService.ISubTitleService;
+import android.content.ComponentName;
+import android.os.IBinder;
+import android.database.Cursor;
+import android.provider.MediaStore;
+import java.lang.Integer;
+import java.lang.Thread;
+import android.os.ServiceManager;
+
 
 /**
  * MediaPlayer class can be used to control playback
@@ -580,6 +600,10 @@ public class MediaPlayer implements SubtitleController.Listener
     private PowerManager.WakeLock mWakeLock = null;
     private boolean mScreenOnWhilePlaying;
     private boolean mStayAwake;
+    private Context mContext;
+
+    private String mPath;
+    private Thread mThread = null;
 
     /**
      * Default constructor. Consider using one of the create() methods for
@@ -687,6 +711,14 @@ public class MediaPlayer implements SubtitleController.Listener
         }
         _setVideoSurface(surface);
         updateSurfaceScreenOn();
+
+        IntentFilter intentFilter =
+                new IntentFilter(Intent.ACTION_MEDIA_MOUNTED);
+        intentFilter.addAction(Intent.ACTION_MEDIA_EJECT);
+        intentFilter.addAction(Intent.ACTION_MEDIA_UNMOUNTED);
+        intentFilter.addDataScheme("file");
+        if(mContext !=null)
+            mContext.registerReceiver(mMountReceiver, intentFilter);
     }
 
     /**
@@ -885,9 +917,12 @@ public class MediaPlayer implements SubtitleController.Listener
     public void setDataSource(Context context, Uri uri, Map<String, String> headers)
         throws IOException, IllegalArgumentException, SecurityException, IllegalStateException {
         disableProxyListener();
-
+        getSubtitleService();
+        
         String scheme = uri.getScheme();
         if(scheme == null || scheme.equals("file")) {
+            //add for subtitle service
+            mPath = uri.getPath();
             setDataSource(uri.getPath());
             return;
         }
@@ -895,6 +930,36 @@ public class MediaPlayer implements SubtitleController.Listener
         AssetFileDescriptor fd = null;
         try {
             ContentResolver resolver = context.getContentResolver();
+            //add for subtitle service
+            String mediaStorePath = uri.getPath();
+            String[] cols = new String[] {
+                MediaStore.Video.Media._ID,
+                MediaStore.Video.Media.DATA
+            };
+            
+            if(scheme.equals("content")) {
+                int idx_check = (uri.toString()).indexOf("media/external/video/media");
+                if(idx_check > -1) {
+                    int idx = mediaStorePath.lastIndexOf("/");
+                    String idStr = mediaStorePath.substring(idx+1);
+                    int id = Integer.parseInt(idStr);
+                    if(subtitleServiceDebug()) Log.i(TAG,"[setDataSource]id:"+id);
+                    String where = MediaStore.Video.Media._ID + "=" + id;
+                    Cursor cursor = resolver.query(MediaStore.Video.Media.EXTERNAL_CONTENT_URI,cols, where , null, null);
+                    if (cursor != null && cursor.getCount() == 1) {
+                        int colidx = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DATA);
+                        cursor.moveToFirst();
+                        mPath = cursor.getString(colidx);
+                        if(subtitleServiceDebug()) Log.i(TAG,"[setDataSource]mediaStorePath:"+mediaStorePath+",mPath:"+mPath);
+                    }
+                }
+                else {
+                    mPath = null;
+                }
+            }
+            else {
+                mPath = null;
+            }
             fd = resolver.openAssetFileDescriptor(uri, "r");
             if (fd == null) {
                 return;
@@ -975,6 +1040,7 @@ public class MediaPlayer implements SubtitleController.Listener
     private void setDataSource(String path, String[] keys, String[] values)
             throws IOException, IllegalArgumentException, SecurityException, IllegalStateException {
         disableProxyListener();
+        getSubtitleService();
 
         final Uri uri = Uri.parse(path);
         if ("file".equals(uri.getScheme())) {
@@ -982,6 +1048,7 @@ public class MediaPlayer implements SubtitleController.Listener
         }
 
         final File file = new File(path);
+        mPath = path;
         if (file.exists()) {
             FileInputStream is = new FileInputStream(file);
             FileDescriptor fd = is.getFD();
@@ -1028,6 +1095,447 @@ public class MediaPlayer implements SubtitleController.Listener
     private native void _setDataSource(FileDescriptor fd, long offset, long length)
             throws IOException, IllegalArgumentException, IllegalStateException;
 
+    //---- add for subtitle service---------------------------------------------------------------------------
+    private ISubTitleService subTitleService = null;
+    private boolean mThreadStop = false;
+    private int subtitleOpen(String path) {
+        if(subtitleServiceDisable()) {
+            return -1;
+        }
+        if(subtitleServiceDebug()) Log.i(TAG,"[subtitleOpen] path:"+path);
+        
+        if(path.startsWith("/data/") || path.equals("")) {
+            return -1;
+        }
+        
+        try {  
+            if(subTitleService != null) {
+                subTitleService.open(path);
+            }
+        } catch (RemoteException e) {  
+            throw new RuntimeException(e);  
+        }
+        return 0;
+    }
+
+    /**
+     * @hide
+     */
+    public void subtitleOpenIdx(int idx) {
+        if(subtitleServiceDisable()) {
+            return;
+        }
+        if(subtitleServiceDebug()) Log.i(TAG,"[subtitleOpenIdx] idx:"+idx);
+        
+        if(idx < 0) {
+            return;
+        }
+
+        try {  
+            if(subTitleService != null) {
+                subTitleService.openIdx(idx);
+            }
+        } catch (RemoteException e) {  
+            throw new RuntimeException(e);  
+        }
+    }
+
+    private void subtitleStart() {
+        if(subtitleServiceDisable()) {
+            return;
+        }
+        if(subtitleServiceDebug()) Log.i(TAG,"[subtitleStart] mEventHandler:"+mEventHandler);
+        
+        if (mEventHandler != null) {
+            mThreadStop = false;
+            mEventHandler.removeMessages(MEDIA_AML_SUBTITLE_START);
+            Message m = mEventHandler.obtainMessage(MEDIA_AML_SUBTITLE_START);
+            mEventHandler.sendMessageDelayed(m, 500);
+        }
+    }
+
+    private void subtitleClose() {
+        if(subtitleServiceDisable()) {
+            return;
+        }
+        if(subtitleServiceDebug()) Log.i(TAG,"[subtitleClose] ");
+
+        if (mEventHandler != null) {
+            mEventHandler.removeMessages(MEDIA_AML_SUBTITLE_START);
+        }
+        
+        try {  
+            if(subTitleService != null ) {
+                subTitleService.close(); 
+            }
+        } catch (RemoteException e) {  
+            throw new RuntimeException(e);  
+        }
+
+        if(mThread != null){
+            mThreadStop = true;
+            mThread = null;
+        }
+    }
+
+    private void subtitleShow() {
+        if(subtitleServiceDisable()) {
+            return;
+        }
+        if(subtitleServiceDebug()) Log.i(TAG,"[subtitleShow] subtitleTotal:"+subtitleTotal());
+       
+        if(subtitleTotal() > 0) {
+            if(subtitleServiceDebug()) Log.i(TAG,"[subtitleStartShow]mThread:"+mThread);
+            if(mThread == null) {  
+                mThread = new Thread(runnable);  
+                mThread.start();  
+            }
+        }
+    }
+
+    /**
+    * @hide
+    */
+    public void subtitleOption() {
+        if(subtitleServiceDisable()) {
+            return;
+        }
+        if(subtitleServiceDebug()) Log.i(TAG,"[subtitleOption] ");
+        
+        try {  
+            if(subTitleService != null) {
+                subTitleService.option(); 
+            }
+        } catch (RemoteException e) {  
+            throw new RuntimeException(e);  
+        }
+    }
+
+    /**
+    * @hide
+    */
+    public int subtitleTotal() {
+        if(subtitleServiceDisable()) {
+            return 0;
+        }
+        if(subtitleServiceDebug()) Log.i(TAG,"[subtitleTotal] ");
+        
+        int ret = 0;
+        try {  
+            if(subTitleService != null) {
+                ret = subTitleService.getSubTotal(); 
+            }
+        } catch (RemoteException e) {  
+            throw new RuntimeException(e);  
+        }
+        if(subtitleServiceDebug()) Log.i(TAG,"[subtitleTotal] ret:"+ret);
+        return ret;
+    }
+
+    /**
+    * @hide
+    */
+    public void subtitleNext() {
+        if(subtitleServiceDisable()) {
+            return;
+        }
+        if(subtitleServiceDebug()) Log.i(TAG,"[subtitleNext] ");
+        
+        try {  
+            if(subTitleService != null) {
+                subTitleService.nextSub(); 
+            }
+        } catch (RemoteException e) {  
+            throw new RuntimeException(e);  
+        }
+    }
+
+    /**
+    * @hide
+    */
+    public void subtitlePre() {
+        if(subtitleServiceDisable()) {
+            return;
+        }
+        if(subtitleServiceDebug()) Log.i(TAG,"[subtitlePre] ");
+        
+        try {  
+            if(subTitleService != null) {
+                subTitleService.preSub(); 
+            }
+        } catch (RemoteException e) {  
+            throw new RuntimeException(e);  
+        }
+    }
+
+    /**
+    * @hide
+    */
+    public int subtitleGetSubType() {
+        if(subtitleServiceDisable()) {
+            return -1;
+        }
+        if(subtitleServiceDebug()) Log.i(TAG,"[subtitleGetSubType] ");
+
+        int ret = 0;
+        try {  
+            if(subTitleService != null) {
+                ret = subTitleService.getSubType(); 
+            }
+        } catch (RemoteException e) {  
+            throw new RuntimeException(e);  
+        }
+        if(subtitleServiceDebug()) Log.i(TAG,"[subtitleGetSubType] ret:"+ret);
+        return ret;
+    }
+
+    /**
+    * @hide
+    */
+    public void subtitleSetTextColor(int color) {
+        if(subtitleServiceDisable()) {
+            return;
+        }
+        if(subtitleServiceDebug()) Log.i(TAG,"[subtitleSetTextColor] color:"+color);
+        
+        try {  
+            if(subTitleService != null) {
+                subTitleService.setTextColor(color); 
+            }
+        } catch (RemoteException e) {  
+            throw new RuntimeException(e);  
+        }
+    }
+
+    /**
+    * @hide
+    */
+    public void subtitleSetTextSize(int size) {
+        if(subtitleServiceDisable()) {
+            return;
+        }
+        if(subtitleServiceDebug()) Log.i(TAG,"[subtitleSetTextSize] size:"+size);
+        
+        try {  
+            if(subTitleService != null) {
+                subTitleService.setTextSize(size); 
+            }
+        } catch (RemoteException e) {  
+            throw new RuntimeException(e);  
+        }
+    }
+
+    /**
+    * @hide
+    */
+    public void subtitleSetGravity(int gravity) {
+        if(subtitleServiceDisable()) {
+            return;
+        }
+        if(subtitleServiceDebug()) Log.i(TAG,"[subtitleSetGravity] gravity:"+gravity);
+        
+        try {  
+            if(subTitleService != null) {
+                subTitleService.setGravity(gravity); 
+            }
+        } catch (RemoteException e) {  
+            throw new RuntimeException(e);  
+        }
+    }
+
+    /**
+    * @hide
+    */
+    public void subtitleSetTextStyle(int style) {
+        if(subtitleServiceDisable()) {
+            return;
+        }
+        if(subtitleServiceDebug()) Log.i(TAG,"[subtitleSetTextStyle] style:"+style);
+        
+        try {  
+            if(subTitleService != null) {
+            subTitleService.setTextStyle(style); 
+            }
+        } catch (RemoteException e) {  
+            throw new RuntimeException(e);  
+        }
+    }
+
+    /**
+    * @hide
+    */
+    public void subtitleSetPosHeight(int height) {
+        if(subtitleServiceDisable()) {
+            return;
+        }
+        if(subtitleServiceDebug()) Log.i(TAG,"[subtitleSetPosHeight] height:"+height);
+        
+        try {  
+            if(subTitleService != null) {
+                subTitleService.setPosHeight(height); 
+            }
+        } catch (RemoteException e) {  
+            throw new RuntimeException(e);  
+        }
+    }
+
+    /**
+    * @hide
+    */
+    public void subtitleClear() {
+        if(subtitleServiceDisable()) {
+            return;
+        }
+        if(subtitleServiceDebug()) Log.i(TAG,"[subtitleClear]");
+        
+        try {  
+            if(subTitleService != null) {
+                subTitleService.clear(); 
+            }
+        } catch (RemoteException e) {  
+            throw new RuntimeException(e);  
+        }
+    }
+
+    /**
+    * @hide
+    */
+    public void subtitleHide() {
+        if(subtitleServiceDisable()) {
+            return;
+        }
+        if(subtitleServiceDebug()) Log.i(TAG,"[subtitleHide]");
+        
+        try {  
+            if(subTitleService != null) {
+                subTitleService.hide(); 
+            }
+        } catch (RemoteException e) {  
+            throw new RuntimeException(e);  
+        }
+    }
+
+    /**
+    * @hide
+    */
+    public void subtitleDisplay() {
+        if(subtitleServiceDisable()) {
+            return;
+        }
+        if(subtitleServiceDebug()) Log.i(TAG,"[subtitleDisplay]");
+        
+        try {  
+            if(subTitleService != null) {
+                subTitleService.display(); 
+            }
+        } catch (RemoteException e) {  
+            throw new RuntimeException(e);  
+        }
+    }
+    
+    /**
+    * @hide
+    */
+    public String subtitleGetCurName() {
+        if(subtitleServiceDisable()) {
+            return null;
+        }
+        if(subtitleServiceDebug()) Log.i(TAG,"[subtitleGetCurName]");
+        
+        String name = null;
+        try {  
+            if(subTitleService != null) {
+                name = subTitleService.getCurName(); 
+            }
+        } catch (RemoteException e) {  
+            throw new RuntimeException(e);  
+        }
+        if(subtitleServiceDebug()) Log.i(TAG,"[subtitleGetCurName] name:"+name);
+        return name;
+    }
+
+    private Runnable runnable = new Runnable() {
+        @Override  
+        public void run() {
+            int pos;
+            while(!mThreadStop) {
+                if(subtitleServiceDisable()) {
+                    mThreadStop = true;
+                    break;
+                }
+                
+                pos = getCurrentPosition();
+                //show subtitle
+                if(subtitleServiceDebug()) Log.i(TAG,"[runnable]showSub:"+pos);
+                try {  
+                    if(subTitleService != null) {
+                        subTitleService.showSub(pos); 
+                    }
+                    else {
+                        mThreadStop = true;
+                        break;
+                    }
+                } catch (RemoteException e) {  
+                    throw new RuntimeException(e);  
+                }
+
+                try {   
+                    Thread.sleep(1000 - (pos % 1000));    
+                } catch (InterruptedException e) {   
+                    Thread.currentThread().interrupt();   
+                }
+            }
+        }
+    };
+
+    private boolean subtitleServiceDebug() {
+        boolean ret = false;
+        if(SystemProperties.getBoolean("sys.mpSubtitleService.debug", false)) {
+            ret = true;
+        }
+        return ret;
+    }
+
+    private boolean subtitleServiceDisable() {
+        boolean ret = false;
+        if(SystemProperties.getBoolean("sys.subtitleService.disable", false)) {
+            ret = true;
+        }
+        return ret;
+    }
+
+    private boolean subtitleOptionEnable() {
+        boolean ret = false;
+        if(SystemProperties.getBoolean("sys.subtitleOption.enable", false)) {
+            ret = true;
+        }
+        return ret;
+    }
+
+    private void getSubtitleService() {
+        if(subtitleServiceDisable()) {
+            return;
+        }
+
+        if(subTitleService == null) {
+            IBinder b = ServiceManager.getService(Context.SUBTITLE_SERVICE);
+            subTitleService = ISubTitleService.Stub.asInterface(b);
+        }
+        if(subtitleServiceDebug()) Log.i(TAG,"[getSubtitleService] subTitleService:"+subTitleService);
+    }
+
+    private void subtitleServiceRelease() {
+        if(subtitleServiceDisable()) {
+            return;
+        }
+
+        if(subtitleServiceDebug()) Log.i(TAG,"[subtitleServiceRelease] ");
+
+        if(subTitleService != null) {
+            subTitleService = null;
+        }
+    }
+
     /**
      * Prepares the player for playback, synchronously.
      *
@@ -1062,6 +1570,8 @@ public class MediaPlayer implements SubtitleController.Listener
     public  void start() throws IllegalStateException {
         stayAwake(true);
         _start();
+        subtitleStart();
+        if(subtitleServiceDebug()) Log.i(TAG,"[start]mPath:"+mPath);
     }
 
     private native void _start() throws IllegalStateException;
@@ -1074,6 +1584,7 @@ public class MediaPlayer implements SubtitleController.Listener
      */
     public void stop() throws IllegalStateException {
         stayAwake(false);
+        subtitleClose();
         _stop();
     }
 
@@ -1351,12 +1862,22 @@ public class MediaPlayer implements SubtitleController.Listener
         mOnInfoListener = null;
         mOnVideoSizeChangedListener = null;
         mOnTimedTextListener = null;
+
         if (mTimeProvider != null) {
             mTimeProvider.close();
             mTimeProvider = null;
         }
         mOnSubtitleDataListener = null;
+		
+        subtitleClose();
+        subtitleServiceRelease();
+		
         _release();
+
+        if((mMountReceiver != null) && (mContext != null)) {
+            mContext.unregisterReceiver(mMountReceiver);
+            mMountReceiver = null;
+        }
     }
 
     private native void _release();
@@ -1493,6 +2014,274 @@ public class MediaPlayer implements SubtitleController.Listener
      */
     public native void attachAuxEffect(int effectId);
 
+    /* Do not change these values (starting with KEY_PARAMETER) without updating
+     * their counterparts in include/media/mediaplayer.h!
+     */
+
+    // There are currently no defined keys usable from Java with get*Parameter.
+    // But if any keys are defined, the order must be kept in sync with include/media/mediaplayer.h.
+    // private static final int KEY_PARAMETER_... = ...;
+
+    /*
+    info video surface layout info,
+    format:left=%d;top=%d;right=%d,...
+    */
+    public static final int KEY_PARAMETER_AML_VIDEO_POSITION_INFO = 2000;
+
+    /*
+    AMLOGIC_PLAYER?
+    or others
+    */
+    public static final int KEY_PARAMETER_AML_PLAYER_TYPE_STR = 2001;
+
+
+    /*
+        int value;
+    */
+    public static final int KEY_PARAMETER_AML_PLAYER_VIDEO_OUT_TYPE = 2002;
+
+    //amlogic private API,set only.
+    //switch sound track
+    public static final int KEY_PARAMETER_AML_PLAYER_SWITCH_SOUND_TRACK = 2003;//string,refer to lmono,rmono,stereo,set only
+    //switch audio track
+    public static final int KEY_PARAMETER_AML_PLAYER_SWITCH_AUDIO_TRACK = 2004;//string,refer to audio track index,set only
+
+    public static final int KEY_PARAMETER_AML_PLAYER_TRICKPLAY_FORWARD=2005;//string,refer to forward:speed 
+    public static final int KEY_PARAMETER_AML_PLAYER_TRICKPLAY_BACKWARD=2006;//string,refer to  backward:speed
+    public static final int KEY_PARAMETER_AML_PLAYER_FORCE_HARD_DECODE=2007;//string,refer to mp3,etc.
+    public static final int KEY_PARAMETER_AML_PLAYER_FORCE_SOFT_DECODE=2008;//string,refer to mp3,etc.  
+    private static final int KEY_PARAMETER_AML_PLAYER_GET_MEDIA_INFO = 2009;//string,get media info
+    /**
+    * @hide
+    */
+    public static final int KEY_PARAMETER_AML_PLAYER_FORCE_SCREEN_MODE = 2010;//string,set screen mode
+    /**
+    * @hide
+    */
+    public static final int KEY_PARAMETER_AML_PLAYER_SET_DISPLAY_MODE = 2011;//string,set display mode 3D
+    public static final int KEY_PARAMETER_AML_PLAYER_ENABLE_OSDVIDEO = 8003;  //string,play enable osd video for this player....
+    /**
+    * @hide
+    */
+    public static final int KEY_PARAMETER_AML_PLAYER_GET_DTS_ASSET_TOTAL = 2012;//string, get dts asset total number
+    /**
+    * @hide
+    */
+    public static final int KEY_PARAMETER_AML_PLAYER_SET_DTS_ASSET = 2013;//string, set dts asset 
+    public static final int KEY_PARAMETER_AML_PLAYER_PR_CUSTOM_DATA=9001;//string, playready, set only
+    public static final int VIDEO_OUT_SOFT_RENDER = 0;
+    public static final int VIDEO_OUT_HARDWARE  =   1;
+
+
+    /**
+     * Sets the parameter indicated by key.
+     * @param key key indicates the parameter to be set.
+     * @param value value of the parameter to be set.
+     * @return true if the parameter is set successfully, false otherwise
+     * {@hide}
+     */
+    public native boolean setParameter(int key, Parcel value);
+
+    /**
+     * Sets the parameter indicated by key.
+     * @param key key indicates the parameter to be set.
+     * @param value value of the parameter to be set.
+     * @return true if the parameter is set successfully, false otherwise
+     * {@hide}
+     */
+    public boolean setParameter(int key, String value) {
+        Parcel p = Parcel.obtain();
+        p.writeString(value);
+        boolean ret = setParameter(key, p);
+        p.recycle();
+        return ret;
+    }
+
+    /**
+     * Sets the parameter indicated by key.
+     * @param key key indicates the parameter to be set.
+     * @param value value of the parameter to be set.
+     * @return true if the parameter is set successfully, false otherwise
+     * {@hide}
+     */
+    public boolean setParameter(int key, int value) {
+        Parcel p = Parcel.obtain();
+        p.writeInt(value);
+        boolean ret = setParameter(key, p);
+        p.recycle();
+        return ret;
+    }
+
+    /*
+     * Gets the value of the parameter indicated by key.
+     * @param key key indicates the parameter to get.
+     * @param reply value of the parameter to get.
+     */
+    private native void getParameter(int key, Parcel reply);
+
+    /**
+    * @hide
+    */
+    public class VideoInfo{
+        public int index;
+        public int id;
+        public String vformat;
+        public int width;
+        public int height;
+    }
+
+	/**
+    * @hide
+    */
+    public class AudioInfo{
+        public int index;
+        public int id; //id is useless for application
+        public int aformat;
+        public int channel;
+        public int sample_rate;
+    }
+
+	/**
+    * @hide
+    */
+    public class SubtitleInfo{
+        public int index;
+        public int id;
+        public int sub_type;
+        public String sub_language;
+    }
+    
+	/**
+    * @hide
+    */
+    public class MediaInfo{
+        public String filename;
+        public int duration;
+        public String file_size;
+        public int bitrate;
+        public int type;
+        public int cur_video_index;
+        public int cur_audio_index;
+        public int cur_sub_index;
+
+        public int total_video_num;
+        public VideoInfo[] videoInfo;
+
+        public int total_audio_num;
+        public AudioInfo[] audioInfo;
+
+        public int total_sub_num;
+        public SubtitleInfo[] subtitleInfo;
+    }
+
+    /**
+    * @hide
+    */
+    public MediaInfo getMediaInfo() {
+        MediaInfo mediaInfo = new MediaInfo();
+        Parcel p = Parcel.obtain();
+        getParameter(KEY_PARAMETER_AML_PLAYER_GET_MEDIA_INFO, p);
+        mediaInfo.filename = p.readString();
+        mediaInfo.duration = p.readInt();
+        mediaInfo.file_size = p.readString();
+        mediaInfo.bitrate = p.readInt();
+        mediaInfo.type = p.readInt();
+        mediaInfo.cur_video_index = p.readInt();
+        mediaInfo.cur_audio_index = p.readInt();
+        mediaInfo.cur_sub_index = p.readInt();
+        //Log.i(TAG,"[getMediaInfo]filename:"+mediaInfo.filename+",duration:"+mediaInfo.duration+",file_size:"+mediaInfo.file_size+",bitrate:"+mediaInfo.bitrate+",type:"+mediaInfo.type);
+        //Log.i(TAG,"[getMediaInfo]cur_video_index:"+mediaInfo.cur_video_index+",cur_audio_index:"+mediaInfo.cur_audio_index+",cur_sub_index:"+mediaInfo.cur_sub_index);
+
+        //----video info----
+        mediaInfo.total_video_num = p.readInt();
+        //Log.i(TAG,"[getMediaInfo]mediaInfo.total_video_num:"+mediaInfo.total_video_num);
+        mediaInfo.videoInfo = new VideoInfo[mediaInfo.total_video_num];
+        for (int i=0;i<mediaInfo.total_video_num;i++) {
+            mediaInfo.videoInfo[i] = new VideoInfo();
+            mediaInfo.videoInfo[i].index = p.readInt();
+            mediaInfo.videoInfo[i].id = p.readInt();
+            mediaInfo.videoInfo[i].vformat = p.readString();
+            mediaInfo.videoInfo[i].width = p.readInt();
+            mediaInfo.videoInfo[i].height = p.readInt();
+            //Log.i(TAG,"[getMediaInfo]videoInfo i:"+i+",index:"+mediaInfo.videoInfo[i].index+",id:"+mediaInfo.videoInfo[i].id);
+            //Log.i(TAG,"[getMediaInfo]videoInfo i:"+i+",vformat:"+mediaInfo.videoInfo[i].vformat);
+            //Log.i(TAG,"[getMediaInfo]videoInfo i:"+i+",width:"+mediaInfo.videoInfo[i].width+",height:"+mediaInfo.videoInfo[i].height);
+        }
+
+        //----audio info----
+        mediaInfo.total_audio_num = p.readInt();
+        //Log.i(TAG,"[getMediaInfo]mediaInfo.total_audio_num:"+mediaInfo.total_audio_num);
+        mediaInfo.audioInfo = new AudioInfo[mediaInfo.total_audio_num];
+        for (int j=0;j<mediaInfo.total_audio_num;j++) {
+            mediaInfo.audioInfo[j] = new AudioInfo();
+            mediaInfo.audioInfo[j].index = p.readInt();
+            mediaInfo.audioInfo[j].id = p.readInt();
+            mediaInfo.audioInfo[j].aformat = p.readInt();
+            mediaInfo.audioInfo[j].channel = p.readInt();
+            mediaInfo.audioInfo[j].sample_rate = p.readInt();
+            //Log.i(TAG,"[getMediaInfo]audioInfo j:"+j+",index:"+mediaInfo.audioInfo[j].index+",id:"+mediaInfo.audioInfo[j].id+",aformat:"+mediaInfo.audioInfo[j].aformat);
+            //Log.i(TAG,"[getMediaInfo]audioInfo j:"+j+",channel:"+mediaInfo.audioInfo[j].channel+",sample_rate:"+mediaInfo.audioInfo[j].sample_rate);
+        }
+
+        //----subtitle info----
+        mediaInfo.total_sub_num = p.readInt();
+        //Log.i(TAG,"[getMediaInfo]mediaInfo.total_sub_num:"+mediaInfo.total_sub_num);
+        mediaInfo.subtitleInfo = new SubtitleInfo[mediaInfo.total_sub_num];
+        for (int k=0;k<mediaInfo.total_sub_num;k++) {
+            mediaInfo.subtitleInfo[k] = new SubtitleInfo();
+            mediaInfo.subtitleInfo[k].index = p.readInt();
+            mediaInfo.subtitleInfo[k].id = p.readInt();
+            mediaInfo.subtitleInfo[k].sub_type = p.readInt();
+            mediaInfo.subtitleInfo[k].sub_language = p.readString();
+            //Log.i(TAG,"[getMediaInfo]subtitleInfo k:"+k+",index:"+mediaInfo.subtitleInfo[k].index+",id:"+mediaInfo.subtitleInfo[k].id+",sub_type:"+mediaInfo.subtitleInfo[k].sub_type);
+            //Log.i(TAG,"[getMediaInfo]subtitleInfo k:"+k+",sub_language:"+mediaInfo.subtitleInfo[k].sub_language);
+        }
+        
+        p.recycle();
+
+        return mediaInfo;
+    }
+
+    /**
+     * Gets the value of the parameter indicated by key.
+     * The caller is responsible for recycling the returned parcel.
+     * @param key key indicates the parameter to get.
+     * @return value of the parameter.
+     * {@hide}
+     */
+    public Parcel getParcelParameter(int key) {
+        Parcel p = Parcel.obtain();
+        getParameter(key, p);
+        return p;
+    }
+
+    /**
+     * Gets the value of the parameter indicated by key.
+     * @param key key indicates the parameter to get.
+     * @return value of the parameter.
+     * {@hide}
+     */
+    public String getStringParameter(int key) {
+        Parcel p = Parcel.obtain();
+        getParameter(key, p);
+        String ret = p.readString();
+        p.recycle();
+        return ret;
+    }
+
+    /**
+     * Gets the value of the parameter indicated by key.
+     * @param key key indicates the parameter to get.
+     * @return value of the parameter.
+     * {@hide}
+     */
+    public int getIntParameter(int key) {
+        Parcel p = Parcel.obtain();
+        getParameter(key, p);
+        int ret = p.readInt();
+        p.recycle();
+        return ret;
+    }
 
     /**
      * Sets the send level of the player to the attached auxiliary effect
@@ -2167,6 +2956,7 @@ public class MediaPlayer implements SubtitleController.Listener
     private static final int MEDIA_ERROR = 100;
     private static final int MEDIA_INFO = 200;
     private static final int MEDIA_SUBTITLE_DATA = 201;
+    private static final int MEDIA_AML_SUBTITLE_START = 800; // random value
 
     private TimeProvider mTimeProvider;
 
@@ -2301,6 +3091,19 @@ public class MediaPlayer implements SubtitleController.Listener
                 }
                 return;
 
+            case MEDIA_AML_SUBTITLE_START:
+                if(subtitleServiceDebug()) Log.i(TAG,"[handleMessage]MEDIA_AML_SUBTITLE_START mPath:"+mPath);
+                if(mPath != null) {
+                    int ret = subtitleOpen(mPath);
+                    if(ret == 0) {
+                        subtitleShow();
+                        if(subtitleOptionEnable()) {
+                            subtitleOption();//show subtitle select option add for debug
+                        }
+                    }
+                }
+                break;
+
             case MEDIA_NOP: // interface test message - ignore
                 break;
 
@@ -2310,6 +3113,42 @@ public class MediaPlayer implements SubtitleController.Listener
             }
         }
     }
+
+    
+    private boolean isEjectOrUnmoutProcessed = false;
+    private BroadcastReceiver mMountReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            String action = intent.getAction();
+            Uri uri = intent.getData();
+            String path = uri.getPath();   
+
+            //Log.d("wxl", "mountreciever action=" + action + " uri=" + uri + " path=" + path);
+            if (action == null ||path == null)
+                return;
+
+            if ((action.equals(Intent.ACTION_MEDIA_EJECT))||(action.equals(Intent.ACTION_MEDIA_UNMOUNTED))) {
+                if(mPath != null) {
+                    if(mPath.startsWith(path)) {
+                        if(isEjectOrUnmoutProcessed)
+                            return;
+                        else
+                            isEjectOrUnmoutProcessed = true;
+
+                        stop();
+
+                        //add for gallery finish
+                        if (mEventHandler != null) {
+                            Message m = mEventHandler.obtainMessage(MEDIA_ERROR);
+                            mEventHandler.sendMessage(m);
+                        }
+                    }
+                }
+            } else if (action.equals(Intent.ACTION_MEDIA_MOUNTED)) {          	
+                // Nothing				
+            } 
+        }
+    };	
 
     /*
      * Called from native code when an interesting event happens.  This method

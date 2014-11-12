@@ -902,6 +902,30 @@ public class Activity extends ContextThemeWrapper
         mFragments.dispatchCreate();
         getApplication().dispatchActivityCreated(this, savedInstanceState);
         mCalled = true;
+
+        //setSdkVersion(mActivityInfo.packageName);
+    }
+
+    private void setSdkVersion(String packageName){
+        //work round for nexflix play
+        int ver = android.os.Build.VERSION_CODES.JELLY_BEAN_MR1;
+        if("com.netflix.mediaclient".equals(packageName) /*||
+            "com.android.test".equals(packageName)*/){
+            ver = 15;
+        }else{
+            return;
+            //ver = SystemProperties.getInt("ro.build.version.sdk", 0);
+        }
+
+        try {
+            android.os.Build.VERSION version = new android.os.Build.VERSION();
+            java.lang.reflect.Field f = version.getClass().getDeclaredField("SDK_INT");
+            f.setAccessible(true);
+            f.setInt(version, ver);
+        } catch (Exception e) {
+            Log.e(TAG, "Exception: " + e);
+        }
+        Log.i(TAG, "package name:" + packageName + " sdk_version: " + android.os.Build.VERSION.SDK_INT);
     }
 
     /**
@@ -2720,6 +2744,9 @@ public class Activity extends ContextThemeWrapper
         if (mParent != null) {
             return mParent.onPrepareOptionsMenu(menu);
         }
+        if(menu != null && menu.size() < 1){
+            return false;
+        }
         return true;
     }
 
@@ -4377,6 +4404,19 @@ public class Activity extends ContextThemeWrapper
         return null;
     }
 
+   private boolean isIgnorePortraitReq(int requestedOrientation) {
+        if(requestedOrientation == 1){
+            
+            if(mComponent == null)
+                return false;
+            
+            String mClassName = mComponent.getClassName();
+            if(mClassName.equals("com.baidu.browser.apps.BrowserActivity")
+                || mClassName.equals("com.baidu.browser.framework.BdBrowserActivity"))
+                return true;
+        }
+        return false;
+   }
     /**
      * Change the desired orientation of this activity.  If the activity
      * is currently in the foreground or otherwise impacting the screen
@@ -4388,6 +4428,8 @@ public class Activity extends ContextThemeWrapper
      * {@link ActivityInfo#screenOrientation ActivityInfo.screenOrientation}.
      */
     public void setRequestedOrientation(int requestedOrientation) {
+        if(isIgnorePortraitReq(requestedOrientation))
+            requestedOrientation = -1;
         if (mParent == null) {
             try {
                 ActivityManagerNative.getDefault().setRequestedOrientation(

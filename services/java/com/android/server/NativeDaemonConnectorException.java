@@ -24,7 +24,7 @@ import android.os.Parcel;
  */
 public class NativeDaemonConnectorException extends Exception {
     private String mCmd;
-    private NativeDaemonEvent mEvent;
+    private NativeDaemonEvent mEvent = null;
 
     public NativeDaemonConnectorException(String detailMessage) {
         super(detailMessage);
@@ -41,6 +41,9 @@ public class NativeDaemonConnectorException extends Exception {
     }
 
     public int getCode() {
+        if(mEvent == null) {
+	    return -1;
+	}
         return mEvent.getCode();
     }
 

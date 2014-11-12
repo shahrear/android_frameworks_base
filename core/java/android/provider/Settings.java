@@ -1524,6 +1524,14 @@ public final class Settings {
 
         /**
          * @hide
+         * HDMI settings.
+         */
+        public static final String HDMI_DUAL_DISP = "hdmi_dual_disp";
+        public static final String HDMI_SPDIF     = "hdmi_spdif";
+        public static final String HDMI_AUTO_SWITCH = "hdmi_auto_switch";
+
+        /**
+         * @hide
          * @deprecated - Do not use
          */
         @Deprecated
@@ -2300,6 +2308,12 @@ public final class Settings {
         public static final String LOCKSCREEN_SOUNDS_ENABLED = "lockscreen_sounds_enabled";
 
         /**
+         * @hide
+         * Whether to play sounds when the keyguard is shown and dismissed.
+         */
+        public static final String STORAGE_SOUNDS_ENABLED = "storage_sounds_enabled";
+
+        /**
          * Whether the lockscreen should be completely disabled.
          * @hide
          */
@@ -2473,6 +2487,7 @@ public final class Settings {
             POWER_SOUNDS_ENABLED,       // moved to global
             DOCK_SOUNDS_ENABLED,        // moved to global
             LOCKSCREEN_SOUNDS_ENABLED,
+            STORAGE_SOUNDS_ENABLED,
             SHOW_WEB_SUGGESTIONS,
             NOTIFICATION_LIGHT_PULSE,
             SIP_CALL_OPTIONS,
@@ -2762,6 +2777,7 @@ public final class Settings {
             MOVED_TO_GLOBAL.add(Settings.Global.DEVICE_PROVISIONED);
             MOVED_TO_GLOBAL.add(Settings.Global.DISPLAY_DENSITY_FORCED);
             MOVED_TO_GLOBAL.add(Settings.Global.DISPLAY_SIZE_FORCED);
+            MOVED_TO_GLOBAL.add(Settings.Global.DISPLAY_OUTPUTMODE_AUTO);
             MOVED_TO_GLOBAL.add(Settings.Global.DOWNLOAD_MAX_BYTES_OVER_MOBILE);
             MOVED_TO_GLOBAL.add(Settings.Global.DOWNLOAD_RECOMMENDED_MAX_BYTES_OVER_MOBILE);
             MOVED_TO_GLOBAL.add(Settings.Global.INSTALL_NON_MARKET_APPS);
@@ -3875,6 +3891,41 @@ public final class Settings {
         public static final String WIFI_NETWORKS_AVAILABLE_REPEAT_DELAY =
                 Global.WIFI_NETWORKS_AVAILABLE_REPEAT_DELAY;
 
+         /*
+          * I should not really stuff too much info this. After I make the entire thing to
+          * work, I should move this to a configuration file.
+          */
+         public static final String ETH_ON      = "eth_on";
+         public static final String ETH_MODE    = "eth_mode";
+         public static final String ETH_IP      = "eth_ip";
+         public static final String ETH_MASK    = "eth_mask";
+         public static final String ETH_DNS     = "eth_dns";
+         public static final String ETH_ROUTE   = "eth_route";
+         public static final String ETH_CONF    = "eth_conf";
+         public static final String ETH_IFNAME  = "eth_ifname";
+
+         /** {@hide} */
+         public static final String ETH_PROXY_HOST = "eth_proxy_host";
+         /** {@hide} */
+         public static final String ETH_PROXY_PORT = "eth_proxy_port";
+         /** {@hide} */
+         public static final String ETH_PROXY_EXCLUSION_LIST = "eth_proxy_exclusion_list";
+
+         /** {@hide} */
+         public static final String PPPOE_ON      = "pppoe_on";
+         /** {@hide} */
+         public static final String PPPOE_IP      = "pppoe_ip";
+         /** {@hide} */
+         public static final String PPPOE_MASK    = "pppoe_mask";
+         /** {@hide} */
+         public static final String PPPOE_DNS     = "pppoe_dns";
+         /** {@hide} */
+         public static final String PPPOE_ROUTE   = "pppoe_route";
+         /** {@hide} */
+         public static final String PPPOE_CONF    = "pppoe_conf";
+         /** {@hide} */
+         public static final String PPPOE_IFNAME  = "pppoe_ifname";
+
         /**
          * @deprecated Use {@link android.provider.Settings.Global#WIFI_NUM_OPEN_NETWORKS_KEPT}
          * instead.
@@ -4883,6 +4934,13 @@ public final class Settings {
        public static final String DISPLAY_SIZE_FORCED = "display_size_forced";
 
        /**
+        * The saved value for Outputmode auto-detection.
+        * One integer
+        * @hide
+        */
+       public static final String DISPLAY_OUTPUTMODE_AUTO = "display_outputmode_auto";
+
+       /**
         * The maximum size, in bytes, of a download that the download manager will transfer over
         * a non-wifi connection.
         * @hide
@@ -5393,6 +5451,15 @@ public final class Settings {
         * change the ringer mode. See AudioManager.
         */
        public static final String MODE_RINGER = "mode_ringer";
+
+
+	   /**
+        * set this prop to false ,and the hardware keyboard is disable
+        *default is true
+        *add for MBX
+        *@hide
+        */
+       public static final String HARD_KEYBOARD_DEFAULT_ENABLE = "hard_keyboard_default_on";
 
        /**
         * Overlay display devices setting.

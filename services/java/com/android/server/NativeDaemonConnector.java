@@ -118,6 +118,70 @@ final class NativeDaemonConnector implements Runnable, Handler.Callback, Watchdo
         }
     }
 
+    private static final int CHARSET_GBK = 0;
+    private static final int CHARSET_UTF8 = 1;
+    private int checkValue(int value) {
+        int val = value;
+
+        if(val < 0) {
+            val = val * -1;
+            val = 0xFF - val + 1;
+        }
+        //log("[checkValue] val:"+val);
+        return val;
+    }
+    // if buffer is in 0x81-0xFE(129-254) 0x40-0xFE(64-254), buffer may be gbk encoding
+    // if buffer is like 1110**** 10****** 10******, buffer may be utf8 encoding
+    // 00001110 == 0x0E 00000010 == 0x02
+    // else unknow, it may be ascii
+    private int detectEncodingType(byte[] buffer, int count) {
+        int ret = -1;
+        int i = 0;
+        int valuea = -1;
+        int valueb = -1;
+        int valuec = -1;
+
+        if(count >= 6) {
+            for(i = 6; i < count; i++) {
+                //log("[detectEncodingType] buffer["+i+"]:"+buffer[i]);
+                valuea = buffer[i];
+                if(i + 1 < count) {
+                    valueb = buffer[i+1];
+
+                    valuea = checkValue(valuea);
+                    valueb = checkValue(valueb);
+
+                    if(i + 2 < count) {
+                        valuec = buffer[i+2];
+                        valuec = checkValue(valuec);
+                        if((valuea >> 4) == 0x0E && (valueb >> 6) == 0x02 && (valuec >> 6) == 0x02) {
+                            ret = CHARSET_UTF8; 
+                            break;
+                        }
+                    }
+
+                    if((valuea >= 0x81 && valuea <= 0xFE) && (valueb >= 0x64 && valueb <= 0xFE)) {
+                        ret = CHARSET_GBK; 
+                        break;
+                    }
+                }
+                
+                /*if (i + 2 < count &&
+                    (buffer[i] >> 4) == 0x0E &&
+                    (buffer[i+1] >> 6) == 0x02 &&
+                    (buffer[i+2] >> 6) == 0x02) {
+                    ret = CHARSET_UTF8; 
+                } else if (i + 1 < count &&
+                    (buffer[i] >= 0x81 && buffer[i] <= 0xFE) &&
+                    (buffer[i+1] >= 0x64 && buffer[i+1] <= 0xFE)) {
+                    ret = CHARSET_GBK; 
+                }  */
+            }
+        }
+        //log("[detectEncodingType]ret:"+ret);
+        return ret;
+    }
+
     private void listenToSocket() throws IOException {
         LocalSocket socket = null;
 
@@ -144,14 +208,23 @@ final class NativeDaemonConnector implements Runnable, Handler.Callback, Watchdo
                     break;
                 }
 
+                String charsetName = "UTF_8";
+                int encodingType = detectEncodingType(buffer, count);
+
                 // Add our starting point to the count and reset the start.
                 count += start;
                 start = 0;
 
                 for (int i = 0; i < count; i++) {
                     if (buffer[i] == 0) {
+                        if(encodingType ==  CHARSET_GBK) {
+                            charsetName = "GBK";
+                        }
+                        else {
+                            charsetName = "UTF_8";
+                        }
                         final String rawEvent = new String(
-                                buffer, start, i - start, StandardCharsets.UTF_8);
+                                buffer, start, i - start,charsetName/*, StandardCharsets.UTF_8*/);
                         log("RCV <- {" + rawEvent + "}");
 
                         try {
@@ -172,7 +245,13 @@ final class NativeDaemonConnector implements Runnable, Handler.Callback, Watchdo
                     }
                 }
                 if (start == 0) {
-                    final String rawEvent = new String(buffer, start, count, StandardCharsets.UTF_8);
+                     if(encodingType ==  CHARSET_GBK) {
+                        charsetName = "GBK";
+                    }
+                    else {
+                        charsetName = "UTF_8";
+                    }
+                    final String rawEvent = new String(buffer, start, count, charsetName/* StandardCharsets.UTF_8*/);
                     log("RCV incomplete <- {" + rawEvent + "}");
                 }
 
@@ -291,6 +370,7 @@ final class NativeDaemonConnector implements Runnable, Handler.Callback, Watchdo
             throws NativeDaemonConnectorException {
         final NativeDaemonEvent[] events = executeForList(cmd, args);
         if (events.length != 1) {
+            if(!"volume".equals(cmd))
             throw new NativeDaemonConnectorException(
                     "Expected exactly one response, but received " + events.length);
         }

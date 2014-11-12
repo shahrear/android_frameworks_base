@@ -154,6 +154,7 @@
     <string name="shutdown_confirm" product="tablet" msgid="3385745179555731470">"您的平板電腦將會關機。"</string>
     <string name="shutdown_confirm" product="default" msgid="649792175242821353">"手機即將關機。"</string>
     <string name="shutdown_confirm_question" msgid="2906544768881136183">"您要關機嗎？"</string>
+    <string name="shutdown_confirm_question_chiptemp_hot">"CPU溫度過高,您要關機嗎？"</string>
     <string name="reboot_safemode_title" msgid="7054509914500140361">"重新啟動進入安全模式"</string>
     <string name="reboot_safemode_confirm" msgid="55293944502784668">"您要重新啟動進入安全模式嗎？這會將您安裝的所有第三方應用程式全部停用。如要還原這些應用程式，只要再次重新啟動即可。"</string>
     <string name="recent_tasks_title" msgid="3691764623638127888">"最新的"</string>
@@ -1257,6 +1258,7 @@
     <string name="dlg_confirm_kill_storage_users_text" msgid="5100428757107469454">"如果您開啟 USB 儲存裝置，則某些正在使用中的應用程式會停止運作，而且可能無法使用，直到關閉 USB 儲存裝置後才會恢復正常。"</string>
     <string name="dlg_error_title" msgid="7323658469626514207">"USB 操作失敗"</string>
     <string name="dlg_ok" msgid="7376953167039865701">"確定"</string>
+    <string name="p2p_connected">P2P已經連接上,如果需要連接AP,請先斷開P2P連接.</string>
     <string name="usb_mtp_notification_title" msgid="3699913097391550394">"已視為媒體裝置連線"</string>
     <string name="usb_ptp_notification_title" msgid="1960817192216064833">"已視為相機連線"</string>
     <string name="usb_cd_installer_notification_title" msgid="6774712827892090754">"已視為安裝程式連線"</string>

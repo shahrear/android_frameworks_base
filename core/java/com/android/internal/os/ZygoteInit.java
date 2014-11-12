@@ -193,10 +193,17 @@ public class ZygoteInit {
         try {
             if (sServerSocket != null) {
                 sServerSocket.close();
+                /*
+                FileDescriptor fd = sServerSocket.getFileDescriptor();
+                if (fd != null) {
+                    Libcore.os.close(fd);
+                }*/
             }
         } catch (IOException ex) {
             Log.e(TAG, "Zygote:  error closing sockets", ex);
-        }
+        }/* catch (libcore.io.ErrnoException ex) {
+            Log.e(TAG, "Zygote:  error closing descriptor", ex);
+        }*/
 
         sServerSocket = null;
     }

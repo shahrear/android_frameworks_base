@@ -251,15 +251,19 @@ public class KeyguardHostView extends KeyguardViewBase {
         return false;
     }
 
-    private KeyguardUpdateMonitorCallback mUpdateMonitorCallbacks =
-            new KeyguardUpdateMonitorCallback() {
+    private KeyguardUpdateMonitorCallback mBootcompletedCallBack = new KeyguardUpdateMonitorCallback() {
         @Override
         public void onBootCompleted() {
             if (mPostBootCompletedRunnable != null) {
                 mPostBootCompletedRunnable.run();
+                KeyguardUpdateMonitor.getInstance(mContext).removeCallback(mBootcompletedCallBack);
                 mPostBootCompletedRunnable = null;
             }
         }
+    };
+
+    private KeyguardUpdateMonitorCallback mUpdateMonitorCallbacks =
+            new KeyguardUpdateMonitorCallback() {
         @Override
         public void onUserSwitchComplete(int userId) {
             if (mKeyguardMultiUserSelectorView != null) {
@@ -393,6 +397,8 @@ public class KeyguardHostView extends KeyguardViewBase {
                     updateAndAddWidgets();
                 }
             };
+
+            KeyguardUpdateMonitor.getInstance(mContext).registerCallback(mBootcompletedCallBack);
         }
 
         showPrimarySecurityScreen(false);

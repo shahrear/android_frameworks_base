@@ -24,10 +24,16 @@ import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
+import android.content.ContentResolver;
+import android.content.ContentValues;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.net.Uri;
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
+import android.database.sqlite.SQLiteOpenHelper;
+import android.database.SQLException;
 import android.os.Binder;
 import android.os.Bundle;
 import android.os.Handler;
@@ -47,15 +53,22 @@ import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.TimeZone;
+import java.io.FileInputStream;
+import java.io.InputStreamReader;
+import java.io.BufferedReader;
+import android.util.Log;
+import android.app.ActivityManager;
 
 import static android.app.AlarmManager.RTC_WAKEUP;
 import static android.app.AlarmManager.RTC;
@@ -86,12 +99,15 @@ class AlarmManagerService extends IAlarmManager.Stub {
     private static final boolean DEBUG_VALIDATE = localLOGV || false;
     private static final int ALARM_EVENT = 1;
     private static final String TIMEZONE_PROPERTY = "persist.sys.timezone";
-    
+    private final ArrayList<AppBlacklistItem> mAppBlacklist = new ArrayList<AppBlacklistItem>();
+    private final ArrayList<String> mAppWhitelist = new ArrayList<String>();
+
     private static final Intent mBackgroundIntent
             = new Intent().addFlags(Intent.FLAG_FROM_BACKGROUND);
     private static final IncreasingTimeOrder sIncreasingTimeOrder = new IncreasingTimeOrder();
     
     private static final boolean WAKEUP_STATS = false;
+    private static boolean mIsMboxMode = false;
 
     private final Context mContext;
 
@@ -112,7 +128,7 @@ class AlarmManagerService extends IAlarmManager.Stub {
     private final ResultReceiver mResultReceiver = new ResultReceiver();
     private final PendingIntent mTimeTickSender;
     private final PendingIntent mDateChangeSender;
-
+    
     class WakeupEvent {
         public long when;
         public int uid;
@@ -498,6 +514,46 @@ class AlarmManagerService extends IAlarmManager.Stub {
         } else {
             Slog.w(TAG, "Failed to open alarm driver. Falling back to a handler.");
         }
+
+        String isMboxMode = SystemProperties.get("ro.platform.has.mbxuimode", "false");
+        if(isMboxMode.equals("true")){
+            mIsMboxMode = true;
+        }
+   
+        if(mIsMboxMode){
+            try{
+               BufferedReader br = new BufferedReader(new InputStreamReader(
+                    new FileInputStream("/system/etc/alarm_whitelist.txt")));
+
+                String line ="";
+                while ((line = br.readLine()) != null){
+                    if (localLOGV)  Log.d(TAG, "white alarm" +line);
+                    mAppWhitelist.add(line);
+                }
+
+                br.close();
+            }catch(java.io.FileNotFoundException ex){
+            }catch(java.io.IOException ex){
+            }
+        }else{
+            try{
+               BufferedReader br = new BufferedReader(new InputStreamReader(
+                    new FileInputStream("/system/etc/alarm_blacklist.txt")));
+
+                String line ="";
+                AppBlacklistItem backitem= null;
+                while ((line = br.readLine()) != null){
+                    if (localLOGV) Log.d(TAG, "black alarm" +line);
+                    String nametype[] = line.split(":");
+                    backitem = new AppBlacklistItem(nametype[0], nametype[1]);
+                    mAppBlacklist.add(backitem);
+                }
+
+                br.close();
+            }catch(java.io.FileNotFoundException ex){
+            }catch(java.io.IOException ex){
+            } 
+        }
     }
     
     protected void finalize() throws Throwable {
@@ -569,11 +625,51 @@ class AlarmManagerService extends IAlarmManager.Stub {
                     interval, operation, isStandalone, true, workSource);
         }
     }
-
+    
     private void setImplLocked(int type, long when, long whenElapsed, long windowLength,
             long maxWhen, long interval, PendingIntent operation, boolean isStandalone,
             boolean doValidate, WorkSource workSource) {
-        Alarm a = new Alarm(type, when, whenElapsed, windowLength, maxWhen, interval,
+        int newType = type;
+        String targetPackage = null;
+        targetPackage = operation.getTargetPackage();
+        if( type == AlarmManager.RTC_WAKEUP||type == AlarmManager.ELAPSED_REALTIME_WAKEUP){
+            if(targetPackage != null){
+                if(mIsMboxMode){
+                    boolean isInWhitelist = false;
+                    Iterator<String> it = mAppWhitelist.iterator();
+                    while (it.hasNext()) {
+                        String whitelisItem = it.next();
+                        if (whitelisItem.equals(targetPackage)) {
+                            Log.d(TAG, targetPackage + " in whitelist");
+                            isInWhitelist = true;
+                            break;    
+                        }
+                    }
+                    if(!isInWhitelist){
+                        if( AlarmManager.RTC_WAKEUP== type ) newType = AlarmManager.RTC;
+                        if( AlarmManager.ELAPSED_REALTIME_WAKEUP== type ) newType = AlarmManager.ELAPSED_REALTIME;
+                    }
+                }else{
+                    Iterator<AppBlacklistItem> it = mAppBlacklist.iterator();
+                    while (it.hasNext()) {
+                        AppBlacklistItem blacklisItem = it.next();
+                        if (blacklisItem.name.equals(targetPackage)) {
+                            Log.d(TAG, targetPackage + " in blacklist, type is "+blacklisItem.type );
+                            if(blacklisItem.type == AppBlacklistItem.REMOVE){
+                                return;
+                            }else{
+                                if( AlarmManager.RTC_WAKEUP== type ) newType = AlarmManager.RTC;
+                                if( AlarmManager.ELAPSED_REALTIME_WAKEUP== type ) newType = AlarmManager.ELAPSED_REALTIME;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+            }
+        }
+        
+        Alarm a = new Alarm(newType, when, whenElapsed, windowLength, maxWhen, interval,
                 operation, workSource);
         removeLocked(operation);
 
@@ -977,6 +1073,16 @@ class AlarmManagerService extends IAlarmManager.Stub {
                 }
                 pw.println();
             }
+
+            if(mIsMboxMode){
+                pw.println();
+                pw.println("  App Alarm Whitelist:");
+                dumpWhiteList(pw);  
+            }else{
+                pw.println();
+                pw.println("  App Alarm Blacklist:");
+                dumpBlackList(pw); 
+            }
         }
     }
 
@@ -1011,6 +1117,27 @@ class AlarmManagerService extends IAlarmManager.Stub {
             pw.print(prefix); pw.print(label); pw.print(" #"); pw.print(i);
                     pw.print(": "); pw.println(a);
             a.dump(pw, prefix + "  ", now);
+        }
+    }
+
+    private  final void dumpBlackList(PrintWriter pw) {
+        for (int i=mAppBlacklist.size()-1; i>=0; i--) {
+            AppBlacklistItem a = mAppBlacklist.get(i);
+            pw.print(" #");
+            pw.print(i);
+            pw.print(": ");
+            a.dump(pw);
+        }
+    }
+
+    private  final void dumpWhiteList(PrintWriter pw) {
+        for (int i=mAppWhitelist.size()-1; i >= 0; i--) {
+            String a = mAppWhitelist.get(i);
+            pw.print(" #");
+            pw.print(i);
+            pw.print(": ");
+            pw.print(" name=");
+            pw.println(a);
         }
     }
 
@@ -1075,6 +1202,50 @@ class AlarmManagerService extends IAlarmManager.Stub {
                 return -1;
             }
             return 0;
+        }
+    }
+
+    private static class AppBlacklistItem{
+        public int type;
+        public String name;
+
+        public static final int REPlACE = 0;     //replace with non-wakeup alarm
+        public static final int REMOVE = 1;     //remove this alarm
+
+        public AppBlacklistItem(){
+            type = REMOVE;
+            name = null;
+        }
+
+        public AppBlacklistItem(String inName, String inType){
+            name = inName;
+            if("remove".equals(inType))
+                type = REMOVE;
+            else
+                type = REPlACE;
+        }
+
+        @Override
+        public String toString()
+        {
+            StringBuilder sb = new StringBuilder(128);
+            sb.append("AppBlacklistItem{");
+            sb.append(Integer.toHexString(System.identityHashCode(this)));
+            sb.append(" type ");
+            sb.append(type);
+            sb.append(" ");
+            sb.append(name);
+            sb.append('}');
+            return sb.toString();
+        }
+
+        public void dump(PrintWriter pw) {
+            pw.print(" type=");
+            if(REPlACE == type)
+                pw.print(" REPLACE");
+            else
+                pw.print(" REMOVE");
+            pw.print(" name="); pw.println(name);
         }
     }
     
@@ -1159,7 +1330,6 @@ class AlarmManagerService extends IAlarmManager.Stub {
             while (true)
             {
                 int result = waitForAlarm(mDescriptor);
-
                 triggerList.clear();
 
                 if ((result & TIME_CHANGED_MASK) != 0) {

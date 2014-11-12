@@ -1789,12 +1789,18 @@ final class Settings {
             mReadMessages.append("Error reading: " + e.toString());
             PackageManagerService.reportSettingsProblem(Log.ERROR, "Error reading settings: " + e);
             Log.wtf(PackageManagerService.TAG, "Error reading package manager settings", e);
-
+            mSettingsFilename.delete();
         } catch (java.io.IOException e) {
             mReadMessages.append("Error reading: " + e.toString());
             PackageManagerService.reportSettingsProblem(Log.ERROR, "Error reading settings: " + e);
             Log.wtf(PackageManagerService.TAG, "Error reading package manager settings", e);
-        }
+            mSettingsFilename.delete();
+        } catch (ArrayIndexOutOfBoundsException e) {
+            mReadMessages.append("Error reading: " + e.toString());
+            PackageManagerService.reportSettingsProblem(Log.ERROR, "Error reading settings: " + e);
+            Log.wtf(PackageManagerService.TAG, "ArrayIndexOutOfBoundsException, Error reading package manager settings", e);
+	    mSettingsFilename.delete();
+	}
 
         final int N = mPendingPackages.size();
         for (int i = 0; i < N; i++) {

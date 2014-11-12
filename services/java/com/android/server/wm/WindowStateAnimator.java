@@ -678,7 +678,8 @@ class WindowStateAnimator {
                 final boolean isHwAccelerated = (attrs.flags &
                         WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED) != 0;
                 final int format = isHwAccelerated ? PixelFormat.TRANSLUCENT : attrs.format;
-                if (!PixelFormat.formatHasAlpha(attrs.format)) {
+                final boolean isNeedOpaque = attrs.getTitle().toString().contains("xbmc.Main") ? false : true;
+                if (!PixelFormat.formatHasAlpha(attrs.format) && isNeedOpaque) {
                     flags |= SurfaceControl.OPAQUE;
                 }
                 if (DEBUG_SURFACE_TRACE) {
@@ -686,6 +687,17 @@ class WindowStateAnimator {
                             mSession.mSurfaceSession,
                             attrs.getTitle().toString(),
                             w, h, format, flags);
+                } else if (attrs.format == PixelFormat.VIDEO_HOLE) {
+                    mSurfaceControl = new SurfaceControl(
+                            mSession.mSurfaceSession,
+                            attrs.getTitle().toString(),
+                            w, h, PixelFormat.RGBA_8888, flags|SurfaceControl.OPAQUE);
+                    
+                } else if (attrs.format == PixelFormat.VIDEO_HOLE_REAL) {
+                    mSurfaceControl = new SurfaceControl(
+                        mSession.mSurfaceSession,
+                        attrs.getTitle().toString(),
+			            w, h, PixelFormat.RGBA_8888, flags|SurfaceControl.VIDEOHOLE);
                 } else {
                     mSurfaceControl = new SurfaceControl(
                         mSession.mSurfaceSession,

@@ -43,6 +43,9 @@ public class MasterClearReceiver extends BroadcastReceiver {
             @Override
             public void run() {
                 try {
+                    boolean value = intent.getBooleanExtra("wipe_media", false);
+                    RecoverySystem.isNeedWipeMedia = value;  
+                    Slog.d(TAG, "setWipeMediaEnable:"+value);
                     RecoverySystem.rebootWipeUserData(context);
                     Log.wtf(TAG, "Still running after master clear?!");
                 } catch (IOException e) {

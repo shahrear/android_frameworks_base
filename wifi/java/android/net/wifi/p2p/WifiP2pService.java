@@ -1103,7 +1103,7 @@ public class WifiP2pService extends IWifiP2pManager.Stub {
         @Override
         public void enter() {
             if (DBG) logd(getName());
-            mSavedPeerConfig.invalidate();
+            //mSavedPeerConfig.invalidate();
         }
 
         @Override

@@ -70,18 +70,31 @@ import android.util.EventLog;
 import android.util.Slog;
 import android.util.SparseIntArray;
 
+import android.content.ContentResolver;
+import android.provider.Settings.SettingNotFoundException;
+
 import com.android.internal.app.HeavyWeightSwitcherActivity;
 import com.android.internal.os.TransferPipe;
 import com.android.server.am.ActivityManagerService.PendingActivityLaunch;
 import com.android.server.am.ActivityStack.ActivityState;
 import com.android.server.wm.StackBox;
 import com.android.server.wm.WindowManagerService;
+import com.amlogic.view.DisplaySetting;
 
 import java.io.FileDescriptor;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
+import android.os.SystemProperties;
+import android.content.pm.PackageManager.NameNotFoundException;
+
+import android.content.res.Resources;
+import android.content.res.XmlResourceParser;
+import org.xmlpull.v1.XmlPullParserException;
 
 public final class ActivityStackSupervisor {
     static final boolean DEBUG = ActivityManagerService.DEBUG || false;
@@ -115,6 +128,8 @@ public final class ActivityStackSupervisor {
     final ActivityManagerService mService;
     final Context mContext;
     final Looper mLooper;
+    
+    final DisplaySetting mDisSetting = new DisplaySetting();
 
     final ActivityStackSupervisorHandler mHandler;
 
@@ -150,7 +165,7 @@ public final class ActivityStackSupervisor {
     private static final int STACK_STATE_HOME_IN_BACK = 2;
     private static final int STACK_STATE_HOME_TO_FRONT = 3;
     private int mStackState = STACK_STATE_HOME_IN_FRONT;
-
+    private Object FreescaleLocked = new Object();
     /** List of activities that are waiting for a new activity to become visible before completing
      * whatever operation they are supposed to do. */
     final ArrayList<ActivityRecord> mWaitingVisibleActivities = new ArrayList<ActivityRecord>();
@@ -1083,6 +1098,7 @@ public final class ActivityStackSupervisor {
         int err = ActivityManager.START_SUCCESS;
 
         ProcessRecord callerApp = null;
+        PackageManager mPm = mContext.getPackageManager();
         if (caller != null) {
             callerApp = mService.getRecordForAppLocked(caller);
             if (callerApp != null) {
@@ -1148,6 +1164,18 @@ public final class ActivityStackSupervisor {
             err = ActivityManager.START_CLASS_NOT_FOUND;
         }
 
+        ResolveInfo info = mPm.resolveActivity(intent, PackageManager.GET_DISABLED_COMPONENTS);
+        //ResolveInfo info = mPm.resolveActivity(intent, PackageManager.GET_DISABLED_COMPONENTS|PackageManager.GET_INTENT_FILTERS);
+        String packageName = (info != null) ? info.activityInfo.applicationInfo.packageName : null;
+        String className = (info != null) ? info.activityInfo.name : null;
+        Slog.i(TAG, "start package name is " + packageName
+                + ", class name is " + className
+                + ", error code is " + err);
+
+        boolean setClassName = false;
+        final ContentResolver resolver = mContext.getContentResolver();
+
+
         if (err != ActivityManager.START_SUCCESS) {
             if (resultRecord != null) {
                 resultStack.sendActivityResultLocked(-1,
@@ -1158,7 +1186,30 @@ public final class ActivityStackSupervisor {
             ActivityOptions.abort(options);
             return err;
         }
-
+        else 
+        {
+            if(SystemProperties.getBoolean("media.p2pplay.enable", false)){
+                Runnable runnable = new Runnable() {
+                    public void run(){
+                        synchronized(FreescaleLocked){
+                            Slog.d(TAG, "--------------------disableFreeScaleMBX runnable"); 
+                            mDisSetting.setDisplaySize(GetDisplayMode());
+                        }
+                    }
+                };
+                if(!readXml(mContext , com.android.internal.R.xml.whitepackagefilter , 
+                            className , packageName)){
+                   if(readXml(mContext , com.android.internal.R.xml.blackpackagefilter ,
+                              className , packageName)){
+                        Thread DisableFreeScaleThread = new Thread(runnable); 
+                        DisableFreeScaleThread.start();
+                    }
+                    else{
+                        setClassName = true;
+                    }
+                }
+            }
+        }
         final int startAnyPerm = mService.checkPermission(
                 START_ANY_ACTIVITY, callingPid, callingUid);
         final int componentPerm = mService.checkComponentPermission(aInfo.permission, callingPid,
@@ -1255,7 +1306,128 @@ public final class ActivityStackSupervisor {
             // probably want to see whatever is behind it.
             dismissKeyguard();
         }
+
+        if(SystemProperties.getBoolean("media.p2pplay.enable", false)){
+            if(setClassName) {
+                try {
+                    Runnable runnable = new Runnable() {
+                        public void run() {
+                            synchronized(FreescaleLocked){
+                                Slog.d(TAG, "--------------------enableFreeScaleMBX runable");
+                                mDisSetting.setDisplaySize(mDisSetting.REQUEST_DISPLAY_FORMAT_720I);
+                            }  
+                        }
+                    };   
+                    Thread EnableFreeScaleThread = new Thread(runnable); 
+                    EnableFreeScaleThread.start();                   
+                }
+                catch(Exception err_null) {
+                    Slog.i(TAG, "Settings.Secure.putString get NullPointerException ERROR!!!");
+                }
+            }
+        }
         return err;
+    }
+    final int GetDisplayMode()
+    {
+        String DisplayMode = SystemProperties.get("ubootenv.var.outputmode");
+        if(DisplayMode.contains("1080p")||DisplayMode.contains("1080P")){
+        	  return mDisSetting.REQUEST_DISPLAY_FORMAT_1080P;
+        }
+        else if(DisplayMode.contains("1080i")||DisplayMode.contains("1080I")){
+        	  return mDisSetting.REQUEST_DISPLAY_FORMAT_1080I;
+        }
+        else if(DisplayMode.contains("720p")||DisplayMode.contains("720P")){
+        	  return mDisSetting.REQUEST_DISPLAY_FORMAT_720P;
+        }        
+        else if(DisplayMode.contains("576p")||DisplayMode.contains("576P")){
+        	  return mDisSetting.REQUEST_DISPLAY_FORMAT_576P;
+        }
+        else if(DisplayMode.contains("576i")||DisplayMode.contains("576I")||DisplayMode.contains("576cvbs")){
+        	  return mDisSetting.REQUEST_DISPLAY_FORMAT_576I;
+        }
+        else if(DisplayMode.contains("480p")||DisplayMode.contains("480P")){
+        	  return mDisSetting.REQUEST_DISPLAY_FORMAT_480P;
+        }
+        else if(DisplayMode.contains("480i")||DisplayMode.contains("480I")||DisplayMode.contains("480cvbs")){
+        	  return mDisSetting.REQUEST_DISPLAY_FORMAT_480I;
+        }
+        return mDisSetting.REQUEST_DISPLAY_FORMAT_720P;
+    }
+    
+
+    final boolean readXml(Context mContext , int file , String classname , String packagename){
+        Resources r = mContext.getResources();
+        XmlResourceParser xrp = r.getXml(file);
+        HashMap<String,List<String>> map = new HashMap<String,List<String>>();
+        List<String> listclass = new ArrayList<String>();
+        map.clear();
+        String XmlPackageName = null;
+        String XmlClassName = null;
+        boolean backValue = false;
+        try {
+            while(xrp.getEventType() != XmlResourceParser.END_DOCUMENT){
+                if(xrp.getEventType() == XmlResourceParser.START_TAG){ 
+                    String name = xrp.getName();
+                    if(name.equals("FilterActivity")){
+                        int count = xrp.getAttributeCount();
+                        //Log.d(TAG , "count is : "+count);
+                        if(count == 1){
+                            XmlPackageName = xrp.getAttributeValue(0);
+                        }
+                    }
+                    else if(name.equals("Class")){
+                        int next = xrp.getAttributeCount();
+                        //Log.d(TAG , "next is : "+next);
+                        if(next == 1){
+                            XmlClassName = xrp.getAttributeValue(0);
+                            //Log.d(TAG , "class name is--->"+XmlClassName);
+                            listclass.add(XmlClassName);
+                        }
+                    }
+                }
+                else if(xrp.getEventType() == XmlResourceParser.END_TAG){
+                    //Log.d(TAG , xrp.getName()+"--------end");
+                    if(xrp.getName().equals("FilterActivity")){
+                        if(XmlPackageName != null)
+                            map.put(XmlPackageName , listclass);
+                        listclass = new ArrayList<String>();
+                        XmlPackageName = null;
+                    }
+                }
+                xrp.next();
+            }
+        } 
+        catch (XmlPullParserException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        } 
+        catch (IOException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+        if(map.size() > 0){
+            Iterator iter = map.entrySet().iterator();
+            while (iter.hasNext()) {
+                Map.Entry entry = (Map.Entry)iter.next();
+                String key = (String)entry.getKey();
+                List<String> val = (List<String>)entry.getValue();
+                if(val.size() > 0){
+                    for(String typeclass : val){
+                        //Log.d(TAG , "typeclass is : "+typeclass);
+                        if(key.equals(packagename) && typeclass.equals(classname))
+                        return true;
+                    }
+                }
+                else{
+                    if(key.equals(packagename))
+                        return true;
+                }
+            }
+        }
+        else
+            Slog.w(TAG , "map not have packagename");
+        return backValue;
     }
 
     ActivityStack adjustStackFocus(ActivityRecord r) {

@@ -63,6 +63,8 @@ public class WifiMonitor {
     private static final int ASSOC_REJECT = 9;
     private static final int UNKNOWN      = 10;
 
+    private static final int CONN_FAIL    = 99;
+
     /** All events coming from the supplicant start with this prefix */
     private static final String EVENT_PREFIX_STR = "CTRL-EVENT-";
     private static final int EVENT_PREFIX_LEN_STR = EVENT_PREFIX_STR.length();
@@ -161,6 +163,8 @@ public class WifiMonitor {
      * This indicates an assoc reject event
      */
     private static final String ASSOC_REJECT_STR = "ASSOC-REJECT";
+
+    private static final String CONNECTION_FAIL = "CONNECTION-FAIL-DUO-TO-P2P";
 
     /**
      * Regex pattern for extracting an Ethernet-style MAC address from a string.
@@ -337,6 +341,8 @@ public class WifiMonitor {
 
     /* Indicates assoc reject event */
     public static final int ASSOCIATION_REJECTION_EVENT          = BASE + 43;
+    public static final int CONNECTION_FAIL_DUO_TO_P2P           = BASE + 99;
+
     /**
      * This indicates the supplicant connection for the monitor is closed
      */
@@ -380,6 +386,11 @@ public class WifiMonitor {
     }
 
     public void killSupplicant(boolean p2pSupported) {
+        if(mMonitoring){
+            Log.d(TAG, "killSupplicant interface name:" + mInterfaceName + 
+                " is monitoring, need first close supplicant connection");
+            mWifiNative.closeSupplicantConnection();
+        }
         WifiMonitorSingleton.getMonitor().killSupplicant(p2pSupported);
     }
 
@@ -433,7 +444,7 @@ public class WifiMonitor {
                         } catch (InterruptedException ignore) {
                         }
                     } else {
-                        mIfaceMap.remove(iface);
+                        //mIfaceMap.remove(iface);
                         m.mWifiStateMachine.sendMessage(SUP_DISCONNECTION_EVENT);
                         Log.e(TAG, "startMonitoring(" + iface + ") failed!");
                         break;
@@ -624,6 +635,8 @@ public class WifiMonitor {
                 event = EAP_FAILURE;
             else if (eventName.equals(ASSOC_REJECT_STR))
                 event = ASSOC_REJECT;
+            else if (eventName.equals(CONNECTION_FAIL))
+                event = CONN_FAIL;
             else
                 event = UNKNOWN;
 
@@ -670,6 +683,8 @@ public class WifiMonitor {
                 }
             } else if (event == ASSOC_REJECT) {
                 mStateMachine.sendMessage(ASSOCIATION_REJECTION_EVENT);
+            } else if (event == CONN_FAIL) {
+                mStateMachine.sendMessage(CONNECTION_FAIL_DUO_TO_P2P);
             } else {
                 handleEvent(event, eventData);
             }

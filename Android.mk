@@ -59,6 +59,8 @@ LOCAL_SRC_FILES += \
 	core/java/android/accounts/IAccountManagerResponse.aidl \
 	core/java/android/accounts/IAccountAuthenticator.aidl \
 	core/java/android/accounts/IAccountAuthenticatorResponse.aidl \
+	core/java/android/app/ISystemWriteService.aidl \
+	core/java/android/app/IMboxOutputModeService.aidl \
 	core/java/android/app/IActivityController.aidl \
 	core/java/android/app/IActivityPendingResult.aidl \
 	core/java/android/app/IAlarmManager.aidl \
@@ -130,6 +132,7 @@ LOCAL_SRC_FILES += \
 	core/java/android/hardware/display/IDisplayManagerCallback.aidl \
 	core/java/android/hardware/input/IInputManager.aidl \
 	core/java/android/hardware/input/IInputDevicesChangedListener.aidl \
+        core/java/android/hardware/input/ITvKeyEventListener.aidl \
 	core/java/android/hardware/location/IFusedLocationHardware.aidl \
 	core/java/android/hardware/location/IFusedLocationHardwareSink.aidl \
 	core/java/android/hardware/location/IGeofenceHardware.aidl \
@@ -272,6 +275,11 @@ LOCAL_SRC_FILES += \
 	packages/services/PacProcessor/com/android/net/IProxyService.aidl \
 	packages/services/Proxy/com/android/net/IProxyCallback.aidl \
 	packages/services/Proxy/com/android/net/IProxyPortListener.aidl \
+	ethernet/java/android/net/ethernet/IEthernetManager.aidl \
+	pppoe/java/android/net/pppoe/IPppoeManager.aidl \
+        core/java/android/app/IOverlayView.aidl \
+  	../../packages/amlogic/SubTitle/src/com/amlogic/SubTitleService/ISubTitleService.aidl
+
 
 # FRAMEWORKS_BASE_JAVA_SRC_DIRS comes from build/core/pathmap.mk
 LOCAL_AIDL_INCLUDES += $(FRAMEWORKS_BASE_JAVA_SRC_DIRS)
@@ -335,6 +343,8 @@ framework2_module := $(LOCAL_INSTALLED_MODULE)
 # ============================================================
 $(framework_module): | $(dir $(framework_module))framework-res.apk
 $(framework_module): | $(dir $(framework_module))framework2.jar
+
+framework_built := $(call java-lib-deps,framework)
 
 framework_built := $(call java-lib-deps,framework framework2)
 
@@ -884,7 +894,7 @@ include $(CLEAR_VARS)
 
 LOCAL_SRC_FILES:=$(framework_docs_LOCAL_SRC_FILES)
 LOCAL_INTERMEDIATE_SOURCES:=$(framework_docs_LOCAL_INTERMEDIATE_SOURCES)
-LOCAL_JAVA_LIBRARIES:=$(framework_docs_LOCAL_JAVA_LIBRARIES)
+LOCAL_JAVA_LIBRARIES:=$(framework_docs_LOCAL_JAVA_LIBRARIES) framework
 LOCAL_MODULE_CLASS:=$(framework_docs_LOCAL_MODULE_CLASS)
 LOCAL_DROIDDOC_SOURCE_PATH:=$(framework_docs_LOCAL_DROIDDOC_SOURCE_PATH)
 LOCAL_DROIDDOC_HTML_DIR:=$(framework_docs_LOCAL_DROIDDOC_HTML_DIR)

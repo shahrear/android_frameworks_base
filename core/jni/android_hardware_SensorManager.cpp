@@ -18,6 +18,7 @@
 
 #include <utils/Log.h>
 #include <utils/Looper.h>
+#include "cutils/properties.h"
 
 #include <gui/Sensor.h>
 #include <gui/SensorManager.h>
@@ -78,6 +79,12 @@ nativeClassInit (JNIEnv *_env, jclass _this)
 static jint
 nativeGetNextSensor(JNIEnv *env, jclass clazz, jobject sensor, jint next)
 {
+    char buf[PROPERTY_VALUE_MAX];
+    property_get("config.disable_vibrator", buf, "false");
+    if(strcmp(buf, "true")==0) {
+        return -1;
+    }
+
     SensorManager& mgr(SensorManager::getInstance());
 
     Sensor const* const* sensorList;
@@ -103,6 +110,7 @@ nativeGetNextSensor(JNIEnv *env, jclass clazz, jobject sensor, jint next)
     env->SetIntField(sensor, sensorOffsets.fifoMaxEventCount, list->getFifoMaxEventCount());
     next++;
     return size_t(next) < count ? next : 0;
+
 }
 
 //----------------------------------------------------------------------------

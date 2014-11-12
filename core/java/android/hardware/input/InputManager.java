@@ -644,6 +644,17 @@ public final class InputManager {
         }
     }
 
+   //for tv_begin
+   public void injectTvKeyEventListener(final ITvKeyEventListener listener){
+   	try {
+   		mIm.registerTvKeyEventListener(listener);
+   		} catch (RemoteException ex) {
+   			throw new RuntimeException(
+   			"Could not register tv keyevent listener", ex);
+   			}
+   	}
+   //for tv_end
+
     private void populateInputDevicesLocked() {
         if (mInputDevicesChangedListener == null) {
             final InputDevicesChangedListener listener = new InputDevicesChangedListener();

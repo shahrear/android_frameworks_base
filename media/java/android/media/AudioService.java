@@ -49,6 +49,8 @@ import android.database.ContentObserver;
 import android.media.MediaPlayer.OnCompletionListener;
 import android.media.MediaPlayer.OnErrorListener;
 import android.net.Uri;
+import android.net.http.CertificateChainValidator;
+import android.net.http.SslError;
 import android.os.Binder;
 import android.os.Build;
 import android.os.Bundle;
@@ -74,6 +76,7 @@ import android.util.Log;
 import android.view.KeyEvent;
 import android.view.Surface;
 import android.view.VolumePanel;
+import java.io.*;
 import android.view.WindowManager;
 
 import com.android.internal.telephony.ITelephony;
@@ -81,10 +84,12 @@ import com.android.internal.util.XmlUtils;
 
 import org.xmlpull.v1.XmlPullParserException;
 
+import java.io.ByteArrayInputStream;
 import java.io.FileDescriptor;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.lang.reflect.Field;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.HashMap;
@@ -116,6 +121,8 @@ public class AudioService extends IAudioService.Stub {
     protected static final boolean DEBUG_RC = false;
     /** Debug volumes */
     protected static final boolean DEBUG_VOL = false;
+    /** Debug cert verification */
+    private static final boolean DEBUG_CERTS = false;
 
     /** How long to delay before persisting a change in volume/ringer mode. */
     private static final int PERSIST_DELAY = 500;
@@ -426,10 +433,12 @@ public class AudioService extends IAudioService.Stub {
     public final static int STREAM_REMOTE_MUSIC = -200;
 
     // Devices for which the volume is fixed and VolumePanel slider should be disabled
-    final int mFixedVolumeDevices = AudioSystem.DEVICE_OUT_AUX_DIGITAL |
+    int mFixedVolumeDevices;
+  /*  final int mFixedVolumeDevices = AudioSystem.DEVICE_OUT_AUX_DIGITAL |
             AudioSystem.DEVICE_OUT_DGTL_DOCK_HEADSET |
             AudioSystem.DEVICE_OUT_ANLG_DOCK_HEADSET |
             AudioSystem.DEVICE_OUT_ALL_USB;
+  */
 
     // TODO merge orientation and rotation
     private final boolean mMonitorOrientation;
@@ -439,6 +448,10 @@ public class AudioService extends IAudioService.Stub {
 
     private int mDockState = Intent.EXTRA_DOCK_STATE_UNDOCKED;
 
+    private boolean isDigitalFixed() {
+        String prop = SystemProperties.get("audio.policy.digital.fixed");
+        return prop != null && prop.equals("true");
+    }
     // Used when safe volume warning message display is requested by setStreamVolume(). In this
     // case, the new requested volume, stream type and device are stored in mPendingVolumeCommand
     // and used later when/if disableSafeMediaVolume() is called.
@@ -472,6 +485,16 @@ public class AudioService extends IAudioService.Stub {
         Vibrator vibrator = (Vibrator) context.getSystemService(Context.VIBRATOR_SERVICE);
         mHasVibrator = vibrator == null ? false : vibrator.hasVibrator();
 
+        if(isDigitalFixed()){
+            mFixedVolumeDevices = AudioSystem.DEVICE_OUT_AUX_DIGITAL |
+                AudioSystem.DEVICE_OUT_DGTL_DOCK_HEADSET |
+                AudioSystem.DEVICE_OUT_ANLG_DOCK_HEADSET |
+                AudioSystem.DEVICE_OUT_ALL_USB;
+        }else{
+            mFixedVolumeDevices = AudioSystem.DEVICE_OUT_DGTL_DOCK_HEADSET |
+                AudioSystem.DEVICE_OUT_ANLG_DOCK_HEADSET |
+                AudioSystem.DEVICE_OUT_ALL_USB;
+        }
        // Intialized volume
         MAX_STREAM_VOLUME[AudioSystem.STREAM_VOICE_CALL] = SystemProperties.getInt(
             "ro.config.vc_call_vol_steps",
@@ -2668,7 +2691,7 @@ public class AudioService extends IAudioService.Stub {
                     } else {
                         if (DEBUG_VOL)
                             Log.v(TAG, "getActiveStreamType: Forcing STREAM_RING b/c default");
-                        return AudioSystem.STREAM_RING;
+                        return AudioSystem.STREAM_MUSIC;
                 }
             } else if (isAfMusicActiveRecently(0)) {
                 if (DEBUG_VOL)
@@ -2783,18 +2806,24 @@ public class AudioService extends IAudioService.Stub {
             //  - one A2DP device + another device: happens with duplicated output. In this case
             // retain the device on the A2DP output as the other must not correspond to an active
             // selection if not the speaker.
-            if ((device & AudioSystem.DEVICE_OUT_SPEAKER) != 0) {
+            if (((device & AudioSystem.DEVICE_OUT_SPEAKER) != 0)||(device & AudioSystem.DEVICE_OUT_WIRED_HEADSET) != 0) {
                 device = AudioSystem.DEVICE_OUT_SPEAKER;
             } else {
                 device &= AudioSystem.DEVICE_OUT_ALL_A2DP;
             }
         }
+		if(SystemProperties.getBoolean("sys.audio.headsetConmbine", false)){//wxl
+			if(device==AudioSystem.DEVICE_OUT_WIRED_HEADSET) {
+				device = AudioSystem.DEVICE_OUT_SPEAKER;
+			}
+		}
         return device;
     }
 
     public void setWiredDeviceConnectionState(int device, int state, String name) {
         synchronized (mConnectedDevices) {
             int delay = checkSendBecomingNoisyIntent(device, state);
+            Log.d(TAG,"wired device connection device "+device+" state "+state+" delay "+delay);
             queueMsgUnderWakeLock(mAudioHandler,
                     MSG_SET_WIRED_DEVICE_CONNECTION_STATE,
                     device,
@@ -2919,6 +2948,14 @@ public class AudioService extends IAudioService.Stub {
             } else {
                 index = (getIndex(device) + 5)/10;
             }
+			if(SystemProperties.getBoolean("sys.audio.headsetConmbine", false)){//wxl
+				if(device==AudioSystem.DEVICE_OUT_SPEAKER) {
+					AudioSystem.setStreamVolumeIndex(mStreamType,
+	                                             index,
+	                                             AudioSystem.DEVICE_OUT_WIRED_HEADSET);
+					
+				}
+			}
             AudioSystem.setStreamVolumeIndex(mStreamType, index, device);
         }
 
@@ -3916,6 +3953,12 @@ public class AudioService extends IAudioService.Stub {
                 mAudioHandler.hasMessages(MSG_SET_WIRED_DEVICE_CONNECTION_STATE)) {
             delay = 1000;
         }
+        //when audio device h2w unplugged,if property audio.h2w.disconnect.delay is false, need 
+        //delay 1000ms,if property audio.h2w.disconnect.delay is true or not set, delay 100ms
+        boolean prop = SystemProperties.getBoolean("audio.h2w.disconnect.delay", true);
+        if(prop && (state ==0))
+            delay = 100;
+                        
         return delay;
     }
 
@@ -3977,14 +4020,15 @@ public class AudioService extends IAudioService.Stub {
         synchronized (mConnectedDevices) {
             if ((state == 0) && ((device == AudioSystem.DEVICE_OUT_WIRED_HEADSET) ||
                     (device == AudioSystem.DEVICE_OUT_WIRED_HEADPHONE))) {
-                setBluetoothA2dpOnInt(true);
+                //setBluetoothA2dpOnInt(true);
             }
             boolean isUsb = ((device & AudioSystem.DEVICE_OUT_ALL_USB) != 0);
             handleDeviceConnection((state == 1), device, (isUsb ? name : ""));
             if (state != 0) {
                 if ((device == AudioSystem.DEVICE_OUT_WIRED_HEADSET) ||
                     (device == AudioSystem.DEVICE_OUT_WIRED_HEADPHONE)) {
-                    setBluetoothA2dpOnInt(false);
+                    //TODO verify BT a2dp.  we comment this out in jb-amlogic:
+                    //setBluetoothA2dpOnInt(false);
                 }
                 if ((device & mSafeMediaVolumeDevices) != 0) {
                     sendMsg(mAudioHandler,
@@ -4009,6 +4053,50 @@ public class AudioService extends IAudioService.Stub {
      * Receiver for misc intent broadcasts the Phone app cares about.
      */
     private class AudioServiceBroadcastReceiver extends BroadcastReceiver {
+        private boolean findUSBStream(String string, int card){
+            int len = 0;
+            String USB_STREAM_PATH = "/proc/asound/card" + card + "/stream0";
+            Log.d(TAG, USB_STREAM_PATH);
+            File fileUsbAudio = new File(USB_STREAM_PATH);
+            try{
+                int i = 0, waitSec = 5;
+                while (true){
+                    try {
+                        Log.d(TAG, "********Try fileUsbAudio times = " + i);
+                        Thread.currentThread().sleep(1000);
+                    }catch(InterruptedException e){
+                        Log.e(TAG, "audio source file does not exist", e);
+                    }
+                    if(fileUsbAudio.exists()) break;                    
+                    if(i >= waitSec){
+                        Log.e(TAG, "ERROR!!, Can't get usbStream file after "+waitSec+"s!!");
+                        break;
+                    }
+                    i++;
+                }
+                FileReader fr = new FileReader(USB_STREAM_PATH);
+                char[] data = new char[1024];
+                try{
+                    len = fr.read(data);
+                }catch (IOException e1){
+                    Log.e("AudioServiceBroadcastReceiver","Not get /proc/asound/cardX/stream0");
+                }
+                String usbStream = new String(data, 0 , len);
+                len = usbStream.indexOf(string);
+                try{
+                    fr.close();
+                }catch(IOException e1){
+                    Log.e("AudioServiceBroadcastReceiver","close fileRead ERROR!!");
+                }
+                Log.d(TAG, "len::"+len);
+            }catch (FileNotFoundException e1){
+                Log.e("AudioServiceBroadcastReceiver","create FileReader failed");
+            }
+            if(len >= 0)
+                return true;
+            return false;
+        }
+	
         @Override
         public void onReceive(Context context, Intent intent) {
             String action = intent.getAction();
@@ -4089,15 +4177,52 @@ public class AudioService extends IAudioService.Stub {
                 state = intent.getIntExtra("state", 0);
                 int alsaCard = intent.getIntExtra("card", -1);
                 int alsaDevice = intent.getIntExtra("device", -1);
+                int usbid = intent.getIntExtra("usbid", -1);
+                Log.d(TAG, "****usbid****" + usbid);
                 String params = (alsaCard == -1 && alsaDevice == -1 ? ""
                                     : "card=" + alsaCard + ";device=" + alsaDevice);
                 device = action.equals(Intent.ACTION_USB_AUDIO_ACCESSORY_PLUG) ?
-                        AudioSystem.DEVICE_OUT_USB_ACCESSORY : AudioSystem.DEVICE_OUT_USB_DEVICE;
+                        AudioSystem.DEVICE_OUT_USB_ACCESSORY : 0;
                 Log.v(TAG, "Broadcast Receiver: Got "
                         + (action.equals(Intent.ACTION_USB_AUDIO_ACCESSORY_PLUG) ?
                               "ACTION_USB_AUDIO_ACCESSORY_PLUG" : "ACTION_USB_AUDIO_DEVICE_PLUG")
                         + ", state = " + state + ", card: " + alsaCard + ", device: " + alsaDevice);
                 setWiredDeviceConnectionState(device, state, params);
+                if(action.equals(Intent.ACTION_USB_AUDIO_DEVICE_PLUG)){
+                    if(state == 1){
+                        /*usbid is idVendor + idProduct,it can unique identify usb_audio dongle;
+                        0x1a1d000b is the id of usb_audio device, this dongle is nonstandard,
+                        have playback stream but speech remote control not support
+                        */
+                        if(0x1a1d000b == usbid){
+                            if(findUSBStream("Capture", alsaCard)){
+                                Log.d(TAG,"**state=1****capture***alsaCard**" + alsaCard);
+                                device = AudioSystem.DEVICE_IN_USB_DEVICE;
+                                handleDeviceConnection((state == 1), device, params);
+                            }
+                        }else{
+                        
+                            if(findUSBStream("Capture", alsaCard)){
+                                Log.d(TAG,"**state=1****capture***alsaCard**" + alsaCard);
+                                device = AudioSystem.DEVICE_IN_USB_DEVICE;
+                                handleDeviceConnection((state == 1), device, params);
+                            }
+                            if(findUSBStream("Playback", alsaCard)){
+                                Log.d(TAG,"**state=1****playback***alsaCard**" + alsaCard);
+                                device = AudioSystem.DEVICE_OUT_USB_DEVICE;
+                                handleDeviceConnection((state == 1), device, params);
+                            }
+
+                        }
+                    }else{
+                        device = AudioSystem.DEVICE_OUT_USB_DEVICE;
+                        handleDeviceConnection((state == 1), device, params);
+                        device = AudioSystem.DEVICE_IN_USB_DEVICE;
+                        handleDeviceConnection((state == 1), device, params);
+                    }
+                }else if(action.equals(Intent.ACTION_USB_AUDIO_ACCESSORY_PLUG)){
+                    handleDeviceConnection((state == 1), device, params);
+                }
             } else if (action.equals(BluetoothHeadset.ACTION_AUDIO_STATE_CHANGED)) {
                 boolean broadcast = false;
                 int scoAudioState = AudioManager.SCO_AUDIO_STATE_ERROR;
@@ -4579,6 +4704,43 @@ public class AudioService extends IAudioService.Stub {
                 mPendingVolumeCommand = null;
             }
         }
+    }
+
+    public int verifyX509CertChain(int numcerts, byte [] chain, String domain, String authType) {
+
+        if (DEBUG_CERTS) {
+            Log.v(TAG, "java side verify for "
+                    + numcerts + " certificates (" + chain.length + " bytes"
+                            + ")for "+ domain + "/" + authType);
+        }
+
+        byte[][] certChain = new byte[numcerts][];
+
+        ByteBuffer buf = ByteBuffer.wrap(chain);
+        for (int i = 0; i < numcerts; i++) {
+            int certlen = buf.getInt();
+            if (DEBUG_CERTS) {
+                Log.i(TAG, "cert " + i +": " + certlen);
+            }
+            certChain[i] = new byte[certlen];
+            buf.get(certChain[i]);
+        }
+
+        try {
+            SslError err = CertificateChainValidator.verifyServerCertificates(certChain,
+                    domain, authType);
+            if (DEBUG_CERTS) {
+                Log.i(TAG, "verified: " + err);
+            }
+            if (err == null) {
+                return -1;
+            } else {
+                return err.getPrimaryError();
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "failed to verify chain: " + e);
+        }
+        return SslError.SSL_INVALID;
     }
 
 

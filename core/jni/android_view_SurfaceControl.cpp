@@ -199,6 +199,18 @@ static jobject nativeScreenshotBitmap(JNIEnv* env, jclass clazz, jobject display
             GraphicsJNI::kBitmapCreateFlag_Premultiplied, NULL);
 }
 
+static void nativeSetVDisplaySize(JNIEnv* env, jclass clazz, jint displayid, jint format)
+{
+    SurfaceComposerClient::setVDisplaySize(displayid,format);
+}
+
+static void  nativeSetDisplay2Stereoscopic( JNIEnv* env, jclass clazz,jint displayid,jint format )
+{
+    SurfaceComposerClient::setDisplay2Stereoscopic(displayid,format);
+}
+
+
+
 static void nativeScreenshot(JNIEnv* env, jclass clazz,
         jobject displayTokenObj, jobject surfaceObj,
         jint width, jint height, jint minLayer, jint maxLayer, bool allLayers) {
@@ -420,6 +432,10 @@ static JNINativeMethod sSurfaceControlMethods[] = {
             (void*)nativeScreenshotBitmap },
     {"nativeScreenshot", "(Landroid/os/IBinder;Landroid/view/Surface;IIIIZ)V",
             (void*)nativeScreenshot },
+    {"nativeSetVDisplaySize", "(II)V",
+             (void*)nativeSetVDisplaySize },    
+    {"nativeSetDisplay2Stereoscopic", "(II)V",
+             (void*)nativeSetDisplay2Stereoscopic }, 
     {"nativeOpenTransaction", "()V",
             (void*)nativeOpenTransaction },
     {"nativeCloseTransaction", "()V",

@@ -18,6 +18,10 @@ LOCAL_SRC_FILES:= \
     com_android_server_location_GpsLocationProvider.cpp \
     com_android_server_location_FlpHardwareProvider.cpp \
     com_android_server_connectivity_Vpn.cpp \
+    com_android_server_OverlayViewService.cpp \
+    overlayview/audio_utils_ctl.cpp \
+    overlayview/mAlsa.cpp \
+    overlayview/audiodsp_ctl.cpp \
     onload.cpp
 
 LOCAL_C_INCLUDES += \
@@ -29,7 +33,14 @@ LOCAL_C_INCLUDES += \
     libcore/include \
     libcore/include/libsuspend \
 	$(call include-path-for, libhardware)/hardware \
-	$(call include-path-for, libhardware_legacy)/hardware_legacy \
+	$(call include-path-for, libhardware_legacy)/hardware_legacy 
+
+ifeq ($(strip $(BOARD_ALSA_AUDIO)),tiny)    
+    LOCAL_C_INCLUDES += external/tinyalsa/include    
+    LOCAL_CFLAGS += -DBOARD_ALSA_AUDIO_TINY   
+else
+    LOCAL_C_INCLUDES += external/alsa-lib/include
+endif		
 
 LOCAL_SHARED_LIBRARIES := \
     libandroid_runtime \
@@ -49,10 +60,17 @@ LOCAL_SHARED_LIBRARIES := \
     libgui \
     libusbhost \
     libsuspend \
+    libmedia \
     libEGL \
     libGLESv2
 
 LOCAL_CFLAGS += -DEGL_EGLEXT_PROTOTYPES -DGL_GLEXT_PROTOTYPES
+ 
+ifeq ($(strip $(BOARD_ALSA_AUDIO)),tiny)    
+    LOCAL_SHARED_LIBRARIES += libtinyalsa
+else
+    LOCAL_SHARED_LIBRARIES += libasound
+endif
 
 ifeq ($(WITH_MALLOC_LEAK_CHECK),true)
     LOCAL_CFLAGS += -DMALLOC_LEAK_CHECK

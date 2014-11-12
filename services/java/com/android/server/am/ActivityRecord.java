@@ -51,6 +51,9 @@ import java.io.PrintWriter;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.HashSet;
+//for tv_begin
+import android.os.SystemProperties;
+//for tv_end
 
 /**
  * An entry in the history stack, representing an activity.
@@ -875,6 +878,13 @@ final class ActivityRecord {
                 sb.append(")");
             }
             Log.i(ActivityManagerService.TAG, sb.toString());
+            //for tv_begin
+            if(SystemProperties.getBoolean("ro.tv.shortcutkey", false)){
+            	Intent reportLaunchTime = new Intent("com.android.activity.record.reportlaunchtime");
+            	reportLaunchTime.putExtra("report", sb.toString());
+            	service.mContext.sendBroadcast(reportLaunchTime);
+            }
+            //for tv_end
         }
         mStackSupervisor.reportActivityLaunchedLocked(false, this, thisTime, totalTime);
         if (totalTime > 0) {

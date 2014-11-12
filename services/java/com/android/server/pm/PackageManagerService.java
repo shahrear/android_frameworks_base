@@ -888,6 +888,8 @@ public class PackageManagerService extends IPackageManager.Stub {
                                 res.removedInfo.args.doPostDeleteLI(true);
                             }
                         }
+
+                        mInstallingPkg = false;
                         if (args.observer != null) {
                             try {
                                 args.observer.packageInstalled(res.name, res.returnCode);
@@ -908,13 +910,13 @@ public class PackageManagerService extends IPackageManager.Stub {
                         // Force a gc to clear up stale containers.
                         Runtime.getRuntime().gc();
                     }
-                    if (msg.obj != null) {
-                        @SuppressWarnings("unchecked")
-                        Set<AsecInstallArgs> args = (Set<AsecInstallArgs>) msg.obj;
-                        if (DEBUG_SD_INSTALL) Log.i(TAG, "Unloading all containers");
+                    //if (msg.obj != null) {
+                        //@SuppressWarnings("unchecked")
+                        //Set<AsecInstallArgs> args = (Set<AsecInstallArgs>) msg.obj;
+                        //if (DEBUG_SD_INSTALL) Log.i(TAG, "Unloading all containers");
                         // Unload containers
-                        unloadAllContainers(args);
-                    }
+                        //unloadAllContainers(args);
+                    //}
                     if (reportStatus) {
                         try {
                             if (DEBUG_SD_INSTALL) Log.i(TAG, "Invoking MountService call back");
@@ -6523,9 +6525,11 @@ public class PackageManagerService extends IPackageManager.Stub {
         mContext.enforceCallingOrSelfPermission(android.Manifest.permission.INSTALL_PACKAGES,
                 null);
 
+        mInstallingPkg = true;
         final int uid = Binder.getCallingUid();
         if (isUserRestricted(UserHandle.getUserId(uid), UserManager.DISALLOW_INSTALL_APPS)) {
             try {
+                mInstallingPkg = false;
                 observer.packageInstalled("", PackageManager.INSTALL_FAILED_USER_RESTRICTED);
             } catch (RemoteException re) {
             }
@@ -8208,6 +8212,7 @@ public class PackageManagerService extends IPackageManager.Stub {
 
     private boolean isAsecExternal(String cid) {
         final String asecPath = PackageHelper.getSdFilesystem(cid);
+        if(asecPath == null) return true;//this for eject sdcard
         return !asecPath.startsWith(mAsecInternalPath);
     }
 
@@ -8255,7 +8260,8 @@ public class PackageManagerService extends IPackageManager.Stub {
                     | (isForwardLocked ? PackageManager.INSTALL_FORWARD_LOCK : 0),
                     null, null, null);
             this.cid = cid;
-            setCachePath(PackageHelper.getSdDir(cid));
+            String path = PackageHelper.getSdDir(cid);
+            setCachePath((path==null)?("/mnt/asec/" + cid):path);
         }
 
         AsecInstallArgs(Uri packageURI, String cid, boolean isExternal, boolean isForwardLocked) {
@@ -10945,6 +10951,43 @@ public class PackageManagerService extends IPackageManager.Stub {
         updateExternalMediaStatusInner(true, false, false);
     }
 
+    private String[] getSecureAsecList(){   
+        ArrayList<PackageInfo> list;
+        
+        synchronized (mPackages) {
+            list = new ArrayList<PackageInfo>(mPackages.size());
+            for (PackageParser.Package p : mPackages.values()) {
+                PackageInfo pi = generatePackageInfo(p, 0, UserHandle.USER_OWNER);
+                if (pi != null) {
+                    list.add(pi);
+                }
+            }
+        }
+
+        ArrayList<String> externalPkgList = new ArrayList<String>();
+        if(null != list){
+            for(int i = 0; i< list.size(); i++ ){
+               String path = list.get(i).applicationInfo.sourceDir;
+               if(path != null && (path.startsWith("/mnt/asec/"))){
+                    if (DEBUG_SD_INSTALL)
+                        Log.v(TAG, "asec path: " + path);
+
+                    String str = path.substring("/mnt/asec/".length());
+                    String dir = str.substring(0, str.indexOf("/"));
+                    externalPkgList.add(dir);
+               }
+           }
+        }
+
+        if(externalPkgList.size() > 0){
+            String[] strs = new String[externalPkgList.size()];
+            return externalPkgList.toArray(strs);
+        }else{
+            Log.v(TAG, "getSecureAsecList is null ");
+            return null;
+        }
+    }
+      
     /*
      * Collect information of applications on external media, map them against
      * existing containers and update information based on current mount status.
@@ -10960,7 +11003,11 @@ public class PackageManagerService extends IPackageManager.Stub {
         // Collection of packages on external media with valid containers.
         HashMap<AsecInstallArgs, String> processCids = new HashMap<AsecInstallArgs, String>();
         // Get list of secure containers.
-        final String list[] = PackageHelper.getSecureContainerList();
+        String list[] = PackageHelper.getSecureContainerList();
+        if (list == null || list.length == 0) {
+            if(!isMounted)
+                list = getSecureAsecList();
+        }
         if (list == null || list.length == 0) {
             Log.i(TAG, "No secure containers on sdcard");
         } else {
@@ -11255,6 +11302,9 @@ public class PackageManagerService extends IPackageManager.Stub {
                     keys);
             mHandler.sendMessage(msg);
         }
+		if (DEBUG_SD_INSTALL) Log.i(TAG, "Unloading all containers");
+        // Unload containers
+        unloadAllContainers(keys);
     }
 
     /** Binder call */
@@ -11575,5 +11625,10 @@ public class PackageManagerService extends IPackageManager.Stub {
         } finally {
             Binder.restoreCallingIdentity(token);
         }
+    }
+
+    boolean mInstallingPkg = false;
+    public boolean isInstallingPackage() {
+        return mInstallingPkg;
     }
 }

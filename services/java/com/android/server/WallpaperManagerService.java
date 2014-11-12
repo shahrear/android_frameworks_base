@@ -85,6 +85,11 @@ import com.android.internal.content.PackageMonitor;
 import com.android.internal.util.FastXmlSerializer;
 import com.android.internal.util.JournaledFile;
 
+import android.os.SystemProperties;
+import android.app.ActivityManager;
+import android.app.ActivityManager.RunningServiceInfo;
+import com.android.server.am.ActivityManagerService;
+
 class WallpaperManagerService extends IWallpaperManager.Stub {
     static final String TAG = "WallpaperService";
     static final boolean DEBUG = false;
@@ -1030,9 +1035,36 @@ class WallpaperManagerService extends IWallpaperManager.Stub {
         final String base = new File(getWallpaperDir(userId), WALLPAPER_INFO).getAbsolutePath();
         return new JournaledFile(new File(base), new File(base + ".tmp"));
     }
+    
+   	private boolean is_amlogicService_Running(){
+	    String info = "";  
+        int maxNum = 40,i=0;  
+        ActivityManager activityManager = (ActivityManager) mContext.getSystemService("activity");  
+        List<ActivityManager.RunningServiceInfo> serivces = activityManager.getRunningServices(maxNum);  
+        for(RunningServiceInfo service:serivces){  
+            Slog.v(TAG,++i+", process:"+service.process);
+//            Slog.v(TAG,i+", service:"+service.service);
+            if(service.process.contains("amlogic.media.service.BackgroundMusicService")
+            	|| service.process.contains("com.amlogic.LiveWallpaper.PictureWallpaper"))
+            	return true;
+        }  
+        return false;
+	}
 
     private void saveSettingsLocked(WallpaperData wallpaper) {
         JournaledFile journal = makeJournaledFile(wallpaper.userId);
+        Slog.v(TAG,"saveSettingsLocked,userId:"+wallpaper.userId);
+        if(SystemProperties.get("ro.product.brand").equals("TV")){
+	        //not allow to modify default wallpaper
+	        Slog.v(TAG,"wallpaper.wallpaperComponent:"+wallpaper.wallpaperComponent);
+	        if (wallpaper.wallpaperComponent != null
+	                    && !wallpaper.wallpaperComponent.equals(IMAGE_WALLPAPER)) {
+	             if(is_amlogicService_Running()){
+	             	Slog.v(TAG,"saveSettingsLocked,can't allow amMusic to write wallpaper.");
+	         		return;
+	         	}
+	       }
+    	}
         FileOutputStream stream = null;
         try {
             stream = new FileOutputStream(journal.chooseForWrite(), false);
@@ -1065,6 +1097,15 @@ class WallpaperManagerService extends IWallpaperManager.Stub {
             journal.rollback();
         }
     }
+    
+    public String getWallpaperName(int userId){
+        WallpaperData wallpaper = mWallpaperMap.get(userId);
+        if (wallpaper == null) {
+        	return null;
+        }
+        		
+        return wallpaper.name;
+        }
 
     private void migrateFromOld() {
         File oldWallpaper = new File(WallpaperBackupHelper.WALLPAPER_IMAGE_KEY);
@@ -1161,10 +1202,16 @@ class WallpaperManagerService extends IWallpaperManager.Stub {
         // We always want to have some reasonable width hint.
         int baseSize = getMaximumSizeDimension();
         if (wallpaper.width < baseSize) {
-            wallpaper.width = baseSize;
+            if(mContext.getResources().getInteger(com.android.internal.R.integer.config_defaultWallPaper_width) > 0)
+                wallpaper.width = mContext.getResources().getInteger(com.android.internal.R.integer.config_defaultWallPaper_width);
+            else
+                wallpaper.width = baseSize;
         }
         if (wallpaper.height < baseSize) {
-            wallpaper.height = baseSize;
+           if(mContext.getResources().getInteger(com.android.internal.R.integer.config_defaultWallPaper_height) > 0)
+                wallpaper.height = mContext.getResources().getInteger(com.android.internal.R.integer.config_defaultWallPaper_height);
+           else
+                wallpaper.height = baseSize;
         }
     }
 

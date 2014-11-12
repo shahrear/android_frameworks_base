@@ -322,7 +322,7 @@ public final class Pm {
                         (!listSystem || isSystem) &&
                         (!listThirdParty || !isSystem)) {
                     System.out.print("package:");
-                    if (showApplicationPackage) {
+                    if (showApplicationPackage || true) {
                         System.out.print(info.applicationInfo.sourceDir);
                         System.out.print("=");
                     }

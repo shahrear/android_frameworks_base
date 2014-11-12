@@ -23,6 +23,7 @@ import static android.net.ConnectivityManager.CONNECTIVITY_ACTION_IMMEDIATE;
 import static android.net.ConnectivityManager.TYPE_BLUETOOTH;
 import static android.net.ConnectivityManager.TYPE_DUMMY;
 import static android.net.ConnectivityManager.TYPE_ETHERNET;
+import static android.net.ConnectivityManager.TYPE_PPPOE;
 import static android.net.ConnectivityManager.TYPE_MOBILE;
 import static android.net.ConnectivityManager.TYPE_WIFI;
 import static android.net.ConnectivityManager.TYPE_WIMAX;
@@ -32,6 +33,7 @@ import static android.net.NetworkPolicyManager.RULE_ALLOW_ALL;
 import static android.net.NetworkPolicyManager.RULE_REJECT_METERED;
 
 import android.app.AlarmManager;
+import android.app.AppOpsManager;
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
@@ -43,7 +45,9 @@ import android.content.Context;
 import android.content.ContextWrapper;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
+import android.content.pm.PackageManager.NameNotFoundException;
 import android.content.res.Configuration;
 import android.content.res.Resources;
 import android.database.ContentObserver;
@@ -75,6 +79,8 @@ import android.net.SamplingDataTracker;
 import android.net.Uri;
 import android.net.wifi.WifiStateTracker;
 import android.net.wimax.WimaxManagerConstants;
+import android.net.ethernet.EthernetStateTracker;
+import android.net.pppoe.PppoeStateTracker;
 import android.os.AsyncTask;
 import android.os.Binder;
 import android.os.Build;
@@ -412,6 +418,8 @@ public class ConnectivityService extends IConnectivityManager.Stub {
 
     private SettingsObserver mSettingsObserver;
 
+    private AppOpsManager mAppOpsManager;
+
     NetworkConfig[] mNetConfigs;
     int mNetworksDefined;
 
@@ -529,9 +537,12 @@ public class ConnectivityService extends IConnectivityManager.Stub {
         String[] naStrings = context.getResources().getStringArray(
                 com.android.internal.R.array.networkAttributes);
         for (String naString : naStrings) {
+					Slog.d(TAG, "*******netType="+naString);
             try {
                 NetworkConfig n = new NetworkConfig(naString);
+
                 if (VDBG) log("naString=" + naString + " config=" + n);
+
                 if (n.type > ConnectivityManager.MAX_NETWORK_TYPE) {
                     loge("Error in networkAttributes - ignoring attempt to define type " +
                             n.type);
@@ -624,9 +635,25 @@ public class ConnectivityService extends IConnectivityManager.Stub {
         for (int targetNetworkType : mPriorityList) {
             final NetworkConfig config = mNetConfigs[targetNetworkType];
             final NetworkStateTracker tracker;
+			final NetworkStateTracker pppoetracker;
             try {
                 tracker = netFactory.createTracker(targetNetworkType, config);
                 mNetTrackers[targetNetworkType] = tracker;
+                if (targetNetworkType == ConnectivityManager.TYPE_ETHERNET) {
+                    EthernetService ethernet = new EthernetService(context, (EthernetStateTracker)tracker);
+                    ServiceManager.addService(Context.ETH_SERVICE, ethernet);
+                }
+				Slog.d(TAG, "*******targetNetworkType="+targetNetworkType);
+                if (targetNetworkType == ConnectivityManager.TYPE_PPPOE) {
+					pppoetracker = netFactory.createTracker(targetNetworkType, config);
+					mNetTrackers[targetNetworkType] = pppoetracker;
+					PppoeService pppoe = new PppoeService(context, (PppoeStateTracker)pppoetracker);
+                    ServiceManager.addService(Context.PPPOE_SERVICE, pppoe);
+					pppoetracker.startMonitoring(context, mTrackerHandler);
+					if (config.isDefault()) {
+		                pppoetracker.reconnect();
+		            }
+                }	
             } catch (IllegalArgumentException e) {
                 Slog.e(TAG, "Problem creating " + getNetworkTypeName(targetNetworkType)
                         + " tracker: " + e);
@@ -637,6 +664,7 @@ public class ConnectivityService extends IConnectivityManager.Stub {
             if (config.isDefault()) {
                 tracker.reconnect();
             }
+			 
         }
 
         mTethering = new Tethering(mContext, mNetd, statsService, this, mHandler.getLooper());
@@ -695,6 +723,8 @@ public class ConnectivityService extends IConnectivityManager.Stub {
         filter = new IntentFilter();
         filter.addAction(CONNECTED_TO_PROVISIONING_NETWORK_ACTION);
         mContext.registerReceiver(mProvisioningReceiver, filter);
+
+        mAppOpsManager = (AppOpsManager) context.getSystemService(Context.APP_OPS_SERVICE);
     }
 
     /**
@@ -728,7 +758,9 @@ public class ConnectivityService extends IConnectivityManager.Stub {
                 case TYPE_WIMAX:
                     return makeWimaxStateTracker(mContext, mTrackerHandler);
                 case TYPE_ETHERNET:
-                    return EthernetDataTracker.getInstance();
+                    return new EthernetStateTracker(targetNetworkType, config.name);
+				case TYPE_PPPOE:
+					return new PppoeStateTracker(targetNetworkType, config.name);
                 default:
                     throw new IllegalArgumentException(
                             "Trying to create a NetworkStateTracker for an unknown radio type: "
@@ -1055,6 +1087,18 @@ public class ConnectivityService extends IConnectivityManager.Stub {
     @Override
     public boolean isNetworkSupported(int networkType) {
         enforceAccessPermission();
+        if(networkType == ConnectivityManager.TYPE_MOBILE_HIPRI){
+            boolean flag=false; 
+            for (NetworkConfig nc : mNetConfigs) {
+               if(nc==null){
+                       continue ;
+               }
+                if(nc.type == networkType){
+                    flag=true;
+                }
+            }
+            return flag ;
+        }
         return (isNetworkTypeValid(networkType) && (mNetTrackers[networkType] != null));
     }
 
@@ -1527,6 +1571,40 @@ public class ConnectivityService extends IConnectivityManager.Stub {
     }
 
     /**
+     * Check if the address falls into any of currently running VPN's route's.
+     */
+    private boolean isAddressUnderVpn(InetAddress address) {
+        synchronized (mVpns) {
+            synchronized (mRoutesLock) {
+                int uid = UserHandle.getCallingUserId();
+                Vpn vpn = mVpns.get(uid);
+                if (vpn == null) {
+                    return false;
+                }
+
+                // Check if an exemption exists for this address.
+                for (LinkAddress destination : mExemptAddresses) {
+                    if (!NetworkUtils.addressTypeMatches(address, destination.getAddress())) {
+                        continue;
+                    }
+
+                    int prefix = destination.getNetworkPrefixLength();
+                    InetAddress addrMasked = NetworkUtils.getNetworkPart(address, prefix);
+                    InetAddress destMasked = NetworkUtils.getNetworkPart(destination.getAddress(),
+                            prefix);
+
+                    if (addrMasked.equals(destMasked)) {
+                        return false;
+                    }
+                }
+
+                // Finally check if the address is covered by the VPN.
+                return vpn.isAddressCovered(address);
+            }
+        }
+    }
+
+    /**
      * @deprecated use requestRouteToHostAddress instead
      *
      * Ensure that a network route exists to deliver traffic to the specified
@@ -1537,14 +1615,14 @@ public class ConnectivityService extends IConnectivityManager.Stub {
      * desired
      * @return {@code true} on success, {@code false} on failure
      */
-    public boolean requestRouteToHost(int networkType, int hostAddress) {
+    public boolean requestRouteToHost(int networkType, int hostAddress, String packageName) {
         InetAddress inetAddress = NetworkUtils.intToInetAddress(hostAddress);
 
         if (inetAddress == null) {
             return false;
         }
 
-        return requestRouteToHostAddress(networkType, inetAddress.getAddress());
+        return requestRouteToHostAddress(networkType, inetAddress.getAddress(), packageName);
     }
 
     /**
@@ -1556,10 +1634,39 @@ public class ConnectivityService extends IConnectivityManager.Stub {
      * desired
      * @return {@code true} on success, {@code false} on failure
      */
-    public boolean requestRouteToHostAddress(int networkType, byte[] hostAddress) {
+    public boolean requestRouteToHostAddress(int networkType, byte[] hostAddress,
+            String packageName) {
         enforceChangePermission();
         if (mProtectedNetworks.contains(networkType)) {
             enforceConnectivityInternalPermission();
+        }
+        boolean exempt;
+        InetAddress addr;
+        try {
+            addr = InetAddress.getByAddress(hostAddress);
+        } catch (UnknownHostException e) {
+            if (DBG) log("requestRouteToHostAddress got " + e.toString());
+            return false;
+        }
+        // System apps may request routes bypassing the VPN to keep other networks working.
+        if (Binder.getCallingUid() == Process.SYSTEM_UID) {
+            exempt = true;
+        } else {
+            mAppOpsManager.checkPackage(Binder.getCallingUid(), packageName);
+            try {
+                ApplicationInfo info = mContext.getPackageManager().getApplicationInfo(packageName,
+                        0);
+                exempt = (info.flags & ApplicationInfo.FLAG_SYSTEM) != 0;
+            } catch (NameNotFoundException e) {
+                throw new IllegalArgumentException("Failed to find calling package details", e);
+            }
+        }
+
+        // Non-exempt routeToHost's can only be added if the host is not covered by the VPN.
+        // This can be either because the VPN's routes do not cover the destination or a
+        // system application added an exemption that covers this destination.
+        if (!exempt && isAddressUnderVpn(addr)) {
+            return false;
         }
 
         if (!ConnectivityManager.isNetworkTypeValid(networkType)) {
@@ -1584,18 +1691,13 @@ public class ConnectivityService extends IConnectivityManager.Stub {
         }
         final long token = Binder.clearCallingIdentity();
         try {
-            InetAddress addr = InetAddress.getByAddress(hostAddress);
             LinkProperties lp = tracker.getLinkProperties();
-            boolean ok = addRouteToAddress(lp, addr, EXEMPT);
+            boolean ok = addRouteToAddress(lp, addr, exempt);
             if (DBG) log("requestRouteToHostAddress ok=" + ok);
             return ok;
-        } catch (UnknownHostException e) {
-            if (DBG) log("requestRouteToHostAddress got " + e.toString());
         } finally {
             Binder.restoreCallingIdentity(token);
         }
-        if (DBG) log("requestRouteToHostAddress X bottom return false");
-        return false;
     }
 
     private boolean addRoute(LinkProperties p, RouteInfo r, boolean toDefaultTable,
@@ -2024,6 +2126,7 @@ public class ConnectivityService extends IConnectivityManager.Stub {
                 if (mNetConfigs[checkType] == null) continue;
                 if (!mNetConfigs[checkType].isDefault()) continue;
                 if (mNetTrackers[checkType] == null) continue;
+                if (prevNetType == ConnectivityManager.TYPE_PPPOE && checkType == ConnectivityManager.TYPE_ETHERNET) continue;
 
 // Enabling the isAvailable() optimization caused mobile to not get
 // selected if it was in the middle of error handling. Specifically
@@ -2040,11 +2143,15 @@ public class ConnectivityService extends IConnectivityManager.Stub {
 
                 NetworkStateTracker checkTracker = mNetTrackers[checkType];
                 NetworkInfo checkInfo = checkTracker.getNetworkInfo();
+                if (checkInfo.isConnected()) {
+                    if (DBG) log("tryFailover: " + checkInfo.getTypeName() + " Connected. Make it as ActiveDefaultNetwork");
+                    mActiveDefaultNetwork = checkType;
+                }
                 if (!checkInfo.isConnectedOrConnecting() || checkTracker.isTeardownRequested()) {
                     checkInfo.setFailover(true);
                     checkTracker.reconnect();
+                    if (DBG) log("Attempting to switch to " + checkInfo.getTypeName());
                 }
-                if (DBG) log("Attempting to switch to " + checkInfo.getTypeName());
             }
         }
     }
@@ -2261,28 +2368,61 @@ public class ConnectivityService extends IConnectivityManager.Stub {
         // if this is a default net and other default is running
         // kill the one not preferred
         if (mNetConfigs[newNetType].isDefault()) {
+            if (DBG) Slog.v(TAG, "handleConnect: ActiveDefaultNetwork is " + mActiveDefaultNetwork);
             if (mActiveDefaultNetwork != -1 && mActiveDefaultNetwork != newNetType) {
                 if (isNewNetTypePreferredOverCurrentNetType(newNetType)) {
                     // tear down the other
                     NetworkStateTracker otherNet =
                             mNetTrackers[mActiveDefaultNetwork];
-                    if (DBG) {
-                        log("Policy requires " + otherNet.getNetworkInfo().getTypeName() +
-                            " teardown");
+                    NetworkInfo otherNetInfo = otherNet.getNetworkInfo();
+
+                    if (newNetType == ConnectivityManager.TYPE_PPPOE && 
+                        SystemProperties.get("net.pppoe.phyif", "unknown").startsWith("eth") &&
+                        otherNetInfo.getType() == ConnectivityManager.TYPE_ETHERNET) {
+                         if (DBG) Slog.v(TAG, "PPPoE/Ether Connected, DO NOT teardown ETHERNET");
                     }
-                    if (!teardown(otherNet)) {
-                        loge("Network declined teardown request");
-                        teardown(thisNet);
+                    else if(newNetType == ConnectivityManager.TYPE_ETHERNET &&
+                        mActiveDefaultNetwork == ConnectivityManager.TYPE_PPPOE &&
+                        SystemProperties.get("net.pppoe.phyif", "unknown").startsWith("eth")) {
+                        if (DBG) Slog.v(TAG, "Ethernet is connected, DO NOT teardown PPPoE");
+                        if (DBG) Slog.v(TAG, "PPPoE is prior to Ethernet, DO NOT add dns and route about Ethernet");
+
+                        thisNet.setTeardownRequested(true);
+
                         return;
+                         
+                    }
+                    else {
+                        if (DBG) {
+                            log("Policy requires " + otherNet.getNetworkInfo().getTypeName() +
+                                " teardown");
+                        }
+                        if (!teardown(otherNet)) {
+                            loge("Network declined teardown request");
+                            teardown(thisNet);
+                            return;
+                        }
                     }
                 } else {
-                       // don't accept this one
+                    if (newNetType == ConnectivityManager.TYPE_PPPOE && 
+                        SystemProperties.get("net.pppoe.phyif", "unknown").startsWith("wlan") &&
+                        mActiveDefaultNetwork == ConnectivityManager.TYPE_WIFI) {
+                         if (DBG) Slog.v(TAG, "PPPoE/Wifi Connected, DO NOT teardown PPPoE");
+                    }
+                    else if (newNetType == ConnectivityManager.TYPE_PPPOE && 
+                        SystemProperties.get("net.pppoe.phyif", "unknown").startsWith("eth") &&
+                        mActiveDefaultNetwork == ConnectivityManager.TYPE_ETHERNET) {
+                         if (DBG) Slog.v(TAG, "PPPoE/Ethernet Connected, DO NOT teardown PPPoE");
+                    }
+                    else {
+                        // don't accept this one
                         if (VDBG) {
                             log("Not broadcasting CONNECT_ACTION " +
                                 "to torn down network " + info.getTypeName());
                         }
                         teardown(thisNet);
                         return;
+                    }
                 }
             }
             synchronized (ConnectivityService.this) {
@@ -2931,6 +3071,9 @@ public class ConnectivityService extends IConnectivityManager.Stub {
             }
             pw.decreaseIndent();
         }
+        pw.println();
+        pw.println("MAX_NETWORK_TYPE: " + ConnectivityManager.MAX_NETWORK_TYPE +
+                " MAX_RADIO_TYPE: " + ConnectivityManager.MAX_RADIO_TYPE);
     }
 
     // must be stateless - things change under us.
@@ -3238,7 +3381,8 @@ public class ConnectivityService extends IConnectivityManager.Stub {
         int defaultVal = (SystemProperties.get("ro.tether.denied").equals("true") ? 0 : 1);
         boolean tetherEnabledInSettings = (Settings.Global.getInt(mContext.getContentResolver(),
                 Settings.Global.TETHER_SUPPORTED, defaultVal) != 0);
-        return tetherEnabledInSettings && ((mTethering.getTetherableUsbRegexs().length != 0 ||
+        boolean Hwhasdata = Boolean.parseBoolean(SystemProperties.get("hw.hasdata", "false"));
+        return (tetherEnabledInSettings||Hwhasdata) && ((mTethering.getTetherableUsbRegexs().length != 0 ||
                 mTethering.getTetherableWifiRegexs().length != 0 ||
                 mTethering.getTetherableBluetoothRegexs().length != 0) &&
                 mTethering.getUpstreamIfaceTypes().length != 0);
@@ -3841,6 +3985,22 @@ public class ConnectivityService extends IConnectivityManager.Stub {
         }
     }
 
+	@Override
+	public void sendMessage(int what, NetworkInfo info)
+	{
+		Slog.d(TAG, ">>>>>sendMessage");
+		Message msg = mHandler.obtainMessage(what, info);
+		msg.sendToTarget();
+	}
+/*
+	@Override
+	public void sentPppoeST(int netType, NetworkStateTracker netSt)
+	{
+		Slog.d(TAG, ">>>>>sentPppoeST");
+		mNetTrackers[netType] = netSt;
+	}
+*/	
+
     @Override
     public boolean updateLockdownVpn() {
         if (Binder.getCallingUid() != Process.SYSTEM_UID) {
@@ -4085,6 +4245,7 @@ public class ConnectivityService extends IConnectivityManager.Stub {
 
     static class CheckMp extends
             AsyncTask<CheckMp.Params, Void, Integer> {
+        private static final boolean CHECK_DBG = false;
         private static final String CHECKMP_TAG = "CheckMp";
 
         // adb shell setprop persist.checkmp.testfailures 1 to enable testing failures
@@ -4351,7 +4512,7 @@ public class ConnectivityService extends IConnectivityManager.Stub {
 
                             // Make a route to host so we check the specific interface.
                             if (mCs.requestRouteToHostAddress(ConnectivityManager.TYPE_MOBILE_HIPRI,
-                                    hostAddr.getAddress())) {
+                                    hostAddr.getAddress(), null)) {
                                 // Wait a short time to be sure the route is established ??
                                 log("isMobileOk:"
                                         + " wait to establish route to hostAddr=" + hostAddr);
@@ -4529,7 +4690,8 @@ public class ConnectivityService extends IConnectivityManager.Stub {
         }
 
         private static void log(String s) {
-            Slog.d(ConnectivityService.TAG, "[" + CHECKMP_TAG + "] " + s);
+            if (CHECK_DBG) 
+                Slog.d(ConnectivityService.TAG, "[" + CHECKMP_TAG + "] " + s);
         }
     }
 
@@ -4922,6 +5084,6 @@ public class ConnectivityService extends IConnectivityManager.Stub {
 
     void setAlarm(int timeoutInMilliseconds, PendingIntent intent) {
         long wakeupTime = SystemClock.elapsedRealtime() + timeoutInMilliseconds;
-        mAlarmManager.set(AlarmManager.ELAPSED_REALTIME_WAKEUP, wakeupTime, intent);
+        mAlarmManager.set(AlarmManager.ELAPSED_REALTIME, wakeupTime, intent);
     }
 }

@@ -73,6 +73,8 @@ public class SurfaceControl {
             IBinder displayToken, SurfaceControl.PhysicalDisplayInfo outInfo);
     private static native void nativeBlankDisplay(IBinder displayToken);
     private static native void nativeUnblankDisplay(IBinder displayToken);
+    private static native void nativeSetVDisplaySize(int displayid,int format);
+    private static native void nativeSetDisplay2Stereoscopic(int displayid,int format);
 
 
     private final CloseGuard mCloseGuard = CloseGuard.get();
@@ -132,6 +134,8 @@ public class SurfaceControl {
      */
     public static final int OPAQUE = 0x00000400;
 
+    public static final int VIDEOHOLE = 0x00002000;
+    
     /**
      * Surface creation flag: Application requires a hardware-protected path to an
      * external display sink. If a hardware-protected path is not available,
@@ -505,6 +509,19 @@ public class SurfaceControl {
         }
         return nativeCreateDisplay(name, secure);
     }
+
+    /** @hide */
+    public static void setVDisplaySize(int displayid,int format)
+    {
+        nativeSetVDisplaySize( displayid,format);
+    }
+
+    /** @hide */
+    public static void setDisplay2Stereoscopic( int displayId,int format)
+    {
+        nativeSetDisplay2Stereoscopic( displayId,format);
+    }
+
 
     public static void destroyDisplay(IBinder displayToken) {
         if (displayToken == null) {

@@ -1,0 +1,57 @@
+<animation-list
+  xmlns:android="http://schemas.android.com/apk/res/android"
+  android:oneshot="true">
+  <item android:drawable="@drawable/rocket1" android:duration="40" />
+  <item android:drawable="@drawable/rocket2" android:duration="40" />
+  <item android:drawable="@drawable/rocket3" android:duration="40" />
+  <item android:drawable="@drawable/rocket4" android:duration="40" />
+  <item android:drawable="@drawable/rocket5" android:duration="40" />
+  <item android:drawable="@drawable/rocket6" android:duration="40" /> 
+  <item android:drawable="@drawable/rocket7" android:duration="40" />
+  <item android:drawable="@drawable/rocket8" android:duration="40" />
+  <item android:drawable="@drawable/rocket9" android:duration="40" />
+  <item android:drawable="@drawable/rocket10" android:duration="40" />
+  <item android:drawable="@drawable/rocket11" android:duration="40" />
+  <item android:drawable="@drawable/rocket12" android:duration="40" />
+  <item android:drawable="@drawable/rocket13" android:duration="40" />
+  <item android:drawable="@drawable/rocket14" android:duration="40" />
+  <item android:drawable="@drawable/rocket15" android:duration="40" />
+  <item android:drawable="@drawable/rocket16" android:duration="40" />
+  <item android:drawable="@drawable/rocket17" android:duration="40" />
+  <item android:drawable="@drawable/rocket18" android:duration="40" />
+  <item android:drawable="@drawable/rocket19" android:duration="40" />
+  <item android:drawable="@drawable/rocket20" android:duration="40" />
+  <item android:drawable="@drawable/rocket21" android:duration="40" />
+  <item android:drawable="@drawable/rocket22" android:duration="40" />
+  <item android:drawable="@drawable/rocket23" android:duration="40" />
+  <item android:drawable="@drawable/rocket24" android:duration="40" />
+  <item android:drawable="@drawable/rocket25" android:duration="40" />
+  <item android:drawable="@drawable/rocket26" android:duration="40" />
+  <item android:drawable="@drawable/rocket27" android:duration="40" />
+  <item android:drawable="@drawable/rocket28" android:duration="40" />
+  <item android:drawable="@drawable/rocket29" android:duration="40" />
+  <item android:drawable="@drawable/rocket40" android:duration="40" />
+  <item android:drawable="@drawable/rocket31" android:duration="40" />
+  <item android:drawable="@drawable/rocket32" android:duration="40" />
+  <item android:drawable="@drawable/rocket33" android:duration="40" />
+  <item android:drawable="@drawable/rocket34" android:duration="40" />
+  <item android:drawable="@drawable/rocket35" android:duration="40" />
+  <item android:drawable="@drawable/rocket36" android:duration="40" />
+  <item android:drawable="@drawable/rocket37" android:duration="40" />
+  <item android:drawable="@drawable/rocket38" android:duration="40" />
+  <item android:drawable="@drawable/rocket39" android:duration="40" />
+  <item android:drawable="@drawable/rocket40" android:duration="40" />
+  <item android:drawable="@drawable/rocket41" android:duration="40" />
+  <item android:drawable="@drawable/rocket42" android:duration="40" /> 
+  <item android:drawable="@drawable/rocket43" android:duration="40" />
+  <item android:drawable="@drawable/rocket44" android:duration="40" />
+  <item android:drawable="@drawable/rocket45" android:duration="40" />
+  <item android:drawable="@drawable/rocket46" android:duration="40" />
+  <item android:drawable="@drawable/rocket47" android:duration="40" />
+  <item android:drawable="@drawable/rocket48" android:duration="40" />
+  <item android:drawable="@drawable/rocket49" android:duration="40" />
+  <item android:drawable="@drawable/rocket40" android:duration="40" />
+  <item android:drawable="@drawable/rocket51" android:duration="40" />
+  <item android:drawable="@drawable/rocket52" android:duration="40" />
+  <item android:drawable="@drawable/rocket53" android:duration="40" />
+</animation-list>

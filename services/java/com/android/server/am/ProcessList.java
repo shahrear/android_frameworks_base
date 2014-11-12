@@ -148,12 +148,22 @@ final class ProcessList {
             FOREGROUND_APP_ADJ, VISIBLE_APP_ADJ, PERCEPTIBLE_APP_ADJ,
             BACKUP_APP_ADJ, CACHED_APP_MIN_ADJ, CACHED_APP_MAX_ADJ
     };
+
+    //for 512M low memory system use
+    private final long[] mOomMinFree4LowMemSys = new long[] {
+            4096, 8192, 12288, 
+            16384, 24576, 28672
+    };
+
+    
     // These are the low-end OOM level limits.  This is appropriate for an
     // HVGA or smaller phone with less than 512MB.  Values are in KB.
     private final long[] mOomMinFreeLow = new long[] {
             8192, 12288, 16384,
             24576, 28672, 32768
     };
+    
+
     // These are the high-end OOM level limits.  This is appropriate for a
     // 1280x800 or larger screen with around 1GB RAM.  Values are in KB.
     private final long[] mOomMinFreeHigh = new long[] {
@@ -194,7 +204,8 @@ final class ProcessList {
 
         // Scale buckets from screen size.
         int minSize = 480*800;  //  384000
-        int maxSize = 1280*800; // 1024000  230400 870400  .264
+        //int maxSize = 1280*800; // 1024000  230400 870400  .264
+        int maxSize = 1920*1080; // 2073600-384000=1689600
         float scaleDisp = ((float)(displayWidth*displayHeight)-minSize)/(maxSize-minSize);
         if (false) {
             Slog.i("XXXXXX", "scaleMem=" + scaleMem);
@@ -270,8 +281,44 @@ final class ProcessList {
 
         //Slog.i("XXXXXXX", "******************************* MINFREE: " + memString);
         if (write) {
-            writeFile("/sys/module/lowmemorykiller/parameters/adj", adjString.toString());
-            writeFile("/sys/module/lowmemorykiller/parameters/minfree", memString.toString());
+            String adjConfigString = "";
+            String minfreeConfigString = "";
+            try{
+                java.io.BufferedReader br = new java.io.BufferedReader(new java.io.InputStreamReader(
+                    new java.io.FileInputStream("/system/etc/lowmemorykiller.txt")));
+                String line = "";
+                while ((line = br.readLine()) != null){
+                    if(line.startsWith("#")){//skip this line
+                        continue;
+                    }
+                    else if(line.startsWith("adj:")){
+                        String str = line.substring("adj:".length());
+                        if(str.split(",").length == mOomAdj.length){
+                            adjConfigString = str;
+                        }
+                    }
+                    else if(line.startsWith("minfree:")){
+                        String str = line.substring("minfree:".length());
+                        if(str.split(",").length == mOomAdj.length){
+                            minfreeConfigString = str;
+                        }
+                    }
+                }
+                br.close();
+            }catch(java.io.FileNotFoundException ex){
+            }catch(java.io.IOException ex){
+            }
+
+            if(!"".equals(adjConfigString) && !"".equals(minfreeConfigString)){
+                Slog.i("XXXXXXX", "adjConfigString: " + adjConfigString);
+                Slog.i("XXXXXXX", "minfreeConfigString: " + minfreeConfigString);
+                writeFile("/sys/module/lowmemorykiller/parameters/adj", adjConfigString);
+                writeFile("/sys/module/lowmemorykiller/parameters/minfree", minfreeConfigString);
+            } else {
+                writeFile("/sys/module/lowmemorykiller/parameters/adj", adjString.toString());
+                writeFile("/sys/module/lowmemorykiller/parameters/minfree", memString.toString());
+            }
+
             SystemProperties.set("sys.sysctl.extra_free_kbytes", Integer.toString(reserve));
         }
         // GB: 2048,3072,4096,6144,7168,8192

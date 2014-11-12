@@ -498,4 +498,13 @@ public class IWindowManagerImpl implements IWindowManager {
     @Override
     public void setTouchExplorationEnabled(boolean enabled) {
     }
+    
+    @Override
+    public void setVDisplayiSze(int displayId, int format){
+    
+}
+    @Override 
+    public void setDisplay2Stereoscopic(int displayId, int format){
+    }
+
 }

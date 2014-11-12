@@ -63,6 +63,8 @@ interface IWindowManager
     void getInitialDisplaySize(int displayId, out Point size);
     void getBaseDisplaySize(int displayId, out Point size);
     void setForcedDisplaySize(int displayId, int width, int height);
+    void setVDisplaySize(int displayId, int format);
+	void setDisplay2Stereoscopic(int displayId, int format);
     void clearForcedDisplaySize(int displayId);
     int getInitialDisplayDensity(int displayId);
     int getBaseDisplayDensity(int displayId);

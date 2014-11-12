@@ -36,7 +36,7 @@ import android.view.MotionEvent.PointerCoords;
 import java.util.ArrayList;
 
 public class PointerLocationView extends View implements InputDeviceListener {
-    private static final String TAG = "Pointer";
+    private static final String TAG = "PointerLocationViewPointer";
 
     // The system property key used to specify an alternate velocity tracker strategy
     // to plot alongside the default one.  Useful for testing and comparison purposes.
@@ -217,16 +217,17 @@ public class PointerLocationView extends View implements InputDeviceListener {
     }
 
     @Override
-    protected void onDraw(Canvas canvas) {
+    protected synchronized void onDraw(Canvas canvas) {
         final int w = getWidth();
         final int itemW = w/7;
         final int base = -mTextMetrics.ascent+1;
         final int bottom = mHeaderBottom;
 
         final int NP = mPointers.size();
+	Log.i(TAG, "onDraw event:" + " NP:" + NP + " mActivePointerId:" + mActivePointerId );
 
         // Labels
-        if (mActivePointerId >= 0) {
+        if (mActivePointerId >= 0 && mActivePointerId < NP) {
             final PointerState ps = mPointers.get(mActivePointerId);
             
             canvas.drawRect(0, 0, itemW-1, bottom,mTextBackgroundPaint);
@@ -520,9 +521,10 @@ public class PointerLocationView extends View implements InputDeviceListener {
                 .toString());
     }
 
-    public void addPointerEvent(MotionEvent event) {
+    public synchronized void addPointerEvent(MotionEvent event) {
         final int action = event.getAction();
         int NP = mPointers.size();
+	Log.i(TAG, "addPointerEvent event:" + event.toString() + " NP:" + NP + " mActivePointerId:" + mActivePointerId );
 
         if (action == MotionEvent.ACTION_DOWN
                 || (action & MotionEvent.ACTION_MASK) == MotionEvent.ACTION_POINTER_DOWN) {
@@ -556,15 +558,18 @@ public class PointerLocationView extends View implements InputDeviceListener {
             }
 
             if (mActivePointerId < 0 ||
-                    !mPointers.get(mActivePointerId).mCurDown) {
+                    ( ( mActivePointerId >= 0 && mActivePointerId < mPointers.size() ) && !mPointers.get(mActivePointerId).mCurDown ) ) {
                 mActivePointerId = id;
+	Log.i(TAG, "addPointerEvent set mActivePointerId1, mActivePointerId:" + mActivePointerId );
             }
 
+            if( id >= 0 && id < mPointers.size() ) {
             final PointerState ps = mPointers.get(id);
             ps.mCurDown = true;
             InputDevice device = InputDevice.getDevice(event.getDeviceId());
             ps.mHasBoundingBox = device != null &&
                     device.getMotionRange(MotionEvent.AXIS_GENERIC_1) != null;
+	    }
         }
 
         final int NI = event.getPointerCount();
@@ -580,7 +585,7 @@ public class PointerLocationView extends View implements InputDeviceListener {
         for (int historyPos = 0; historyPos < N; historyPos++) {
             for (int i = 0; i < NI; i++) {
                 final int id = event.getPointerId(i);
-                final PointerState ps = mCurDown ? mPointers.get(id) : null;
+                final PointerState ps = ( mCurDown && ( id >= 0 && id < mPointers.size() ) ) ? mPointers.get(id) : null;
                 final PointerCoords coords = ps != null ? ps.mCoords : mTempCoords;
                 event.getHistoricalPointerCoords(i, historyPos, coords);
                 if (mPrintCoords) {
@@ -593,7 +598,7 @@ public class PointerLocationView extends View implements InputDeviceListener {
         }
         for (int i = 0; i < NI; i++) {
             final int id = event.getPointerId(i);
-            final PointerState ps = mCurDown ? mPointers.get(id) : null;
+            final PointerState ps = ( mCurDown && ( id >= 0 && id < mPointers.size() ) ) ? mPointers.get(id) : null;
             final PointerCoords coords = ps != null ? ps.mCoords : mTempCoords;
             event.getPointerCoords(i, coords);
             if (mPrintCoords) {
@@ -627,6 +632,7 @@ public class PointerLocationView extends View implements InputDeviceListener {
                     >> MotionEvent.ACTION_POINTER_INDEX_SHIFT; // will be 0 for UP
 
             final int id = event.getPointerId(index);
+            if( id >= 0 && id < mPointers.size() ) {
             final PointerState ps = mPointers.get(id);
             ps.mCurDown = false;
 
@@ -638,8 +644,10 @@ public class PointerLocationView extends View implements InputDeviceListener {
                 mCurNumPointers -= 1;
                 if (mActivePointerId == id) {
                     mActivePointerId = event.getPointerId(index == 0 ? 1 : 0);
+	Log.i(TAG, "addPointerEvent set mActivePointerId2, mActivePointerId:" + mActivePointerId );
                 }
                 ps.addTrace(Float.NaN, Float.NaN, false);
+            }
             }
         }
 
@@ -648,7 +656,12 @@ public class PointerLocationView extends View implements InputDeviceListener {
     
     @Override
     public boolean onTouchEvent(MotionEvent event) {
-        addPointerEvent(event);
+	try {
+        	addPointerEvent(event);
+	}
+	catch(IndexOutOfBoundsException e) {
+		Log.e(TAG, "IndexOutOfBoundsException error when onTouchEvent call addPointerEvent " + e.getMessage());
+	}
 
         if (event.getAction() == MotionEvent.ACTION_DOWN && !isFocused()) {
             requestFocus();
@@ -660,7 +673,12 @@ public class PointerLocationView extends View implements InputDeviceListener {
     public boolean onGenericMotionEvent(MotionEvent event) {
         final int source = event.getSource();
         if ((source & InputDevice.SOURCE_CLASS_POINTER) != 0) {
-            addPointerEvent(event);
+	    try {
+            	addPointerEvent(event);
+	    }
+	    catch(IndexOutOfBoundsException e) {
+		Log.e(TAG, "IndexOutOfBoundsException error when onGenericMotionEvent call addPointerEvent " + e.getMessage());
+	    }
         } else if ((source & InputDevice.SOURCE_CLASS_JOYSTICK) != 0) {
             logMotionEvent("Joystick", event);
         } else if ((source & InputDevice.SOURCE_CLASS_POSITION) != 0) {

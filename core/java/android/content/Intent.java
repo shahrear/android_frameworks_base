@@ -2622,6 +2622,14 @@ public class Intent implements Parcelable, Cloneable {
     public static final String ACTION_GLOBAL_BUTTON = "android.intent.action.GLOBAL_BUTTON";
 
     /**
+     * Broadcast Action: This is broadcast when a user action should request the
+     * OneKey Clean.
+     * @hide
+     */
+    public static final String ACTION_ONEKEY_CLEAN =
+            "android.intent.action.OnekeyClean";
+
+    /**
      * Activity Action: Allow the user to select and return one or more existing
      * documents. When invoked, the system will display the various
      * {@link DocumentsProvider} instances installed on the device, letting the

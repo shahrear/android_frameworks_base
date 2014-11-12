@@ -69,7 +69,6 @@ import com.android.server.search.SearchManagerService;
 import com.android.server.usb.UsbService;
 import com.android.server.wifi.WifiService;
 import com.android.server.wm.WindowManagerService;
-
 import dalvik.system.VMRuntime;
 import dalvik.system.Zygote;
 
@@ -155,6 +154,7 @@ class ServerThread {
         CommonTimeManagementService commonTimeMgmtService = null;
         InputManagerService inputManager = null;
         TelephonyRegistry telephonyRegistry = null;
+        OverlayViewService overlayview = null;
         ConsumerIrService consumerIr = null;
 
         // Create a handler thread just for the window manager to enjoy.
@@ -207,15 +207,18 @@ class ServerThread {
         boolean disableSystemUI = SystemProperties.getBoolean("config.disable_systemui", false);
         boolean disableNonCoreServices = SystemProperties.getBoolean("config.disable_noncore", false);
         boolean disableNetwork = SystemProperties.getBoolean("config.disable_network", false);
-
+        boolean disableVibrator = SystemProperties.getBoolean("config.disable_vibrator", false);
+        
         try {
             Slog.i(TAG, "Display Manager");
             display = new DisplayManagerService(context, wmHandler);
             ServiceManager.addService(Context.DISPLAY_SERVICE, display, true);
 
-            Slog.i(TAG, "Telephony Registry");
-            telephonyRegistry = new TelephonyRegistry(context);
-            ServiceManager.addService("telephony.registry", telephonyRegistry);
+            if(!disableTelephony) {
+                Slog.i(TAG, "Telephony Registry");
+                telephonyRegistry = new TelephonyRegistry(context);
+                ServiceManager.addService("telephony.registry", telephonyRegistry);
+            }
 
             Slog.i(TAG, "Scheduling Policy");
             ServiceManager.addService("scheduling_policy", new SchedulingPolicyService());
@@ -280,11 +283,13 @@ class ServerThread {
             Slog.i(TAG, "Battery Service");
             battery = new BatteryService(context, lights);
             ServiceManager.addService("battery", battery);
-
-            Slog.i(TAG, "Vibrator Service");
-            vibrator = new VibratorService(context);
-            ServiceManager.addService("vibrator", vibrator);
-
+            
+            if(!disableVibrator) {
+                Slog.i(TAG, "Vibrator Service");
+                vibrator = new VibratorService(context);
+                ServiceManager.addService("vibrator", vibrator);
+            }
+            
             Slog.i(TAG, "Consumer IR Service");
             consumerIr = new ConsumerIrService(context);
             ServiceManager.addService(Context.CONSUMER_IR_SERVICE, consumerIr);
@@ -298,6 +303,18 @@ class ServerThread {
             Slog.i(TAG, "Alarm Manager");
             alarm = new AlarmManagerService(context);
             ServiceManager.addService(Context.ALARM_SERVICE, alarm);
+
+            Slog.i(TAG, "System Write Manager");
+            SystemWriteService systemWrite = new SystemWriteService(context);
+            ServiceManager.addService(Context.SYSTEM_WRITE_SERVICE, systemWrite);
+
+
+	        Boolean hasMbxUI = SystemProperties.getBoolean("ro.platform.has.mbxuimode",false);
+            if (hasMbxUI){
+                Slog.i(TAG, "Mbox Outputmode Manager");
+                MboxOutputModeService output = new MboxOutputModeService(context);
+                ServiceManager.addService(Context.MBOX_OUTPUTMODE_SERVICE, output);
+            }
 
             Slog.i(TAG, "Init Watchdog");
             Watchdog.getInstance().init(context, battery, power, alarm,
@@ -834,10 +851,12 @@ class ServerThread {
 
         // It is now time to start up the app processes...
 
-        try {
-            vibrator.systemReady();
-        } catch (Throwable e) {
-            reportWtf("making Vibrator Service ready", e);
+        if(vibrator != null) {
+            try {
+                 vibrator.systemReady();
+            } catch (Throwable e) {
+                reportWtf("making Vibrator Service ready", e);
+            }
         }
 
         if (lockSettings != null) {
@@ -1065,10 +1084,12 @@ class ServerThread {
                     reportWtf("Notifying InputManagerService running", e);
                 }
 
-                try {
-                    if (telephonyRegistryF != null) telephonyRegistryF.systemRunning();
-                } catch (Throwable e) {
-                    reportWtf("Notifying TelephonyRegistry running", e);
+                if (telephonyRegistryF != null) {
+                    try {
+                         telephonyRegistryF.systemRunning();
+                    } catch (Throwable e) {
+                        reportWtf("Notifying TelephonyRegistry running", e);
+                    }
                 }
 
                 try {
@@ -1164,15 +1185,24 @@ public class SystemServer {
         // as efficient as possible with its memory usage.
         VMRuntime.getRuntime().setTargetHeapUtilization(0.8f);
 
-        Environment.setUserRequired(true);
+	Boolean hasMassStorage = SystemProperties.getBoolean("ro.has.mass.storage",false);
+	if(hasMassStorage)
+            Environment.setUserRequired(false);
+	else
+            Environment.setUserRequired(true);
 
         System.loadLibrary("android_servers");
+
+    	if(SystemProperties.getBoolean("ro.app.optimization",false)){
+    		System.loadLibrary("optimization");
+    	}
 
         Slog.i(TAG, "Entered the Android system server!");
 
         // Initialize native services.
-        nativeInit();
-
+        if(!SystemProperties.getBoolean("config.disable_vibrator", false)) {
+            nativeInit();
+        }
         // This used to be its own separate thread, but now it is
         // just the loop we run on the main thread.
         ServerThread thr = new ServerThread();

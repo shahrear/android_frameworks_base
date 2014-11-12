@@ -45,6 +45,9 @@ import android.content.res.TypedArray;
 import android.content.res.XmlResourceParser;
 import android.database.ContentObserver;
 import android.hardware.input.IInputDevicesChangedListener;
+//for tv_begin
+import android.hardware.input.ITvKeyEventListener;
+//for tv_end
 import android.hardware.input.IInputManager;
 import android.hardware.input.InputManager;
 import android.hardware.input.KeyboardLayout;
@@ -111,7 +114,10 @@ public class InputManagerService extends IInputManager.Stub
 
     private final Context mContext;
     private final InputManagerHandler mHandler;
-
+    
+    //for tv_begin
+    private  ITvKeyEventListener mTvKeyEventListener;
+    //for tv_end
     private WindowManagerCallbacks mWindowManagerCallbacks;
     private WiredAccessoryCallbacks mWiredAccessoryCallbacks;
     private boolean mSystemReady;
@@ -186,6 +192,10 @@ public class InputManagerService extends IInputManager.Stub
     private static native void nativeReloadDeviceAliases(int ptr);
     private static native String nativeDump(int ptr);
     private static native void nativeMonitor(int ptr);
+    private static native void nativeSetTvOutStatus(int ptr, boolean on);
+    private static native int nativeSetMouseCursorType(int ptr, int type);
+    private static native int nativeGetMouseCursorType(int ptr);
+    private static native void nativeSetMouseStatus(int ptr, boolean enabled);
 
     // Input event injection constants defined in InputDispatcher.h.
     private static final int INPUT_EVENT_INJECTION_SUCCEEDED = 0;
@@ -585,6 +595,16 @@ public class InputManagerService extends IInputManager.Stub
             return mInputDevices;
         }
     }
+    
+    //for tv_begin
+    @Override // Binder call
+    public void registerTvKeyEventListener(ITvKeyEventListener listener){
+    	if (listener == null){
+    		throw new IllegalArgumentException("listener must not be null");
+    	}
+    	mTvKeyEventListener = listener;
+    }
+    //for tv_end
 
     @Override // Binder call
     public void registerInputDevicesChangedListener(IInputDevicesChangedListener listener) {
@@ -1250,6 +1270,23 @@ public class InputManagerService extends IInputManager.Stub
         nativeMonitor(mPtr);
     }
 
+    // Set TV Out Status
+    public void setTvOutStatus(boolean on){
+        nativeSetTvOutStatus(mPtr, on);
+    }
+
+    public int setMouseCursorType(int type){
+        return nativeSetMouseCursorType(mPtr, type);
+    }
+
+    public int getMouseCursorType(){
+        return nativeGetMouseCursorType(mPtr);
+    }
+
+    public void setMouseStatus(boolean enabled){
+        nativeSetMouseStatus(mPtr, enabled);
+    }
+
     // Native callback.
     private void notifyConfigurationChanged(long whenNanos) {
         mWindowManagerCallbacks.notifyConfigurationChanged();
@@ -1326,9 +1363,20 @@ public class InputManagerService extends IInputManager.Stub
     }
 
     // Native callback.
-    private long interceptKeyBeforeDispatching(InputWindowHandle focus,
-            KeyEvent event, int policyFlags) {
-        return mWindowManagerCallbacks.interceptKeyBeforeDispatching(focus, event, policyFlags);
+    private long interceptKeyBeforeDispatching(InputWindowHandle focus, 
+    		KeyEvent event, int policyFlags) {
+    	//for tv_begin
+    	try {
+    		if(mTvKeyEventListener != null){
+    			boolean result = false;
+    			result = mTvKeyEventListener.interceptKeyBeforeDispatchingByTv(event,policyFlags);
+    			if(result) return -1;
+    		}
+    	}catch (RemoteException ex) {
+    		Slog.w(TAG, "Failed to notify process ........tvmainservice ",ex);
+    	}
+    	//for tv_end
+    	return mWindowManagerCallbacks.interceptKeyBeforeDispatching(focus, event, policyFlags);
     }
 
     // Native callback.

@@ -283,6 +283,7 @@ static void nativeUnlockCanvasAndPost(JNIEnv* env, jclass clazz,
     }
 }
 
+
 // ----------------------------------------------------------------------------
 
 static jint nativeCreateFromSurfaceControl(JNIEnv* env, jclass clazz,

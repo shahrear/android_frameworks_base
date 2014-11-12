@@ -46,6 +46,11 @@ public class Surface implements Parcelable {
     private static native int nativeReadFromParcel(int nativeObject, Parcel source);
     private static native void nativeWriteToParcel(int nativeObject, Parcel dest);
 
+   /* private static native void nativeOpenTransaction();
+    private static native void nativeCloseTransaction();
+    private static native void nativeSetVDisplaySize(int displayid,int width,int height,boolean needscale);
+    private static native void nativeSetDisplay2Stereoscopic(int displayid,int format);*/
+
     public static final Parcelable.Creator<Surface> CREATOR =
             new Parcelable.Creator<Surface>() {
         @Override
@@ -382,6 +387,30 @@ public class Surface implements Parcelable {
             release();
         }
     }
+
+    /** @hide */
+   /* public static void setVDisplaySize(int displayid,int width , int height,boolean needscale)
+    {
+    
+   nativeSetVDisplaySize( displayid,width, height, needscale);
+    }
+
+    /** @hide */
+    /*public static void setDisplay2Stereoscopic( int displayId,int format)
+    {
+    
+   nativeSetDisplay2Stereoscopic( displayId,format);
+    }
+
+     /** start a transaction @hide */
+    /*public static void openTransaction() {
+        nativeOpenTransaction();
+    }
+
+    /** end a transaction @hide */
+    /*public static void closeTransaction() {
+        nativeCloseTransaction();
+    }*/
 
     @Override
     public String toString() {

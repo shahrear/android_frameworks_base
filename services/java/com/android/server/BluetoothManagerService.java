@@ -428,16 +428,9 @@ class BluetoothManagerService extends IBluetoothManager.Stub {
                 " mBinding = " + mBinding);
         }
 
-        synchronized(mReceiver) {
-            if (persist) {
-                // waive WRITE_SECURE_SETTINGS permission check
-                long callingIdentity = Binder.clearCallingIdentity();
-                persistBluetoothSetting(BLUETOOTH_OFF);
-                Binder.restoreCallingIdentity(callingIdentity);
-            }
-            mEnableExternal = false;
-            sendDisableMsg();
-        }
+        Message msg = mHandler.obtainMessage(MESSAGE_DISABLE);
+        msg.arg1=(persist?1:0);
+        mHandler.sendMessage(msg);
         return true;
     }
 
@@ -1015,6 +1008,14 @@ class BluetoothManagerService extends IBluetoothManager.Stub {
                             Log.d(TAG, "delay MESSAGE_USER_SWITCHED " + userMsg.arg2);
                         }
 		    }
+
+                    if(!mEnable){
+                        if (mEnableExternal && isBluetoothPersistedStateOnBluetooth()) {
+                            //Enable
+                            if (DBG) Log.d(TAG, "workround Auto-enabling Bluetooth.");
+                            sendEnableMsg(mQuietEnableExternal);
+                        }
+                    }
                     break;
                 }
             }

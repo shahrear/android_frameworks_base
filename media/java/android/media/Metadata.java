@@ -431,6 +431,13 @@ public class Metadata
     /**
      * {@hide}
      */
+    public void recycleParcel() {
+        mParcel.recycle();
+    }
+
+    /**
+     * {@hide}
+     */
     public String getString(final int key) {
         checkType(key, STRING_VAL);
         return mParcel.readString();
