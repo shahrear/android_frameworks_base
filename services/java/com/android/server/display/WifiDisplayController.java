@@ -249,7 +249,6 @@ final class WifiDisplayController implements DumpUtils.Dump {
         mWifiP2pManager = (WifiP2pManager)context.getSystemService(Context.WIFI_P2P_SERVICE);
         mWifiP2pChannel = mWifiP2pManager.initialize(context, handler.getLooper(), null);
 
-        hwrot = SystemProperties.getInt("ro.sf.hwrotation", 0);
         mWindowManager = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
         display = mWindowManager.getDefaultDisplay();
         IntentFilter intentFilter = new IntentFilter();

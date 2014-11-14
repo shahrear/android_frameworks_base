@@ -5771,10 +5771,6 @@ public class WindowManagerService extends IWindowManager.Stub
                 // The screen shot will contain the entire screen.
                 dw = (int)(dw*scale);
                 dh = (int)(dh*scale);
-                String hwRotation = SystemProperties.get("ro.sf.hwrotation", "0");
-                if (hwRotation.equals("270") || hwRotation.equals("90")){
-                    rot = (rot + 3)%4;//always show landscape picture
-                }
                 if (rot == Surface.ROTATION_90 || rot == Surface.ROTATION_270) {
                     int tmp = dw;
                     dw = dh;

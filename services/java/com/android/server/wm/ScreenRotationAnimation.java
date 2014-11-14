@@ -132,8 +132,6 @@ class ScreenRotationAnimation {
     private boolean mMoreStartFrame;
     long mHalfwayPoint;
 
-    private static int mHwrotation = 0;
-
     public void printTo(String prefix, PrintWriter pw) {
         pw.print(prefix); pw.print("mSurface="); pw.print(mSurfaceControl);
                 pw.print(" mWidth="); pw.print(mWidth);
@@ -235,13 +233,6 @@ class ScreenRotationAnimation {
         mOriginalRotation = originalRotation;
         mOriginalWidth = originalWidth;
         mOriginalHeight = originalHeight;
-        
-        String hwrotation = SystemProperties.get("ro.sf.hwrotation", "0");
-        if("180".equals(hwrotation)){
-            mHwrotation = Surface.ROTATION_180;
-        }else{
-            mHwrotation = Surface.ROTATION_0;
-        } 
 
         if (!inTransaction) {
             if (WindowManagerService.SHOW_LIGHT_TRANSACTIONS) Slog.i(WindowManagerService.TAG,
@@ -332,43 +323,22 @@ class ScreenRotationAnimation {
 
     public static void createRotationMatrix(int rotation, int width, int height,
             Matrix outMatrix) {
-
-        if(mHwrotation == Surface.ROTATION_90 || mHwrotation == Surface.ROTATION_180){
-            switch (rotation) {
-                case Surface.ROTATION_180:
-                    outMatrix.reset();
-                    break;
-                case Surface.ROTATION_270:
-                    outMatrix.setRotate(90, 0, 0);
-                    outMatrix.postTranslate(height, 0);
-                    break;
-                case Surface.ROTATION_0:
-                    outMatrix.setRotate(180, 0, 0);
-                    outMatrix.postTranslate(width, height);
-                    break;
-                case Surface.ROTATION_90:
-                    outMatrix.setRotate(270, 0, 0);
-                    outMatrix.postTranslate(0, width);
-                    break;
-            }
-        }else{
-            switch (rotation) {
-                case Surface.ROTATION_0:
-                    outMatrix.reset();
-                    break;
-                case Surface.ROTATION_90:
-                    outMatrix.setRotate(90, 0, 0);
-                    outMatrix.postTranslate(height, 0);
-                    break;
-                case Surface.ROTATION_180:
-                    outMatrix.setRotate(180, 0, 0);
-                    outMatrix.postTranslate(width, height);
-                    break;
-                case Surface.ROTATION_270:
-                    outMatrix.setRotate(270, 0, 0);
-                    outMatrix.postTranslate(0, width);
-                    break;
-            }
+        switch (rotation) {
+            case Surface.ROTATION_0:
+                outMatrix.reset();
+                break;
+            case Surface.ROTATION_90:
+                outMatrix.setRotate(90, 0, 0);
+                outMatrix.postTranslate(height, 0);
+                break;
+            case Surface.ROTATION_180:
+                outMatrix.setRotate(180, 0, 0);
+                outMatrix.postTranslate(width, height);
+                break;
+            case Surface.ROTATION_270:
+                outMatrix.setRotate(270, 0, 0);
+                outMatrix.postTranslate(0, width);
+                break;
         }
     }
 

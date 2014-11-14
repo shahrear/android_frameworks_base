@@ -118,15 +118,8 @@ final class ElectronBeam {
      */
     public static final int MODE_FADE = 2;
 
-    private static boolean mScreenRotation180 = false;
-
     public ElectronBeam(DisplayManagerService displayManager) {
         mDisplayManager = displayManager;
-
-        String hwRotation = SystemProperties.get("ro.sf.hwrotation", "0");
-        if(hwRotation.equals("180")){
-            mScreenRotation180 = true;
-        }
     }
 
     /**
@@ -712,44 +705,23 @@ final class ElectronBeam {
                 }
 
                 DisplayInfo displayInfo = mDisplayManager.getDisplayInfo(Display.DEFAULT_DISPLAY);
-                if(mScreenRotation180){
-                    switch (displayInfo.rotation) {
-                        case Surface.ROTATION_0:
-                            mSurfaceControl.setPosition(displayInfo.logicalWidth, displayInfo.logicalHeight);
-                            mSurfaceControl.setMatrix(-1, 0, 0, -1);
-                            break;
-                        case Surface.ROTATION_90:
-                            mSurfaceControl.setPosition(displayInfo.logicalWidth, 0);
-                            mSurfaceControl.setMatrix(0, 1, -1, 0);
-                            break;
-                        case Surface.ROTATION_180:
-                            mSurfaceControl.setPosition(0, 0);
-                            mSurfaceControl.setMatrix(1, 0, 0, 1);
-                            break;
-                        case Surface.ROTATION_270:
-                            mSurfaceControl.setPosition(0, displayInfo.logicalHeight);
-                            mSurfaceControl.setMatrix(0, -1, 1, 0);
-                            break;
-                    }
-                }else{
-                    switch (displayInfo.rotation) {
-                        case Surface.ROTATION_0:
-                            mSurfaceControl.setPosition(0, 0);
-                            mSurfaceControl.setMatrix(1, 0, 0, 1);
-                            break;
-                        case Surface.ROTATION_90:
-                            mSurfaceControl.setPosition(0, displayInfo.logicalHeight);
-                            mSurfaceControl.setMatrix(0, -1, 1, 0);
-                            break;
-                        case Surface.ROTATION_180:
-                            mSurfaceControl.setPosition(displayInfo.logicalWidth, displayInfo.logicalHeight);
-                            mSurfaceControl.setMatrix(-1, 0, 0, -1);
-                            break;
-                        case Surface.ROTATION_270:
-                            mSurfaceControl.setPosition(displayInfo.logicalWidth, 0);
-                            mSurfaceControl.setMatrix(0, 1, -1, 0);
-                            break;
-                    }
+                switch (displayInfo.rotation) {
+                    case Surface.ROTATION_0:
+                        mSurfaceControl.setPosition(0, 0);
+                        mSurfaceControl.setMatrix(1, 0, 0, 1);
+                        break;
+                    case Surface.ROTATION_90:
+                        mSurfaceControl.setPosition(0, displayInfo.logicalHeight);
+                        mSurfaceControl.setMatrix(0, -1, 1, 0);
+                        break;
+                    case Surface.ROTATION_180:
+                        mSurfaceControl.setPosition(displayInfo.logicalWidth, displayInfo.logicalHeight);
+                        mSurfaceControl.setMatrix(-1, 0, 0, -1);
+                        break;
+                    case Surface.ROTATION_270:
+                        mSurfaceControl.setPosition(displayInfo.logicalWidth, 0);
+                        mSurfaceControl.setMatrix(0, 1, -1, 0);
+                        break;
                 }
             }
         }
