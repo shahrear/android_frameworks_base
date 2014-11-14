@@ -266,10 +266,6 @@ final class LogicalDisplay {
         // Apply the physical rotation of the display device itself.
         orientation = (orientation + displayDeviceInfo.rotation) % 4;
 
-        if(SystemProperties.getBoolean("ro.screen.portrait", false)){
-            orientation = SystemProperties.getInt("sys.portrait.orientation", orientation);
-        }
-        
         // Set the frame.
         // The frame specifies the rotated physical coordinates into which the viewport
         // is mapped.  We need to take care to preserve the aspect ratio of the viewport.
