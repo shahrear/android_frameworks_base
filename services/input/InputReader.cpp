@@ -2993,17 +2993,6 @@ void TouchInputMapper::configureSurface(nsecs_t when, bool* outResetNeeded) {
             mDeviceMode = DEVICE_MODE_DISABLED;
             return;
         }
-
-        char property[PROPERTY_VALUE_MAX];
-        if (property_get("ro.sf.hwrotation", property, NULL) > 0 && 180 == atoi(property)) {
-            if(!mPadmouseStatus){
-                mHWRotation = DISPLAY_ORIENTATION_180;
-            }
-            else{
-                mHWRotation = DISPLAY_ORIENTATION_0;
-                newViewport.orientation = (newViewport.orientation + DISPLAY_ORIENTATION_180)%4;
-            }
-        } 
     } else {
         newViewport.setNonDisplayViewport(rawWidth, rawHeight);
     }

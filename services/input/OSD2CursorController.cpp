@@ -387,11 +387,6 @@ OSD2CursorController::OSD2CursorController() :
         mFb1fd(-1), mIsShown(true),
         mHWrotation(0), mRotation(ROTATION_0),
         mDispW(0), mDispH(0), mTvOutEnabled(false) {
-    char value[PROPERTY_VALUE_MAX];
-    property_get("ro.sf.hwrotation", value, "0");
-    if (180 == atoi(value) )
-        mHWrotation = 180;
-
     ALOGV("created");
 }
 

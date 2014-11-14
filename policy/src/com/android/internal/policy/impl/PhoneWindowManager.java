@@ -5083,39 +5083,6 @@ public class PhoneWindowManager implements WindowManagerPolicy {
         }
     }
 
-    private void changeDisplaySize(int w, int h){
-        try {
-            if (w >= 0 && h >= 0) {
-                if(!mDisplayChanged){
-                    mDisplayChanged = true;
-
-                    SystemProperties.set("ubootenv.var.disp.fromleft", "false");
-                    //physical portrait device need first change surface to landscape
-                    if(SystemProperties.getBoolean("ro.screen.portrait", false)){
-                        SystemProperties.set("sys.portrait.orientation", "" + mLandscapeRotation);
-                    }
-                    
-                    mWindowManager.setForcedDisplaySize(Display.DEFAULT_DISPLAY, w, h);
-                    //don't save this value, when power down by no normal, this value will display error
-                    Settings.Global.putString(mContext.getContentResolver(),
-                        Settings.Global.DISPLAY_SIZE_FORCED, "");
-                }
-            } else {
-                if(mDisplayChanged){
-                    mDisplayChanged = false;
-
-                    SystemProperties.set("ubootenv.var.disp.fromleft", "true");
-                    if(SystemProperties.getBoolean("ro.screen.portrait", false)){
-                        SystemProperties.set("sys.portrait.orientation", "");
-                    }
-                    
-                    mWindowManager.clearForcedDisplaySize(Display.DEFAULT_DISPLAY);
-                }
-            }
-        } catch (RemoteException e) {
-        }
-    }
-    
     @Override
     public int rotationForOrientationLw(int orientation, int lastRotation) {
         if (false) {
@@ -5211,57 +5178,6 @@ public class PhoneWindowManager implements WindowManagerPolicy {
                 preferredRotation = -1;
             }
 
-            if(!SystemProperties.getBoolean("ubootenv.var.has.accelerometer", true) 
-                || mHdmiPlugged){
-                android.graphics.Point p = new android.graphics.Point();
-                Display display = android.hardware.display.DisplayManagerGlobal.getInstance()
-                    .getRealDisplay(Display.DEFAULT_DISPLAY);
-                display.getRealSize(p);
-                int shortSize, longSize, w, h;
-                if (p.x > p.y) {
-                    shortSize = p.y;
-                    longSize = p.x;
-                }
-                else{
-                    shortSize = p.x;
-                    longSize = p.y;
-                }
-                w = shortSize*shortSize/longSize;
-                h = shortSize;
-
-                if(DEBUG)
-                    Log.v(TAG, "orientation:" + orientation + " longSize:" + longSize + " shortSize:" + 
-                        shortSize + " w:" + w + " h:" + h);
-                
-                if((ActivityInfo.SCREEN_ORIENTATION_PORTRAIT == orientation) || 
-                    (ActivityInfo.SCREEN_ORIENTATION_REVERSE_PORTRAIT == orientation) ||
-                    (ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT == orientation)){
-                    changeDisplaySize(w, h);
-                    return mPortraitRotation;
-                }
-                else{
-                    changeDisplaySize(-1, -1);
-                    return mLandscapeRotation;
-                }
-            }
-            else{
-                changeDisplaySize(-1, -1);
-            }
-
-            /*
-            if( !SystemProperties.getBoolean("ubootenv.var.has.accelerometer", true) ){
-                switch (orientation) {
-                    case ActivityInfo.SCREEN_ORIENTATION_PORTRAIT:
-                    case ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE:
-                    case ActivityInfo.SCREEN_ORIENTATION_REVERSE_PORTRAIT:
-                    case ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE:
-                    case ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE:
-                    case ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT:
-					default:
-                        return mLandscapeRotation;
-                }
-            }*/
-
             switch (orientation) {
                 case ActivityInfo.SCREEN_ORIENTATION_PORTRAIT:
                     // Return portrait unless overridden.
@@ -5326,12 +5242,6 @@ public class PhoneWindowManager implements WindowManagerPolicy {
 
     @Override
     public boolean rotationHasCompatibleMetricsLw(int orientation, int rotation) {
-
-	   if( false == SystemProperties.getBoolean("ubootenv.var.has.accelerometer", true) 
-	       || mHdmiPlugged){
-    		    return true;
-    	  }
-			  
         switch (orientation) {
             case ActivityInfo.SCREEN_ORIENTATION_PORTRAIT:
             case ActivityInfo.SCREEN_ORIENTATION_REVERSE_PORTRAIT:
