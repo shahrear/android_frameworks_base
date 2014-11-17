@@ -44,40 +44,15 @@ import android.os.storage.IMountService;
 import android.os.storage.IMountShutdownObserver;
 
 import com.android.internal.telephony.ITelephony;
-import java.io.File;
+
 import android.util.Log;
 import android.view.WindowManager;
-import android.content.DialogInterface.OnDismissListener;
-
-import android.util.Slog;
-import java.util.ArrayList;
-import java.util.List;
-import android.content.pm.IPackageManager;
-import android.content.pm.ResolveInfo;
-import android.app.IWallpaperManager;
-import android.app.WallpaperInfo;
-import android.provider.Settings;
-import android.provider.Settings.Global;
-import android.provider.Settings.Secure;
-import android.app.ActivityManager;
-import android.app.ActivityManager.RunningAppProcessInfo;
-import android.app.ActivityManager.RunningServiceInfo;
-import android.content.pm.ComponentInfo;
-import android.os.Process;
-import android.text.TextUtils.SimpleStringSplitter;
-import android.content.ComponentName;
-import android.text.TextUtils;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import android.content.pm.ActivityInfo;
-import android.content.pm.PackageManager;
 
 public final class ShutdownThread extends Thread {
     // constants
     private static final String TAG = "ShutdownThread";
     private static final int PHONE_STATE_POLL_SLEEP_MSEC = 500;
     // maximum time we wait for the shutdown broadcast before going on.
-    private static final int QB_MAX_BROADCAST_TIME = 3*1000;
     private static final int MAX_BROADCAST_TIME = 10*1000;
     private static final int MAX_SHUTDOWN_WAIT_TIME = 20*1000;
     private static final int MAX_RADIO_WAIT_TIME = 12*1000;
@@ -100,7 +75,7 @@ public final class ShutdownThread extends Thread {
     public static final String REBOOT_SAFEMODE_PROPERTY = "persist.sys.safemode";
 
     // static instance of this thread
-    private static ShutdownThread sInstance = new ShutdownThread();
+    private static final ShutdownThread sInstance = new ShutdownThread();
     
     private final Object mActionDoneSync = new Object();
     private boolean mActionDone;
@@ -111,17 +86,7 @@ public final class ShutdownThread extends Thread {
     private Handler mHandler;
 
     private static AlertDialog sConfirmDialog;
-   
-    //quick boot
-    private static final int NORMAL_SHUTDOWN_FLOW = 0;
-    private static final int QB_SHUTDOWN_FLOW = 1;
-    private static int mShutdownFlow = NORMAL_SHUTDOWN_FLOW;
-    private static ProgressDialog pd = null;
-    //private static Object mShutdownThreadSync = new Object();
-    static final ArrayList<String> mShutdownWhiteList = new ArrayList();
-    static final String[] mHardCodeShutdownList = new String[] { "system", "com.android.phone", "android.process.acore", "com.android.wallpaper", "com.android.systemui" };
-    private static final String QB_ENABLE_PROPERTY = "ro.quickboot.enable";
-
+    
     private ShutdownThread() {
     }
  
@@ -151,15 +116,11 @@ public final class ShutdownThread extends Thread {
 
         final int longPressBehavior = context.getResources().getInteger(
                         com.android.internal.R.integer.config_longPressOnPowerBehavior);
-        /*final*/ int resourceId = mRebootSafeMode
+        final int resourceId = mRebootSafeMode
                 ? com.android.internal.R.string.reboot_safemode_confirm
                 : (longPressBehavior == 2
                         ? com.android.internal.R.string.shutdown_confirm_question
                         : com.android.internal.R.string.shutdown_confirm);
-
-        if(SystemProperties.getBoolean("sys.chiptemp.enable", false))
-            resourceId = com.android.internal.R.string.shutdown_confirm_question_chiptemp_hot;
-        
 
         Log.d(TAG, "Notifying thread to start shutdown longPressBehavior=" + longPressBehavior);
 
@@ -168,44 +129,22 @@ public final class ShutdownThread extends Thread {
             if (sConfirmDialog != null) {
                 sConfirmDialog.dismiss();
             }
-
-	    String[] array = new String[] { context.getString(com.android.internal.R.string.quick_boot_select_tip) };
-	    //String[] array = new String[] { "quick boot?" };
- 	    boolean[] selected = new boolean[] { isQuickBoot(context) };
-	    AlertDialog.Builder ab = new AlertDialog.Builder(context)
+            sConfirmDialog = new AlertDialog.Builder(context)
                     .setTitle(mRebootSafeMode
                             ? com.android.internal.R.string.reboot_safemode_title
                             : com.android.internal.R.string.power_off)
+                    .setMessage(resourceId)
                     .setPositiveButton(com.android.internal.R.string.yes, new DialogInterface.OnClickListener() {
                         public void onClick(DialogInterface dialog, int which) {
                             beginShutdownSequence(context);
                         }
                     })
-                    .setNegativeButton(com.android.internal.R.string.no, null);
-	    if( mRebootSafeMode || !SystemProperties.getBoolean(QB_ENABLE_PROPERTY, true) ) {
-		ab.setMessage(resourceId);
-	    } else {
-		ab.setMultiChoiceItems(array, selected, 
-		new DialogInterface.OnMultiChoiceClickListener(){
-            		@Override
-            		public void onClick(DialogInterface dialog, int which,boolean isChecked) {
-				Log.i(TAG, "qb select isChecked:" + isChecked);
-				Settings.Secure.putInt(context.getContentResolver(), Settings.Secure.ACCESSIBILITY_QUICK_BOOT, isChecked ? 1 : 0);
-            		}
-        	});
-	    }
-	    sConfirmDialog = ab.create();
-
+                    .setNegativeButton(com.android.internal.R.string.no, null)
+                    .create();
             closer.dialog = sConfirmDialog;
             sConfirmDialog.setOnDismissListener(closer);
             sConfirmDialog.getWindow().setType(WindowManager.LayoutParams.TYPE_KEYGUARD_DIALOG);
             sConfirmDialog.show();
-
-            sConfirmDialog.setOnDismissListener(new OnDismissListener(){
-    			public void onDismiss(DialogInterface dialog) {
-                    SystemProperties.set("sys.chiptemp.enable", "false");
-    			}
-    		});
         } else {
             beginShutdownSequence(context);
         }
@@ -269,18 +208,11 @@ public final class ShutdownThread extends Thread {
                 return;
             }
             sIsStarted = true;
-
-	    sInstance = new ShutdownThread();
         }
-				boolean showShutdownAnim = new File("/system/media/shutdownanimation.zip").exists();
-    if (showShutdownAnim) {
-        Log.d(TAG, "shutdownanim");
-         android.os.SystemProperties.set("service.bootanim.exit", "0");
-        android.os.SystemProperties.set("ctl.start", "shutdownanim");
-    } else {
+
         // throw up an indeterminate system dialog to indicate radio is
         // shutting down.
-        pd = new ProgressDialog(context);
+        ProgressDialog pd = new ProgressDialog(context);
         pd.setTitle(context.getText(com.android.internal.R.string.power_off));
         pd.setMessage(context.getText(com.android.internal.R.string.shutdown_progress));
         pd.setIndeterminate(true);
@@ -288,7 +220,6 @@ public final class ShutdownThread extends Thread {
         pd.getWindow().setType(WindowManager.LayoutParams.TYPE_KEYGUARD_DIALOG);
 
         pd.show();
-			}		
 
         sInstance.mContext = context;
         sInstance.mPowerManager = (PowerManager)context.getSystemService(Context.POWER_SERVICE);
@@ -322,25 +253,7 @@ public final class ShutdownThread extends Thread {
         // start the thread that initiates shutdown
         sInstance.mHandler = new Handler() {
         };
-
-/*	if (sInstance.getState() != Thread.State.NEW || sInstance.isAlive()) {
-            if (mShutdownFlow == QB_SHUTDOWN_FLOW) {
-                Log.d(TAG, "ShutdownThread exists already");
-                //checkShutdownFlow();
-                synchronized (mShutdownThreadSync) {
-                    mShutdownThreadSync.notify();
-                }
-            } else {
-                Log.e(TAG, "Thread state is not normal! froce to shutdown!");
-                //delayForPlayAnimation();
-                //SystemProperties.set("ctl.start", "shutdown");
-            }
-        } else {*/
-	/*if (sInstance.getState() != Thread.State.NEW || sInstance.isAlive()) {
-		sInstance.stop();
-	}*/
         sInstance.start();
-	//}
     }
 
     void actionDone() {
@@ -355,20 +268,12 @@ public final class ShutdownThread extends Thread {
      * Shuts off power regardless of radio and bluetooth state if the alloted time has passed.
      */
     public void run() {
-	checkShutdownFlow();
-
         BroadcastReceiver br = new BroadcastReceiver() {
             @Override public void onReceive(Context context, Intent intent) {
                 // We don't allow apps to cancel this, so ignore the result.
                 actionDone();
             }
         };
-        if(new File("/system/media/shutdownanimation.zip").exists()){
-        try{
-					  Thread.sleep(5000);					       
-					}catch(InterruptedException ex){
-				}	
-			}	
 
         /*
          * Write a system property in case the system_server reboots before we
@@ -394,18 +299,15 @@ public final class ShutdownThread extends Thread {
         mActionDone = false;
         Intent intent = new Intent(Intent.ACTION_SHUTDOWN);
         intent.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
-	intent.putExtra("_mode", mShutdownFlow);
         mContext.sendOrderedBroadcastAsUser(intent,
                 UserHandle.ALL, null, br, mHandler, 0, null, null);
-       
-	int nBroadcastTimeout =  ( (mShutdownFlow == QB_SHUTDOWN_FLOW) ? QB_MAX_BROADCAST_TIME : MAX_BROADCAST_TIME ); 
-        final long endTime = SystemClock.elapsedRealtime() + nBroadcastTimeout;
+        
+        final long endTime = SystemClock.elapsedRealtime() + MAX_BROADCAST_TIME;
         synchronized (mActionDoneSync) {
             while (!mActionDone) {
                 long delay = endTime - SystemClock.elapsedRealtime();
                 if (delay <= 0) {
                     Log.w(TAG, "Shutdown broadcast timed out");
-                    //mShutdownFlow = NORMAL_SHUTDOWN_FLOW;
                     break;
                 }
                 try {
@@ -414,45 +316,16 @@ public final class ShutdownThread extends Thread {
                 }
             }
         }
-      
-	// Also send ACTION_SHUTDOWN_QB in QB shut down flow
-        if (mShutdownFlow == QB_SHUTDOWN_FLOW) {
-            mActionDone = false;
-            mContext.sendOrderedBroadcast(new Intent("android.intent.action.ACTION_SHUTDOWN_QB"), null,
-                    br, mHandler, 0, null, null);
-            final long endTimeQB = SystemClock.elapsedRealtime() + nBroadcastTimeout;
-            synchronized (mActionDoneSync) {
-                while (!mActionDone) {
-                    long delay = endTimeQB - SystemClock.elapsedRealtime();
-                    if (delay <= 0) {
-                        Log.w(TAG, "Shutdown broadcast ACTION_SHUTDOWN_QB timed out");
-                        if (mShutdownFlow == QB_SHUTDOWN_FLOW) {
-                            Log.d(TAG, "change shutdown flow from ipo to normal: ACTION_SHUTDOWN_QB timeout");
-                            //mShutdownFlow = NORMAL_SHUTDOWN_FLOW;
-                        }
-                        break;
-                    }
-                    try {
-                        mActionDoneSync.wait(delay);
-                    } catch (InterruptedException e) {
-                    }
-                }
-            }
-        }
- 
-        if( mShutdownFlow == NORMAL_SHUTDOWN_FLOW ) { 
-            Log.i(TAG, "Shutting down activity manager...");
         
-            final IActivityManager am =
-                ActivityManagerNative.asInterface(ServiceManager.checkService("activity"));
-            if (am != null) {
-                try {
-                    am.shutdown(MAX_BROADCAST_TIME);
-                } catch (RemoteException e) {
-                }
-            } 
-	} else {
-            Log.i( TAG, "Quickboot bypass shutdown ActivityManagerService");
+        Log.i(TAG, "Shutting down activity manager...");
+        
+        final IActivityManager am =
+            ActivityManagerNative.asInterface(ServiceManager.checkService("activity"));
+        if (am != null) {
+            try {
+                am.shutdown(MAX_BROADCAST_TIME);
+            } catch (RemoteException e) {
+            }
         }
 
         // Shutdown radios.
@@ -466,7 +339,6 @@ public final class ShutdownThread extends Thread {
             }
         };
 
-	if( mShutdownFlow == NORMAL_SHUTDOWN_FLOW ) {
         Log.i(TAG, "Shutting down MountService");
 
         // Set initial variables and time out time.
@@ -496,251 +368,8 @@ public final class ShutdownThread extends Thread {
                 }
             }
         }
-	} else {
-            Log.i( TAG, "Quickboot bypass shutdown MountService");
-	}
 
-	if( mShutdownFlow == NORMAL_SHUTDOWN_FLOW ) {
-        	rebootOrShutdown(mReboot, mRebootReason);
-	} else {
-		QuitBootFlowshutDown();
-	}
-    }
-
-    private static String getCurrentIME(Context context)
-  {
-    String activeIME = null;
-    String ime = Settings.Secure.getString(context.getContentResolver(), "default_input_method");
-
-    if (ime != null)
-    {
-      activeIME = ime.substring(0, ime.indexOf("/"));
-    }
-    return activeIME;
-  }
-
-    private static ArrayList<String> getAccessibilityServices(Context context)
-  {
-    if (Settings.Secure.getInt(context.getContentResolver(), "accessibility_enabled", 0) == 0)
-    {
-      Slog.i("ShutdownManager", "accessibility is disabled");
-      return null;
-    }
-
-    String servicesValue = Settings.Secure.getString(context.getContentResolver(), "enabled_accessibility_services");
-
-    if ((servicesValue == null) || (servicesValue.equals(""))) {
-      Slog.i("ShutdownManager", "no accessibility services exist");
-      return null;
-    }
-
-    TextUtils.SimpleStringSplitter splitter = new TextUtils.SimpleStringSplitter(':');
-    splitter.setString(servicesValue);
-    ArrayList services = new ArrayList();
-    while (splitter.hasNext()) {
-      String str = splitter.next();
-      if ((str != null) && (str.length() > 0))
-      {
-        ComponentName cn = ComponentName.unflattenFromString(str);
-        services.add(cn.getPackageName());
-        Log.v("ShutdownManager", "AccessibilityService Package Name = " + cn.getPackageName());
-      }
-    }
-    return services;
-  }
-
-    public static void forceStopKillPackages(Context context)
-  {
-    String WpProcessName;
-    int uid;
-    String currentIME;
-    ArrayList accessibilityServices;
-
-    if(mShutdownWhiteList.isEmpty()) {
-     for (int i = 0; i < mHardCodeShutdownList.length; i++) {
-      mShutdownWhiteList.add(mHardCodeShutdownList[i]);
-    }
-    }
-
-
-    IActivityManager am = ActivityManagerNative.asInterface(ServiceManager.checkService("activity"));
-
-    IPackageManager pm = IPackageManager.Stub.asInterface(ServiceManager.getService("package"));
-
-    IWallpaperManager wm = IWallpaperManager.Stub.asInterface(ServiceManager.getService("wallpaper"));
-
-    if ((pm != null) && (am != null) && (wm != null)) {
-      try {
-        WallpaperInfo wpInfo = wm.getWallpaperInfo();
-        String WpPackageName = wpInfo != null ? wpInfo.getPackageName() : null;
-        WpProcessName = wpInfo != null ? wpInfo.getServiceInfo().processName : null;
-        uid = pm.getPackageUid(WpPackageName, 1000);
-        Slog.v("ShutdownManager", "Current Wallpaper = " + WpPackageName + "(" + WpProcessName + ")" + ", uid = " + uid);
-
-        currentIME = getCurrentIME(context);
-        Slog.v("ShutdownManager", "Current IME: " + currentIME);
-
-        List<ActivityManager.RunningServiceInfo> sList = am.getServices(30, 0);
-        for(ActivityManager.RunningServiceInfo s : sList) {
-          if (0L != s.restarting)
-          {
-            if ((!mShutdownWhiteList.contains(s.service.getPackageName())) && (!s.service.getPackageName().equals(WpPackageName)) && (!s.service.getPackageName().equals(currentIME)) && (!s.service.getPackageName().contains(currentIME)))
-            {
-              Slog.v("ShutdownManager", "force stop the scheduling service:" + s.service.getPackageName());
-              am.forceStopPackage(s.service.getPackageName(), 0);
-            }
-          }
-        }
-
-        List<RunningAppProcessInfo> runningList = am.getRunningAppProcesses();
-        accessibilityServices = getAccessibilityServices(context);
-
-        ArrayList homeProcessList = new ArrayList();
-
-        Intent intent = new Intent("android.intent.action.MAIN");
-        intent.addCategory("android.intent.category.HOME");
-        List<ResolveInfo> queryHomeList = pm.queryIntentActivities(intent, null, 0, 0);
-
-        if (queryHomeList.size() > 0)
-          for (ResolveInfo rinfo : queryHomeList) {
-            ComponentInfo ci = rinfo.activityInfo != null ? rinfo.activityInfo : rinfo.serviceInfo;
-            if (ci.processName != null) {
-              Slog.i("ShutdownManager", "home process: " + ci.processName);
-              for (RunningAppProcessInfo p : runningList)
-                if (p.processName.equals(ci.processName)) {
-                  Slog.i("ShutdownManager", "found running home process shown in above log");
-                  runningList.remove(p);
-                  runningList.add(runningList.size(), p);
-                  homeProcessList.add(p.processName);
-                  break;
-                }
-            }
-            else
-            {
-              Slog.i("ShutdownManager", "query home process name fail!");
-            }
-          }
-        else {
-          Slog.i("ShutdownManager", "query home activity fail!");
-        }
-        for (ActivityManager.RunningAppProcessInfo p : runningList) {
-          boolean needForce = true;
-          boolean needKill = false;
-
-          if ( homeProcessList.contains(p.processName) || (mShutdownWhiteList.contains(p.processName)) || (p.processName.equals(WpProcessName)) || (p.processName.contains(currentIME)) || ((p.processName.equals("com.google.android.apps.genie.geniewidget")) && (WpProcessName != null) && (WpProcessName.equals("com.google.android.apps.maps:MapsWallpaper"))))
-          {
-            needForce = false;
-
-            if (p.processName.contains(currentIME) || homeProcessList.contains(p.processName) ) {
-              needKill = true;
-            }
-
-          }
-          else if (p.uid == 1000)
-          {
-            Slog.v("ShutdownManager", "process = " + p.processName);
-          } else if (p.uid == uid) {
-            if (!p.processName.equals(WpProcessName)) {
-              Slog.i("ShutdownManager", "wallpaper related process = " + p.processName);
-              needForce = false;
-              needKill = true;
-            }
-          } else {
-            String[] list = pm.getPackagesForUid(p.uid);
-            int length = list == null ? 0 : list.length;
-            for (int i = 0; i < length; i++) {
-              if (mShutdownWhiteList.contains(list[i])) {
-                Slog.v("ShutdownManager", "uid-process = " + p.processName + ", whitelist item = " + list[i]);
-                needForce = false;
-                break;
-              }
-            }
-          }
-
-          if (needForce) {
-            for (int i = 0; i < p.pkgList.length; i++) {
-              if ((accessibilityServices != null) && (accessibilityServices.contains(p.pkgList[i]))) {
-                Slog.i("ShutdownManager", "skip accessibility service: " + p.pkgList[i]);
-              } else {
-                Slog.i("ShutdownManager", "forceStopPackage: " + p.processName);
-                am.forceStopPackage(p.pkgList[i], 0);
-              }
-            }
-          }
-          if (needKill)
-          {
-            Slog.i("ShutdownManager", "killProcess: " + p.processName);
-            Process.killProcess(p.pid);
-          }
-        } 
-      }
-      catch (RemoteException e)
-      {
-        Slog.e("ShutdownManager", "RemoteException: " + e);
-      }
-    }
-  }
-
-    private static void QuitBootFlowshutDown() {
-       Log.i( TAG, "enter QuitBootFlowshutDown");
-       if (SHUTDOWN_VIBRATE_MS > 0) {
-           // vibrate before shutting down
-           Vibrator vibrator = new SystemVibrator();
-           try {
-               vibrator.vibrate(SHUTDOWN_VIBRATE_MS);
-           } catch (Exception e) {
-               // Failure to vibrate shouldn't interrupt shutdown.  Just log it.
-               Log.w(TAG, "Failed to vibrate during shutdown.", e);
-           }
-
-           // vibrator is asynchronous so we need to wait to avoid shutting down too soon.
-           try {
-               Thread.sleep(SHUTDOWN_VIBRATE_MS);
-           } catch (InterruptedException unused) {
-           }
-       }
-
-       Log.i( TAG, "QB before goToSleep");
-	sInstance.mPowerManager.goToSleep(SystemClock.uptimeMillis());
-       Log.i( TAG, "QB after goToSleep");
-
-       removeAllTask(sInstance.mContext);
-       
-       Log.i( TAG, "QB before forceStopKillPackages");
-    	forceStopKillPackages(sInstance.mContext);
-       Log.i( TAG, "QB after forceStopKillPackages");
-
-	SystemProperties.set( "sys.qb_shutdown_mode", "1" );
-
-	if(sInstance.mScreenWakeLock != null && sInstance.mScreenWakeLock.isHeld()) {
-		sInstance.mScreenWakeLock.release();
-		sInstance.mScreenWakeLock = null;
-	}
-
-	if (pd != null) {
-       Log.i( TAG, "QB pd.dismiss");
-                pd.dismiss();
-                pd = null;
-            } 
-
-            synchronized (sIsStartedGuard) {
-                sIsStarted = false;
-            }
-
-            //sInstance.mPowerManager.setBacklightBrightnessOff(false); 
-            sInstance.mCpuWakeLock.acquire(2000); 
-
-	    SystemProperties.set("ctl.start", "qbd");
-
-      /* Log.i( TAG, "QB before mShutdownThreadSync.wait()");
-            synchronized (mShutdownThreadSync) {
-                try {
-       Log.i( TAG, "QB mShutdownThreadSync.wait()");
-                    mShutdownThreadSync.wait();
-                } catch (InterruptedException e) {
-                }
-            }
-       Log.i( TAG, "QB after mShutdownThreadSync.wait()");*/
+        rebootOrShutdown(mReboot, mRebootReason);
     }
 
     private void shutdownRadios(int timeout) {
@@ -791,9 +420,6 @@ public final class ShutdownThread extends Thread {
                         Log.w(TAG, "Turning off radio...");
                         phone.setRadio(false);
                     }
-
-					//workround for when phone unavailable, the phone state is not off
-					radioOff = true;
                 } catch (RemoteException ex) {
                     Log.e(TAG, "RemoteException during radio shutdown", ex);
                     radioOff = true;
@@ -888,52 +514,5 @@ public final class ShutdownThread extends Thread {
         // Shutdown power
         Log.i(TAG, "Performing low-level shutdown...");
         PowerManagerService.lowLevelShutdown();
-    }
-
-    private static boolean isQuickBoot(Context context) {
-	Boolean bQuickBoot = SystemProperties.getBoolean(QB_ENABLE_PROPERTY, true);
-	if( bQuickBoot ) {
-		bQuickBoot = Settings.Secure.getInt(context.getContentResolver(),
-                Settings.Secure.ACCESSIBILITY_QUICK_BOOT, 0) != 0;
-	}
-	return bQuickBoot;
-    }
-
-    private static void checkShutdownFlow() {
-	mShutdownFlow = ( !mReboot && isQuickBoot(sInstance.mContext) ) ? QB_SHUTDOWN_FLOW : NORMAL_SHUTDOWN_FLOW;
-    }
-
-    private static boolean isCurrentHomeActivity(Context context, ComponentName component, ActivityInfo homeInfo) {
-        if (homeInfo == null) {
-            final PackageManager pm = context.getPackageManager();
-            homeInfo = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
-                .resolveActivityInfo(pm, 0);
-        }
-        return homeInfo != null
-            && homeInfo.packageName.equals(component.getPackageName())
-            && homeInfo.name.equals(component.getClassName());
-    }
-
-    public static void removeAllTask(Context context) {
-        final ActivityManager am = (ActivityManager)context.getSystemService(Context.ACTIVITY_SERVICE);
-        if (am != null) {
-            final List<ActivityManager.RecentTaskInfo> recentTasks = am.getRecentTasks(128, ActivityManager.RECENT_IGNORE_UNAVAILABLE);
-            int numTasks = recentTasks.size();
-            for( int i = 0; i < numTasks; i++ ) {
-                final ActivityManager.RecentTaskInfo recentInfo = recentTasks.get(i);
-		
-		Intent intent = new Intent(recentInfo.baseIntent);
-                if (recentInfo.origActivity != null) {
-                    intent.setComponent(recentInfo.origActivity);
-                }
-
-                // Don't load the current home activity.
-                if (isCurrentHomeActivity(context, intent.getComponent(), null)) {
-                    continue;
-                }
-
-                am.removeTask(recentInfo.persistentId, ActivityManager.REMOVE_TASK_KILL_PROCESS);
-            }
-        }
     }
 }
