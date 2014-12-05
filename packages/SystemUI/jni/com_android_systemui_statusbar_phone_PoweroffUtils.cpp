@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#define POWEROFF_NODE   "/sys/devices/platform/odroid_sysfs.9/poweroff_trigger"
+#define POWEROFF_NODE   "/sys/class/odroid/poweroff_trigger"
 #define LOG_TAG "PowerOff-JNI"
 
 namespace android {
