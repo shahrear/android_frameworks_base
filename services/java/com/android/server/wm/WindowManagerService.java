@@ -7081,12 +7081,6 @@ public class WindowManagerService extends IWindowManager.Stub
         synchronized(mWindowMap) {
             mIsTouchDevice = mContext.getPackageManager().hasSystemFeature(
                     PackageManager.FEATURE_TOUCHSCREEN);
-
-            mPolicy.setInitialDisplaySize(getDefaultDisplayContentLocked().getDisplay(),
-                    getDefaultDisplayContentLocked().mInitialDisplayWidth,
-                    getDefaultDisplayContentLocked().mInitialDisplayHeight,
-                    getDefaultDisplayContentLocked().mInitialDisplayDensity);
-
             configureDisplayPolicyLocked(getDefaultDisplayContentLocked());
         }
 
@@ -7770,73 +7764,46 @@ public class WindowManagerService extends IWindowManager.Stub
     }
 
     private void readForcedDisplaySizeAndDensityLocked(final DisplayContent displayContent) {
-        if(SystemProperties.getBoolean("ro.platform.has.realoutputmode",false)){
-            int[] curPosition = { 0, 0, 1920, 1080, 240, 0, 1919, 1079, };
-            String old_mode = SystemProperties.get("ubootenv.var.outputmode","1080p");
-            if(SystemProperties.getBoolean("ro.platform.has.native720",false)){
-                curPosition = get720pNativePosition(old_mode);
-            } else {
-                curPosition = get1080pNativePosition(old_mode);
-            }
-            int density = curPosition[4];
-            int width, height;
-            width = curPosition[6]+1;
-            height = curPosition[7]+1;
-
-            Slog.d(TAG, "set display size and density according to outputmode: "+width+"x"+height+", "+density);
-            synchronized(displayContent.mDisplaySizeLock) {
-                if (displayContent.mBaseDisplayDensity != density) {
-                    displayContent.mBaseDisplayDensity = density;
-                }
-                if (displayContent.mBaseDisplayWidth != width
-                                || displayContent.mBaseDisplayHeight != height) {
-                    displayContent.mBaseDisplayWidth = width;
-                    displayContent.mBaseDisplayHeight = height;
-                }
-            }
-
-        }else {
-            String sizeStr = Settings.Global.getString(mContext.getContentResolver(),
-                    Settings.Global.DISPLAY_SIZE_FORCED);
-            if (sizeStr == null || sizeStr.length() == 0) {
-                sizeStr = SystemProperties.get(SIZE_OVERRIDE, null);
-            }
-            if (sizeStr != null && sizeStr.length() > 0) {
-                final int pos = sizeStr.indexOf(',');
-                if (pos > 0 && sizeStr.lastIndexOf(',') == pos) {
-                    int width, height;
-                    try {
-                        width = Integer.parseInt(sizeStr.substring(0, pos));
-                        height = Integer.parseInt(sizeStr.substring(pos+1));
-                        synchronized(displayContent.mDisplaySizeLock) {
-                            if (displayContent.mBaseDisplayWidth != width
-                                    || displayContent.mBaseDisplayHeight != height) {
-                                Slog.i(TAG, "FORCED DISPLAY SIZE: " + width + "x" + height);
-                                displayContent.mBaseDisplayWidth = width;
-                                displayContent.mBaseDisplayHeight = height;
-                            }
-                        }
-                    } catch (NumberFormatException ex) {
-                    }
-                }
-            }
-            String densityStr = Settings.Global.getString(mContext.getContentResolver(),
-                    Settings.Global.DISPLAY_DENSITY_FORCED);
-            if (densityStr == null || densityStr.length() == 0) {
-                densityStr = SystemProperties.get(DENSITY_OVERRIDE, null);
-            }
-            if (densityStr != null && densityStr.length() > 0) {
-                int density;
+        String sizeStr = Settings.Global.getString(mContext.getContentResolver(),
+                Settings.Global.DISPLAY_SIZE_FORCED);
+        if (sizeStr == null || sizeStr.length() == 0) {
+            sizeStr = SystemProperties.get(SIZE_OVERRIDE, null);
+        }
+        if (sizeStr != null && sizeStr.length() > 0) {
+            final int pos = sizeStr.indexOf(',');
+            if (pos > 0 && sizeStr.lastIndexOf(',') == pos) {
+                int width, height;
                 try {
-                    density = Integer.parseInt(densityStr);
+                    width = Integer.parseInt(sizeStr.substring(0, pos));
+                    height = Integer.parseInt(sizeStr.substring(pos+1));
                     synchronized(displayContent.mDisplaySizeLock) {
-                        if (displayContent.mBaseDisplayDensity != density) {
-                            Slog.i(TAG, "FORCED DISPLAY DENSITY: " + density);
-                            displayContent.mBaseDisplayDensity = density;
+                        if (displayContent.mBaseDisplayWidth != width
+                                || displayContent.mBaseDisplayHeight != height) {
+                            Slog.i(TAG, "FORCED DISPLAY SIZE: " + width + "x" + height);
+                            displayContent.mBaseDisplayWidth = width;
+                            displayContent.mBaseDisplayHeight = height;
                         }
                     }
                 } catch (NumberFormatException ex) {
                 }
+            }
+        }
+        String densityStr = Settings.Global.getString(mContext.getContentResolver(),
+                Settings.Global.DISPLAY_DENSITY_FORCED);
+        if (densityStr == null || densityStr.length() == 0) {
+            densityStr = SystemProperties.get(DENSITY_OVERRIDE, null);
+        }
+        if (densityStr != null && densityStr.length() > 0) {
+            int density;
+            try {
+                density = Integer.parseInt(densityStr);
+                synchronized(displayContent.mDisplaySizeLock) {
+                    if (displayContent.mBaseDisplayDensity != density) {
+                        Slog.i(TAG, "FORCED DISPLAY DENSITY: " + density);
+                        displayContent.mBaseDisplayDensity = density;
+                    }
+                }
+            } catch (NumberFormatException ex) {
             }
         }
     }
@@ -7868,19 +7835,6 @@ public class WindowManagerService extends IWindowManager.Stub
             synchronized(mWindowMap) {
                 final DisplayContent displayContent = getDisplayContentLocked(displayId);
                 if (displayContent != null) {
-                    if(SystemProperties.getBoolean("ro.platform.has.realoutputmode",false)){
-                        String old_mode = SystemProperties.get("ubootenv.var.outputmode","1080p");
-                        int[] curPosition = { 0, 0, 1920, 1080, 240, 0, 1919, 1079, };
-                        if(SystemProperties.getBoolean("ro.platform.has.native720",false)){
-                            curPosition = get720pNativePosition(old_mode);
-                        } else {
-                            curPosition = get1080pNativePosition(old_mode);
-                        }
-                        setForcedDisplaySizeLocked(displayContent,curPosition[6]+1,curPosition[7]+1);
-                        Settings.Global.putString(mContext.getContentResolver(),
-                            Settings.Global.DISPLAY_SIZE_FORCED, "");
-                        return;
-                    }
                     setForcedDisplaySizeLocked(displayContent, displayContent.mInitialDisplayWidth,
                             displayContent.mInitialDisplayHeight);
                     Settings.Global.putString(mContext.getContentResolver(),
