@@ -1185,11 +1185,7 @@ public class SystemServer {
         // as efficient as possible with its memory usage.
         VMRuntime.getRuntime().setTargetHeapUtilization(0.8f);
 
-	Boolean hasMassStorage = SystemProperties.getBoolean("ro.has.mass.storage",false);
-	if(hasMassStorage)
-            Environment.setUserRequired(false);
-	else
-            Environment.setUserRequired(true);
+        Environment.setUserRequired(true);
 
         System.loadLibrary("android_servers");
 

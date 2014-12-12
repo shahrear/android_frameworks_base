@@ -17905,18 +17905,11 @@ package android.os {
     ctor public Environment();
     method public static java.io.File getDataDirectory();
     method public static java.io.File getDownloadCacheDirectory();
-    method public static java.io.File getExternalStorage2Directory();
-    method public static java.lang.String getExternalStorage2State();
     method public static java.io.File getExternalStorageDirectory();
-    method public static java.lang.String getExternalStorageLabel();
     method public static java.io.File getExternalStoragePublicDirectory(java.lang.String);
     method public static java.lang.String getExternalStorageState();
-    method public static java.io.File getInternalStorageDirectory();
-    method public static java.lang.String getInternalStorageState();
     method public static java.io.File getRootDirectory();
     method public static java.lang.String getStorageState(java.io.File);
-    method public static boolean isExternalStorage2Removable();
-    method public static boolean isExternalStorageBeSdcard();
     method public static boolean isExternalStorageEmulated();
     method public static boolean isExternalStorageRemovable();
     field public static java.lang.String DIRECTORY_ALARMS;
