@@ -44,55 +44,34 @@
 
 #include <core/SkBitmap.h>
 #include <core/SkStream.h>
-//#include <images/SkImageDecoder.h>
-#include <core/SkCanvas.h>
-#include <core/SkScalar.h>
 #include <core/SkImageDecoder.h>
 
 #include <GLES/gl.h>
 #include <GLES/glext.h>
 #include <EGL/eglext.h>
 
-#include <cutils/properties.h>
-
 #include "BootAnimation.h"
 
 #define USER_BOOTANIMATION_FILE "/data/local/bootanimation.zip"
 #define SYSTEM_BOOTANIMATION_FILE "/system/media/bootanimation.zip"
 #define SYSTEM_ENCRYPTED_BOOTANIMATION_FILE "/system/media/bootanimation-encrypted.zip"
-#define USER_SHUTDOWN_BOOTANIMATION_FILE  "/data/local/shutdownanimation.zip"
-#define SYSTEM_SHUTDOWN_BOOTANIMATION_FILE "/system/media/shutdownanimation.zip"
-#define EXIT_PROP_NAME    "service.bootanim.exit"
-#define RUNNING_PROP_NAME "svc.bootanim"
-#define DISPLAY_EDP_WIDTH		2048
-#define DISPLAY_EDP_HEIGHT		1536
+#define EXIT_PROP_NAME "service.bootanim.exit"
 
 extern "C" int clock_nanosleep(clockid_t clock_id, int flags,
                            const struct timespec *request,
                            struct timespec *remain);
 
-extern bool gUseBootVideo ;
-
 namespace android {
 
 // ---------------------------------------------------------------------------
 
-BootAnimation::BootAnimation() : Thread(false),mRotation(0)
+BootAnimation::BootAnimation() : Thread(false)
 {
     mSession = new SurfaceComposerClient();
- 		mShutdown = false;
-    char prop[PROPERTY_VALUE_MAX];
-    if (property_get("ro.bootanimation.rotation", prop, "0") > 0) {
-        int value = atoi(prop);
-        if( 0 == value || 90 == value || 180 == value || 270 == value ){
-            mRotation = value;
-        }
-    }
 }
 
 BootAnimation::~BootAnimation() {
 }
-
 
 void BootAnimation::onFirstRef() {
     status_t err = mSession->linkToComposerDeath(this);
@@ -102,25 +81,10 @@ void BootAnimation::onFirstRef() {
     }
 }
 
-void BootAnimation::setBootVolume()
-{
-	int index = 11;
-
-	if(NO_ERROR != AudioSystem::setStreamVolumeIndex(AUDIO_STREAM_MUSIC, index, AUDIO_DEVICE_OUT_DEFAULT)) 
-	{	
-		ALOGE("ERROR::Fail to set bootup volume!!");
-	}
-}
-
 sp<SurfaceComposerClient> BootAnimation::session() const {
     return mSession;
 }
-void BootAnimation::isShutdown(bool shutdown)
-{
 
-    mShutdown = shutdown;
-
-}
 
 void BootAnimation::binderDied(const wp<IBinder>& who)
 {
@@ -139,41 +103,10 @@ status_t BootAnimation::initTexture(Texture* texture, AssetManager& assets,
     if (!asset)
         return NO_INIT;
     SkBitmap bitmap;
-    if(mRotation != 0){
-        SkBitmap origbitmap;
-        SkImageDecoder::DecodeMemory(asset->getBuffer(false), asset->getLength(),
-                &origbitmap, SkBitmap::kNo_Config, SkImageDecoder::kDecodePixels_Mode);
-        asset->close();
-        delete asset;
-        // create a bitmap with rotated dimensions and draw the rotated original bitmap
-        if( 90 == mRotation ){
-            bitmap.setConfig(origbitmap.config(), origbitmap.height(), origbitmap.width());
-            bitmap.allocPixels();
-            SkCanvas canvas(bitmap);
-            canvas.translate(SkIntToScalar(bitmap.width()), 0);
-            canvas.rotate(SkIntToScalar(mRotation)); 
-            canvas.drawBitmap(origbitmap, 0, 0, NULL);
-        }else if( 180== mRotation ){
-            bitmap.setConfig(origbitmap.config(), origbitmap.width(), origbitmap.height() );
-            bitmap.allocPixels();
-            SkCanvas canvas(bitmap);
-            canvas.translate(SkIntToScalar(bitmap.width()), SkIntToScalar(bitmap.height()));
-            canvas.rotate(SkIntToScalar(mRotation)); 
-            canvas.drawBitmap(origbitmap, 0, 0, NULL);
-        }else if( 270 == mRotation ){
-            bitmap.setConfig(origbitmap.config(), origbitmap.height(), origbitmap.width());
-            bitmap.allocPixels();
-            SkCanvas canvas(bitmap);
-            canvas.translate(0, SkIntToScalar(bitmap.height()));
-            canvas.rotate(SkIntToScalar(mRotation)); 
-            canvas.drawBitmap(origbitmap, 0, 0, NULL);
-        }
-    }else{
-        SkImageDecoder::DecodeMemory(asset->getBuffer(false), asset->getLength(),
-                &bitmap, SkBitmap::kNo_Config, SkImageDecoder::kDecodePixels_Mode);
-        asset->close();
-        delete asset;
-    }
+    SkImageDecoder::DecodeMemory(asset->getBuffer(false), asset->getLength(),
+            &bitmap, SkBitmap::kNo_Config, SkImageDecoder::kDecodePixels_Mode);
+    asset->close();
+    delete asset;
 
     // ensure we can call getPixels(). No need to call unlock, since the
     // bitmap will go out of scope when we return from this method.
@@ -228,42 +161,12 @@ status_t BootAnimation::initTexture(void* buffer, size_t len)
     SkImageDecoder* codec = SkImageDecoder::Factory(&stream);
     codec->setDitherImage(false);
     if (codec) {
-        if(mRotation != 0){
-            SkBitmap origbitmap;
-            codec->decode(&stream, &origbitmap,
-                    SkBitmap::kRGB_565_Config,
-                    SkImageDecoder::kDecodePixels_Mode);
-            // create a bitmap with rotated dimensions and draw the rotated original bitmap
-            if( 90 == mRotation ){
-                bitmap.setConfig(origbitmap.config(), origbitmap.height(), origbitmap.width());
-                bitmap.allocPixels();
-                SkCanvas canvas(bitmap);
-                canvas.translate(SkIntToScalar(bitmap.width()), 0);
-                canvas.rotate(SkIntToScalar(mRotation)); 
-                canvas.drawBitmap(origbitmap, 0, 0, NULL);
-            }else if( 180== mRotation ){
-                bitmap.setConfig(origbitmap.config(), origbitmap.width(), origbitmap.height() );
-                bitmap.allocPixels();
-                SkCanvas canvas(bitmap);
-                canvas.translate(SkIntToScalar(bitmap.width()), SkIntToScalar(bitmap.height()));
-                canvas.rotate(SkIntToScalar(mRotation)); 
-                canvas.drawBitmap(origbitmap, 0, 0, NULL);
-            }else if( 270 == mRotation ){
-                bitmap.setConfig(origbitmap.config(), origbitmap.height(), origbitmap.width());
-                bitmap.allocPixels();
-                SkCanvas canvas(bitmap);
-                canvas.translate(0, SkIntToScalar(bitmap.height()));
-                canvas.rotate(SkIntToScalar(mRotation)); 
-                canvas.drawBitmap(origbitmap, 0, 0, NULL);
-            }
-        }else{
-            codec->decode(&stream, &bitmap,
-                    SkBitmap::kARGB_8888_Config,
-                    SkImageDecoder::kDecodePixels_Mode);
-        }
-         delete codec;
+        codec->decode(&stream, &bitmap,
+                SkBitmap::kARGB_8888_Config,
+                SkImageDecoder::kDecodePixels_Mode);
+        delete codec;
     }
-    
+
     // ensure we can call getPixels(). No need to call unlock, since the
     // bitmap will go out of scope when we return from this method.
     bitmap.lockPixels();
@@ -313,15 +216,17 @@ status_t BootAnimation::initTexture(void* buffer, size_t len)
 
 status_t BootAnimation::readyToRun() {
     mAssets.addDefaultAssets();
+
     sp<IBinder> dtoken(SurfaceComposerClient::getBuiltInDisplay(
             ISurfaceComposer::eDisplayIdMain));
     DisplayInfo dinfo;
     status_t status = SurfaceComposerClient::getDisplayInfo(dtoken, &dinfo);
     if (status)
         return -1;
+
     // create the native surface
     sp<SurfaceControl> control = session()->createSurface(String8("BootAnimation"),
-            dinfo.w, dinfo.h, PIXEL_FORMAT_RGB_565,ISurfaceComposerClient::eOpaque);
+            dinfo.w, dinfo.h, PIXEL_FORMAT_RGB_565);
 
     SurfaceComposerClient::openGlobalTransaction();
     control->setLayer(0x40000000);
@@ -351,7 +256,7 @@ status_t BootAnimation::readyToRun() {
     context = eglCreateContext(display, config, NULL, NULL);
     eglQuerySurface(display, surface, EGL_WIDTH, &w);
     eglQuerySurface(display, surface, EGL_HEIGHT, &h);
-    
+
     if (eglMakeCurrent(display, surface, surface, context) == EGL_FALSE)
         return NO_INIT;
 
@@ -371,7 +276,7 @@ status_t BootAnimation::readyToRun() {
     property_get("vold.decrypt", decrypt, "");
 
     bool encryptedAnimation = atoi(decrypt) != 0 || !strcmp("trigger_restart_min_framework", decrypt);
-   if(!mShutdown){
+
     if ((encryptedAnimation &&
             (access(SYSTEM_ENCRYPTED_BOOTANIMATION_FILE, R_OK) == 0) &&
             (mZip.open(SYSTEM_ENCRYPTED_BOOTANIMATION_FILE) == NO_ERROR)) ||
@@ -383,15 +288,6 @@ status_t BootAnimation::readyToRun() {
             (mZip.open(SYSTEM_BOOTANIMATION_FILE) == NO_ERROR))) {
         mAndroidAnimation = false;
     }
-  }else{
-  	if( ((access(USER_SHUTDOWN_BOOTANIMATION_FILE, R_OK) == 0) &&
-            (mZip.open(USER_SHUTDOWN_BOOTANIMATION_FILE) == NO_ERROR))||
-             ((access(SYSTEM_SHUTDOWN_BOOTANIMATION_FILE, R_OK) == 0) &&
-            (mZip.open(SYSTEM_SHUTDOWN_BOOTANIMATION_FILE) == NO_ERROR))){
-        mAndroidAnimation=false;
-        }
-  	mShutdown = false;
-  	}
 
     return NO_ERROR;
 }
@@ -399,7 +295,6 @@ status_t BootAnimation::readyToRun() {
 bool BootAnimation::threadLoop()
 {
     bool r;
-
     if (mAndroidAnimation) {
         r = android();
     } else {
@@ -421,40 +316,13 @@ bool BootAnimation::threadLoop()
 
 bool BootAnimation::android()
 {
-    ALOGE("android , display w:%d, h:%d", mWidth, mHeight);
+    initTexture(&mAndroid[0], mAssets, "images/android-logo-mask.png");
+    initTexture(&mAndroid[1], mAssets, "images/android-logo-shine.png");
 
-    if(!gUseBootVideo)
-    {
-        if ((DISPLAY_EDP_WIDTH == mWidth) && (DISPLAY_EDP_HEIGHT == mHeight)){
-            initTexture(&mAndroid[0], mAssets, "images/android-logo-edp-mask.png");
-            initTexture(&mAndroid[1], mAssets, "images/android-logo-edp-shine.png");
-        }
-        else{
-            initTexture(&mAndroid[0], mAssets, "images/android-logo-mask.png");
-            initTexture(&mAndroid[1], mAssets, "images/android-logo-shine.png");
-        }
-    }
     // clear screen
     glShadeModel(GL_FLAT);
     glDisable(GL_DITHER);
     glDisable(GL_SCISSOR_TEST);
-#ifdef TV_FASTBOOTING_FUNCTION
-    glClearColor(0,0,0,0);
-    glClear(GL_COLOR_BUFFER_BIT);
-    eglSwapBuffers(mDisplay, mSurface);
-
-    glEnable(GL_TEXTURE_2D);
-    glTexEnvx(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
-
-    const GLint xc = mWidth  - mAndroid[0].w;
-    const GLint yc = 0;
-
-    
-    const Rect updateRect(xc, yc, xc + mAndroid[0].w, yc + mAndroid[0].h);
-
-    glScissor(xc, yc, updateRect.width(),
-            updateRect.height());
-#else
     glClearColor(0,0,0,1);
     glClear(GL_COLOR_BUFFER_BIT);
     eglSwapBuffers(mDisplay, mSurface);
@@ -465,32 +333,21 @@ bool BootAnimation::android()
     const GLint xc = (mWidth  - mAndroid[0].w) / 2;
     const GLint yc = (mHeight - mAndroid[0].h) / 2;
     const Rect updateRect(xc, yc, xc + mAndroid[0].w, yc + mAndroid[0].h);
+
     glScissor(updateRect.left, mHeight - updateRect.bottom, updateRect.width(),
             updateRect.height());
-#endif
+
     // Blend state
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glTexEnvx(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
 
-    if(!gUseBootVideo)
-    {
-        property_set(RUNNING_PROP_NAME,"running");
-    }
     const nsecs_t startTime = systemTime();
     do {
         nsecs_t now = systemTime();
         double time = now - startTime;
-        GLint x,y;
-        if( 90==mRotation || 270==mRotation){
-            float t = 4.0f * float(time / us2ns(16667)) / mAndroid[1].h;
-            //LOGD("time=%f t=%f floorf(t)=%f", time, t, floorf(t));
-            GLint offset = (t - floorf(t)) * mAndroid[1].h;
-            y = yc - offset;
-        }else{
-            float t = 4.0f * float(time / us2ns(16667)) / mAndroid[1].w;
-            GLint offset = (1 - (t - floorf(t))) * mAndroid[1].w;
-            x = xc - offset;
-        }
+        float t = 4.0f * float(time / us2ns(16667)) / mAndroid[1].w;
+        GLint offset = (1 - (t - floorf(t))) * mAndroid[1].w;
+        GLint x = xc - offset;
 
         glDisable(GL_SCISSOR_TEST);
         glClear(GL_COLOR_BUFFER_BIT);
@@ -498,14 +355,9 @@ bool BootAnimation::android()
         glEnable(GL_SCISSOR_TEST);
         glDisable(GL_BLEND);
         glBindTexture(GL_TEXTURE_2D, mAndroid[1].name);
-        if( 90==mRotation || 270==mRotation){
-            glDrawTexiOES(xc, y,                 0, mAndroid[1].w, mAndroid[1].h);
-            glDrawTexiOES(xc, y + mAndroid[1].h, 0, mAndroid[1].w, mAndroid[1].h);
-        }else{
-            glDrawTexiOES(x,                 yc, 0, mAndroid[1].w, mAndroid[1].h);
-            glDrawTexiOES(x + mAndroid[1].w, yc, 0, mAndroid[1].w, mAndroid[1].h);
-        }
-        
+        glDrawTexiOES(x,                 yc, 0, mAndroid[1].w, mAndroid[1].h);
+        glDrawTexiOES(x + mAndroid[1].w, yc, 0, mAndroid[1].w, mAndroid[1].h);
+
         glEnable(GL_BLEND);
         glBindTexture(GL_TEXTURE_2D, mAndroid[0].name);
         glDrawTexiOES(xc, yc, 0, mAndroid[0].w, mAndroid[0].h);
@@ -518,6 +370,7 @@ bool BootAnimation::android()
         const nsecs_t sleepTime = 83333 - ns2us(systemTime() - now);
         if (sleepTime > 0)
             usleep(sleepTime);
+
         checkExit();
     } while (!exitPending());
 
@@ -532,36 +385,7 @@ void BootAnimation::checkExit() {
     char value[PROPERTY_VALUE_MAX];
     property_get(EXIT_PROP_NAME, value, "0");
     int exitnow = atoi(value);
-    int fd_osd_blank = -1;
-    char *osd_blank_path = "/sys/class/graphics/fb0/blank";
-    if(gUseBootVideo){
-        do{
-            usleep(10*1000);
-            memset(value,0,sizeof(value));
-            property_get(EXIT_PROP_NAME, value, "0"); 
-            exitnow = atoi(value);
-          }while(!exitnow);
-    }
- 
     if (exitnow) {
-
-        if(gUseBootVideo){
-            property_set("service.bootvideo.exit", "1");
-            do{
-                memset(value,0,sizeof(value)); 
-                property_get("init.svc.bootvideo", value, "NULL");
-
-              }while(!strcmp(value,"running"));
-              
-            fd_osd_blank = open(osd_blank_path, O_CREAT | O_RDWR | O_TRUNC, 0664);
-            if(fd_osd_blank >= 0)
-            {
-        	      write(fd_osd_blank, "0", strlen("0"));
-                ALOGI("checkExit %s= %s\n", osd_blank_path,"0");
-                close(fd_osd_blank);
-            }
-        }
-
         requestExit();
     }
 }
@@ -595,13 +419,8 @@ bool BootAnimation::movie()
         char pathType;
         if (sscanf(l, "%d %d %d", &width, &height, &fps) == 3) {
             //LOGD("> w=%d, h=%d, fps=%d", width, height, fps);
-            if( 90==mRotation || 270==mRotation){
-                animation.width = height;
-                animation.height = width;
-            }else{
-                animation.width = width;
-                animation.height = height;
-            }
+            animation.width = width;
+            animation.height = height;
             animation.fps = fps;
         }
         else if (sscanf(l, " %c %d %d %s", &pathType, &count, &pause, path) == 4) {
@@ -666,23 +485,15 @@ bool BootAnimation::movie()
     glTexParameterx(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
     glTexParameterx(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameterx(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    int xc, yc;
-    if( 90==mRotation || 270==mRotation){
-        xc = ((mHeight - animation.height) / 2);
-        yc = ((mWidth - animation.width) / 2);
-    }else{
-        xc = (mWidth - animation.width) / 2;
-        yc = ((mHeight - animation.height) / 2);
-    }
 
+    const int xc = (mWidth - animation.width) / 2;
+    const int yc = ((mHeight - animation.height) / 2);
     nsecs_t lastFrame = systemTime();
     nsecs_t frameDuration = s2ns(1) / animation.fps;
 
     Region clearReg(Rect(mWidth, mHeight));
     clearReg.subtractSelf(Rect(xc, yc, xc+animation.width, yc+animation.height));
 
-    int switch_logo_flag = 0;
-	
     for (int i=0 ; i<pcount ; i++) {
         const Animation::Part& part(animation.parts[i]);
         const size_t fcount = part.frames.size();
@@ -725,13 +536,6 @@ bool BootAnimation::movie()
                 }
                 glDrawTexiOES(xc, yc, 0, animation.width, animation.height);
                 eglSwapBuffers(mDisplay, mSurface);
-                if (switch_logo_flag == 0){
-                    if(!gUseBootVideo)
-                    {
-                        property_set(RUNNING_PROP_NAME,"running");
-                    }
-                    switch_logo_flag = 1;
-                }
 
                 nsecs_t now = systemTime();
                 nsecs_t delay = frameDuration - (now - lastFrame);
@@ -752,6 +556,7 @@ bool BootAnimation::movie()
             }
 
             usleep(part.pause * ns2us(frameDuration));
+
             // For infinite parts, we've now played them at least once, so perhaps exit
             if(exitPending() && !part.count)
                 break;

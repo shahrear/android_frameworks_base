@@ -7,10 +7,6 @@ LOCAL_SRC_FILES:= \
 
 LOCAL_CFLAGS += -DGL_GLEXT_PROTOTYPES -DEGL_EGLEXT_PROTOTYPES
 
-ifeq ($(TV_FASTBOOTING_FUNCTION), true)
-	LOCAL_CFLAGS += -DTV_FASTBOOTING_FUNCTION
-endif
-
 LOCAL_SHARED_LIBRARIES := \
 	libcutils \
 	liblog \
@@ -21,8 +17,7 @@ LOCAL_SHARED_LIBRARIES := \
 	libskia \
     libEGL \
     libGLESv1_CM \
-    libgui \
-    libmedia
+    libgui
 
 LOCAL_C_INCLUDES := \
 	$(call include-path-for, corecg graphics)

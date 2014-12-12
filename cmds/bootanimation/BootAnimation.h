@@ -25,7 +25,7 @@
 
 #include <EGL/egl.h>
 #include <GLES/gl.h>
-#include <media/AudioSystem.h>
+
 class SkBitmap;
 
 namespace android {
@@ -44,10 +44,6 @@ public:
 
     sp<SurfaceComposerClient> session() const;
 
-		//add for shutdown animation
-		bool				mShutdown;
-		void				isShutdown(bool shutdown);
-		void 				setBootVolume();
 private:
     virtual bool        threadLoop();
     virtual status_t    readyToRun();
@@ -101,7 +97,6 @@ private:
     sp<Surface> mFlingerSurface;
     bool        mAndroidAnimation;
     ZipFileRO   mZip;
-    int  mRotation;
 };
 
 // ---------------------------------------------------------------------------
