@@ -71,6 +71,4 @@ interface IWallpaperManager {
      * Returns the desired minimum height for the wallpaper.
      */
     int getHeightHint();
-    
-    String getWallpaperName(int userId);
 }

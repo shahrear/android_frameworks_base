@@ -184,10 +184,6 @@ public final class BroadcastQueue {
         mOrderedBroadcasts.add(r);
     }
 
-    public void insertOrderedBroadcastAtBeginLocked(BroadcastRecord r) {
-	mOrderedBroadcasts.add( 0, r );
-    }
-
     public final boolean replaceParallelBroadcastLocked(BroadcastRecord r) {
         for (int i=mParallelBroadcasts.size()-1; i>=0; i--) {
             if (r.intent.filterEquals(mParallelBroadcasts.get(i).intent)) {

@@ -289,18 +289,6 @@ public class SurfaceView extends View {
         int height = mRequestedHeight >= 0
                 ? resolveSizeAndState(mRequestedHeight, heightMeasureSpec, 0)
                 : getDefaultSize(0, heightMeasureSpec);
-
-		//tellen add 2012/12/07 for apk compatibility
-		if(SystemProperties.getBoolean("service.apk.resize", false)){
-			if(width < height){
-				width = 600;
-			}
-			else if(width > height){
-				height = 552;
-			}
- 			//Log.i(TAG, "onMeasure resize apk width:" + width + ", height:" + height);
-		}
-		
         setMeasuredDimension(width, height);
     }
 

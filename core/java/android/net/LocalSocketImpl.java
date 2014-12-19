@@ -263,7 +263,7 @@ class LocalSocketImpl
      */
     public void close() throws IOException {
         synchronized (LocalSocketImpl.this) {
-            if ( fd == null ) {
+            if ((fd == null) || (mFdCreatedInternally == false)) {
                 fd = null;
                 return;
             }
@@ -326,7 +326,6 @@ class LocalSocketImpl
         }
 
         s.fd = accept(fd, s);
-        s.mFdCreatedInternally = true;
     }
 
     /**
@@ -537,3 +536,4 @@ class LocalSocketImpl
         close();
     }
 }
+

@@ -1197,17 +1197,6 @@ public final class ActivityStackSupervisor {
                         }
                     }
                 };
-                if(!readXml(mContext , com.android.internal.R.xml.whitepackagefilter , 
-                            className , packageName)){
-                   if(readXml(mContext , com.android.internal.R.xml.blackpackagefilter ,
-                              className , packageName)){
-                        Thread DisableFreeScaleThread = new Thread(runnable); 
-                        DisableFreeScaleThread.start();
-                    }
-                    else{
-                        setClassName = true;
-                    }
-                }
             }
         }
         final int startAnyPerm = mService.checkPermission(

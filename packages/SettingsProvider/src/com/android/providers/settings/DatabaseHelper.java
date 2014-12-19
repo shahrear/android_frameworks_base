@@ -83,10 +83,6 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     private static final String TABLE_SECURE = "secure";
     private static final String TABLE_GLOBAL = "global";
 
-    private static final String DREAMS_DEFAULT_COMPONENT =
-        "com.android.dreams.phototable/com.android.dreams.phototable.FlipperDream";
-    private static final String SCREENSAVER_PROP = "sys.screensaver.enable";
-
     static {
         mValidTables.add(TABLE_SYSTEM);
         mValidTables.add(TABLE_SECURE);
@@ -193,7 +189,6 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
         // Load inital settings values
         loadSettings(db);
-        Log.w(TAG, "SettingsProvider finished onCreate!!!");
     }
 
     @Override
@@ -1185,18 +1180,12 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                         com.android.internal.R.bool.config_dreamsEnabledByDefault);
                 loadBooleanSetting(stmt, Settings.Secure.SCREENSAVER_ACTIVATE_ON_DOCK,
                         com.android.internal.R.bool.config_dreamsActivatedOnDockByDefault);
-                if(SystemProperties.getBoolean(SCREENSAVER_PROP, false)) {
-                    loadSetting(stmt, Settings.Secure.SCREENSAVER_ACTIVATE_ON_SLEEP, "1");
-                    loadSetting(stmt, Settings.Secure.SCREENSAVER_COMPONENTS, DREAMS_DEFAULT_COMPONENT);
-                    loadSetting(stmt, Settings.Secure.SCREENSAVER_DEFAULT_COMPONENT, DREAMS_DEFAULT_COMPONENT);
-                } else {
-                    loadBooleanSetting(stmt, Settings.Secure.SCREENSAVER_ACTIVATE_ON_SLEEP,
-                            com.android.internal.R.bool.config_dreamsActivatedOnSleepByDefault);
-                    loadStringSetting(stmt, Settings.Secure.SCREENSAVER_COMPONENTS,
-                            com.android.internal.R.string.config_dreamsDefaultComponent);
-                    loadStringSetting(stmt, Settings.Secure.SCREENSAVER_DEFAULT_COMPONENT,
-                            com.android.internal.R.string.config_dreamsDefaultComponent);
-                }
+                loadBooleanSetting(stmt, Settings.Secure.SCREENSAVER_ACTIVATE_ON_SLEEP,
+                        com.android.internal.R.bool.config_dreamsActivatedOnSleepByDefault);
+                loadStringSetting(stmt, Settings.Secure.SCREENSAVER_COMPONENTS,
+                        com.android.internal.R.string.config_dreamsDefaultComponent);
+                loadStringSetting(stmt, Settings.Secure.SCREENSAVER_DEFAULT_COMPONENT,
+                        com.android.internal.R.string.config_dreamsDefaultComponent);
 
                 db.setTransactionSuccessful();
             } finally {
@@ -2016,12 +2005,6 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
             loadIntegerSetting(stmt, Settings.System.POINTER_SPEED,
                     R.integer.def_pointer_speed);
-
-            //loadStringSetting(stmt, Settings.System.TIME_12_24,
-            //        R.string.def_time_12_24);
-
-            //loadFractionSetting(stmt, Settings.System.FONT_SCALE,
-            //        R.fraction.def_font_scale,1);
         } finally {
             if (stmt != null) stmt.close();
         }
@@ -2115,26 +2098,16 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             loadIntegerSetting(stmt, Settings.Secure.WIFI_MAX_DHCP_RETRY_COUNT,
                     R.integer.def_max_dhcp_retries);
                     
-            String config_defaultIME=mContext.getResources().getString(R.string.config_defaultIME);
-			 			if(config_defaultIME!=null&&(!" ".equals(config_defaultIME)))
-			 		  loadSetting(stmt,Settings.Secure.DEFAULT_INPUT_METHOD,config_defaultIME);
-			 	  
             loadBooleanSetting(stmt, Settings.Secure.SCREENSAVER_ENABLED,
                     com.android.internal.R.bool.config_dreamsEnabledByDefault);
             loadBooleanSetting(stmt, Settings.Secure.SCREENSAVER_ACTIVATE_ON_DOCK,
                     com.android.internal.R.bool.config_dreamsActivatedOnDockByDefault);
-            if (SystemProperties.getBoolean(SCREENSAVER_PROP, false)) {
-                loadSetting(stmt, Settings.Secure.SCREENSAVER_ACTIVATE_ON_SLEEP, "1");
-                loadSetting(stmt, Settings.Secure.SCREENSAVER_COMPONENTS, DREAMS_DEFAULT_COMPONENT);
-                loadSetting(stmt, Settings.Secure.SCREENSAVER_DEFAULT_COMPONENT, DREAMS_DEFAULT_COMPONENT);
-            } else {
-                loadBooleanSetting(stmt, Settings.Secure.SCREENSAVER_ACTIVATE_ON_SLEEP,
-                        com.android.internal.R.bool.config_dreamsActivatedOnSleepByDefault);
-                loadStringSetting(stmt, Settings.Secure.SCREENSAVER_COMPONENTS,
-                        com.android.internal.R.string.config_dreamsDefaultComponent);
-                loadStringSetting(stmt, Settings.Secure.SCREENSAVER_DEFAULT_COMPONENT,
-                        com.android.internal.R.string.config_dreamsDefaultComponent);
-            }
+            loadBooleanSetting(stmt, Settings.Secure.SCREENSAVER_ACTIVATE_ON_SLEEP,
+                    com.android.internal.R.bool.config_dreamsActivatedOnSleepByDefault);
+            loadStringSetting(stmt, Settings.Secure.SCREENSAVER_COMPONENTS,
+                    com.android.internal.R.string.config_dreamsDefaultComponent);
+            loadStringSetting(stmt, Settings.Secure.SCREENSAVER_DEFAULT_COMPONENT,
+                    com.android.internal.R.string.config_dreamsDefaultComponent);
 
             loadBooleanSetting(stmt, Settings.Secure.ACCESSIBILITY_DISPLAY_MAGNIFICATION_ENABLED,
                     R.bool.def_accessibility_display_magnification_enabled);
@@ -2213,7 +2186,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             loadBooleanSetting(stmt, Settings.Global.BLUETOOTH_ON,
                     R.bool.def_bluetooth_on);
 
-			// Enable or disable Cell Broadcast SMS
+            // Enable or disable Cell Broadcast SMS
             loadSetting(stmt, Settings.Global.CDMA_CELL_BROADCAST_SMS,
                     RILConstants.CDMA_CELL_BROADCAST_SMS_DISABLED);
 
@@ -2312,7 +2285,6 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                     R.integer.def_low_battery_sound_timeout);
 
             // --- New global settings start here
-            loadBooleanSetting(stmt, Settings.Global.HARD_KEYBOARD_DEFAULT_ENABLE, R.bool.def_hard_input_enable);
         } finally {
             if (stmt != null) stmt.close();
         }

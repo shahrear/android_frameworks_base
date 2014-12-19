@@ -13814,11 +13814,7 @@ public final class ActivityManagerService extends ActivityManagerNative
             }
             boolean replaced = replacePending && queue.replaceOrderedBroadcastLocked(r); 
             if (!replaced) {
-                if( mHighPriorityBroadcastArray.contains(r.intent.getAction()) ) {
-                    queue.insertOrderedBroadcastAtBeginLocked(r);
-                } else {
-                    queue.enqueueOrderedBroadcastLocked(r);
-                }
+                queue.enqueueOrderedBroadcastLocked(r);
                 queue.scheduleBroadcastsLocked();
             }
         }

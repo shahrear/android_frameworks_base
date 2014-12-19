@@ -31,7 +31,6 @@ import android.opengl.EGLSurface;
 import android.opengl.GLES10;
 import android.opengl.GLES11Ext;
 import android.os.Looper;
-import android.os.SystemProperties;
 import android.util.FloatMath;
 import android.util.Slog;
 import android.view.Display;
@@ -117,6 +116,7 @@ final class ElectronBeam {
      * Animates a simple dim layer to fade the contents of the screen in or out progressively.
      */
     public static final int MODE_FADE = 2;
+
 
     public ElectronBeam(DisplayManagerService displayManager) {
         mDisplayManager = displayManager;
@@ -267,19 +267,23 @@ final class ElectronBeam {
         GLES10.glVertexPointer(2, GLES10.GL_FLOAT, 0, mVertexBuffer);
         GLES10.glEnableClientState(GLES10.GL_VERTEX_ARRAY);
 
+        // set-up texturing
+        GLES10.glDisable(GLES10.GL_TEXTURE_2D);
+        GLES10.glEnable(GLES11Ext.GL_TEXTURE_EXTERNAL_OES);
+
         // bind texture and set blending for drawing planes
-        GLES10.glBindTexture(GLES10.GL_TEXTURE_2D, mTexNames[0]);
+        GLES10.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, mTexNames[0]);
         GLES10.glTexEnvx(GLES10.GL_TEXTURE_ENV, GLES10.GL_TEXTURE_ENV_MODE,
                 mMode == MODE_WARM_UP ? GLES10.GL_MODULATE : GLES10.GL_REPLACE);
-        GLES10.glTexParameterx(GLES10.GL_TEXTURE_2D,
+        GLES10.glTexParameterx(GLES11Ext.GL_TEXTURE_EXTERNAL_OES,
                 GLES10.GL_TEXTURE_MAG_FILTER, GLES10.GL_LINEAR);
-        GLES10.glTexParameterx(GLES10.GL_TEXTURE_2D,
+        GLES10.glTexParameterx(GLES11Ext.GL_TEXTURE_EXTERNAL_OES,
                 GLES10.GL_TEXTURE_MIN_FILTER, GLES10.GL_LINEAR);
-        GLES10.glTexParameterx(GLES10.GL_TEXTURE_2D,
+        GLES10.glTexParameterx(GLES11Ext.GL_TEXTURE_EXTERNAL_OES,
                 GLES10.GL_TEXTURE_WRAP_S, GLES10.GL_CLAMP_TO_EDGE);
-        GLES10.glTexParameterx(GLES10.GL_TEXTURE_2D,
+        GLES10.glTexParameterx(GLES11Ext.GL_TEXTURE_EXTERNAL_OES,
                 GLES10.GL_TEXTURE_WRAP_T, GLES10.GL_CLAMP_TO_EDGE);
-        GLES10.glEnable(GLES10.GL_TEXTURE_2D);
+        GLES10.glEnable(GLES11Ext.GL_TEXTURE_EXTERNAL_OES);
         GLES10.glTexCoordPointer(2, GLES10.GL_FLOAT, 0, mTexCoordBuffer);
         GLES10.glEnableClientState(GLES10.GL_TEXTURE_COORD_ARRAY);
 
@@ -299,7 +303,7 @@ final class ElectronBeam {
         GLES10.glDrawArrays(GLES10.GL_TRIANGLE_FAN, 0, 4);
 
         // clean up after drawing planes
-        GLES10.glDisable(GLES10.GL_TEXTURE_2D);
+        GLES10.glDisable(GLES11Ext.GL_TEXTURE_EXTERNAL_OES);
         GLES10.glDisableClientState(GLES10.GL_TEXTURE_COORD_ARRAY);
         GLES10.glColorMask(true, true, true, true);
 

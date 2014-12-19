@@ -19,7 +19,6 @@ package android.content.res;
 import android.content.pm.ActivityInfo;
 import android.os.Parcel;
 import android.os.Parcelable;
-import android.os.SystemProperties;
 import android.text.TextUtils;
 import android.view.View;
 
@@ -762,7 +761,6 @@ public final class Configuration implements Parcelable, Comparable<Configuration
      * Set this object to the system defaults.
      */
     public void setToDefaults() {
-        //fontScale = Float.parseFloat(SystemProperties.get("ro.fontScale","1"));
         fontScale = 1;
         mcc = mnc = 0;
         locale = null;

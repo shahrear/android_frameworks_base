@@ -125,31 +125,6 @@ import static android.view.WindowManagerPolicy.WindowManagerFuncs.LID_ABSENT;
 import static android.view.WindowManagerPolicy.WindowManagerFuncs.LID_OPEN;
 import static android.view.WindowManagerPolicy.WindowManagerFuncs.LID_CLOSED;
 
-class GameDimInfo{
-	public GameDimInfo(String Name, int w, int h){
-		name = Name;
-		width = w;
-		height = h;
-    }
-	@Override
-    public String toString(){
-		StringBuilder sb = new StringBuilder(128);
-		sb.append("GameDimInfo{");
-		sb.append(Integer.toHexString(System.identityHashCode(this)));
-		sb.append(" ");
-		sb.append(name);
-		sb.append(" ");
-		sb.append(width);
-		sb.append(" ");
-		sb.append(height);
-		sb.append('}');
-		return sb.toString();
-    }
-	public String name;
-	public int width;
-	public int height;
-}
-
 /**
  * WindowManagerPolicy implementation for the Android phone UI.  This
  * introduces a new method suffix, Lp, for an internal lock of the
@@ -198,7 +173,6 @@ public class PhoneWindowManager implements WindowManagerPolicy {
     static public final String SYSTEM_DIALOG_REASON_ASSIST = "assist";
 
     public static final String DISPLAY_MODE_PATH = "/sys/class/display/mode";
-	private ArrayList<GameDimInfo> GameList = null;
 
     /**
      * These are the system UI flags that, when changing, can cause the layout
@@ -1315,11 +1289,11 @@ public class PhoneWindowManager implements WindowManagerPolicy {
                     | WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
                     | WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
                     | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN;
-/*            if (ActivityManager.isHighEndGfx()) {
+            if (ActivityManager.isHighEndGfx()) {
                 lp.flags |= WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED;
                 lp.privateFlags |=
                         WindowManager.LayoutParams.PRIVATE_FLAG_FORCE_HARDWARE_ACCELERATED;
-            }*/
+            }
             lp.format = PixelFormat.TRANSLUCENT;
             lp.setTitle("PointerLocation");
             WindowManager wm = (WindowManager)
@@ -2902,29 +2876,7 @@ public class PhoneWindowManager implements WindowManagerPolicy {
             // For purposes of positioning and showing the nav bar, if we have
             // decided that it can't be hidden (because of the screen aspect ratio),
             // then take that into account.
-            navVisible |= !mCanHideNavigationBar;
-			
-			// Loosen conditions for Application Fullscreen
-            if (SystemProperties.getBoolean("vplayer.hideStatusBar.enable", false)) {
-                final WindowManager.LayoutParams lp = (null != mTopFullscreenOpaqueWindowState)
-                    ? mTopFullscreenOpaqueWindowState.getAttrs()
-                        : null;
-                if( null != lp ){
-                    boolean topIsFullscreen = (lp.flags & WindowManager.LayoutParams.FLAG_FULLSCREEN) != 0;
-                    if(topIsFullscreen){
-                        navVisible = false;
-                    }
-                }
-            }
-            //if never need statusbar , set ro.hideStatusBar=true'', otherwise ,do not set it.
-            //if statusbar is shown, but need to hide it for a while , pls set "sys.hideStatusBar.enable=true" 
-            boolean mDefHideNavBar = SystemProperties.getBoolean("ro.platform.has.mbxuimode", false);
-            if (SystemProperties.getBoolean("persist.sys.hideStatusBar", mDefHideNavBar)) {
-                navVisible = false;
-            }else {
-                if (SystemProperties.getBoolean("sys.hideStatusBar.enable", false))
-                    navVisible = false;
-            }
+            navVisible |= !canHideNavigationBar();
 
             boolean updateSysUiVisibility = false;
             if (mNavigationBar != null) {
@@ -3198,10 +3150,7 @@ public class PhoneWindowManager implements WindowManagerPolicy {
             // IM dock windows layout below the nav bar...
             pf.bottom = df.bottom = of.bottom = mUnrestrictedScreenTop + mUnrestrictedScreenHeight;
             // ...with content insets above the nav bar
-            if(SystemProperties.getBoolean("persist.sys.hideStatusBar", SystemProperties.getBoolean("ro.platform.has.mbxuimode", false)))
-                cf.bottom = vf.bottom = mDockBottom;
-            else
-                cf.bottom = vf.bottom = mStableBottom;
+            cf.bottom = vf.bottom = mStableBottom;
             // IM dock windows always go to the bottom of the screen.
             attrs.gravity = Gravity.BOTTOM;
             mDockLayer = win.getSurfaceLayer();
@@ -3226,8 +3175,7 @@ public class PhoneWindowManager implements WindowManagerPolicy {
                     // Ensure policy decor includes status bar
                     dcf.top = mStableTop;
                 }
-                if (!SystemProperties.getBoolean("persist.sys.hideStatusBar", SystemProperties.getBoolean("ro.platform.has.mbxuimode", false))
-                    &&(fl & WindowManager.LayoutParams.FLAG_TRANSLUCENT_NAVIGATION) == 0
+                if ((fl & WindowManager.LayoutParams.FLAG_TRANSLUCENT_NAVIGATION) == 0
                         && (sysUiFl & View.SYSTEM_UI_FLAG_HIDE_NAVIGATION) == 0) {
                     // Ensure policy decor includes navigation bar
                     dcf.bottom = mStableBottom;
@@ -3519,39 +3467,6 @@ public class PhoneWindowManager implements WindowManagerPolicy {
                     = vf.right = vf.bottom = 10000;
         }
 
-		if(GameList == null){
-			Log.v(TAG,"/system/etc/game_dimension_list.txt");
-			GameList = new ArrayList<GameDimInfo>();
-			try{
-				BufferedReader br = new BufferedReader(new InputStreamReader(
-						  new FileInputStream("/system/etc/game_dimension_list.txt")));    
-				String line =""; 		   
-				GameDimInfo item= null;
-				while ((line = br.readLine()) != null){
-					if (localLOGV)  Log.d(TAG, "game dimension :" +line);
-					String game[] = line.split(":");	  
-					String dim[] = game[1].split("X");
-					int w=Integer.parseInt(dim[0].trim());
-					int h=Integer.parseInt(dim[1].trim());
-					item = new GameDimInfo(game[0].trim(), w,h ); 
-					GameList.add(item);			 
-				}			  
-				br.close();  
-			}catch(java.io.FileNotFoundException ex){	   
-			}catch(java.io.IOException ex){		  
-			} 	 
-		}
-        
-		for(int i = 0; i < GameList.size(); i++){
-			if(attrs.getTitle().toString().contains(GameList.get(i).name)){
-                pf.left = df.left = cf.left = (mUnrestrictedScreenWidth-GameList.get(i).width)/2;
-                pf.top = df.top = cf.top = (mRestrictedScreenHeight-GameList.get(i).height)/2;
-                pf.right = df.right = cf.right = mUnrestrictedScreenWidth-cf.left;
-                pf.bottom = df.bottom = cf.bottom = mRestrictedScreenHeight-cf.top;		  
-                Log.v(TAG,"dim: "+cf.left+" "+cf.top+" "+cf.right+" "+cf.bottom );
-			}						
-		}
-
         if (DEBUG_LAYOUT) Slog.v(TAG, "Compute frame " + attrs.getTitle()
                 + ": sim=#" + Integer.toHexString(sim)
                 + " attach=" + attached + " type=" + attrs.type 
@@ -3598,7 +3513,6 @@ public class PhoneWindowManager implements WindowManagerPolicy {
     @Override
     public void beginPostLayoutPolicyLw(int displayWidth, int displayHeight) {
         mTopFullscreenOpaqueWindowState = null;
-        mAppsToBeHidden.clear();
         mForceStatusBar = false;
         mForceStatusBarFromKeyguard = false;
         mForcingShowNavBar = false;
@@ -3637,7 +3551,7 @@ public class PhoneWindowManager implements WindowManagerPolicy {
             if (attrs.type == TYPE_KEYGUARD) {
                 mShowingLockscreen = true;
             }
-            boolean appWindow = attrs.type >= FIRST_APPLICATION_WINDOW
+            boolean applyWindow = attrs.type >= FIRST_APPLICATION_WINDOW
                     && attrs.type <= LAST_APPLICATION_WINDOW;
             if (attrs.type == TYPE_DREAM) {
                 // If the lockscreen was showing when the dream started then wait
@@ -3645,40 +3559,30 @@ public class PhoneWindowManager implements WindowManagerPolicy {
                 if (!mDreamingLockscreen
                         || (win.isVisibleLw() && win.hasDrawnLw())) {
                     mShowingDream = true;
-                    appWindow = true;
+                    applyWindow = true;
                 }
             }
-
-            final boolean showWhenLocked = (attrs.flags & FLAG_SHOW_WHEN_LOCKED) != 0;
-            if (appWindow) {
-                if (showWhenLocked) {
-                    mAppsToBeHidden.remove(win.getAppToken());
-                } else {
-                    mAppsToBeHidden.add(win.getAppToken());
+            if (applyWindow
+                    && attrs.x == 0 && attrs.y == 0
+                    && attrs.width == WindowManager.LayoutParams.MATCH_PARENT
+                    && attrs.height == WindowManager.LayoutParams.MATCH_PARENT) {
+                if (DEBUG_LAYOUT) Slog.v(TAG, "Fullscreen window: " + win);
+                mTopFullscreenOpaqueWindowState = win;
+                if ((attrs.flags & FLAG_SHOW_WHEN_LOCKED) != 0) {
+                    if (DEBUG_LAYOUT) Slog.v(TAG, "Setting mHideLockScreen to true by win " + win);
+                    mHideLockScreen = true;
+                    mForceStatusBarFromKeyguard = false;
                 }
-                if (attrs.x == 0 && attrs.y == 0
-                        && attrs.width == WindowManager.LayoutParams.MATCH_PARENT
-                        && attrs.height == WindowManager.LayoutParams.MATCH_PARENT) {
-                    if (DEBUG_LAYOUT) Slog.v(TAG, "Fullscreen window: " + win);
-                    mTopFullscreenOpaqueWindowState = win;
-                    if (mAppsToBeHidden.isEmpty()) {
-                        if (showWhenLocked) {
-                            if (DEBUG_LAYOUT) Slog.v(TAG, "Setting mHideLockScreen to true by win " + win);
-                            mHideLockScreen = true;
-                            mForceStatusBarFromKeyguard = false;
-                        }
-                    }
-                    if ((attrs.flags & FLAG_DISMISS_KEYGUARD) != 0
-                            && mDismissKeyguard == DISMISS_KEYGUARD_NONE) {
-                        if (DEBUG_LAYOUT) Slog.v(TAG, "Setting mDismissKeyguard true by win " + win);
-                        mDismissKeyguard = mWinDismissingKeyguard == win ?
-                                DISMISS_KEYGUARD_CONTINUE : DISMISS_KEYGUARD_START;
-                        mWinDismissingKeyguard = win;
-                        mForceStatusBarFromKeyguard = mShowingLockscreen && isKeyguardSecure();
-                    }
-                    if ((attrs.flags & FLAG_ALLOW_LOCK_WHILE_SCREEN_ON) != 0) {
-                        mAllowLockscreenWhenOn = true;
-                    }
+                if ((attrs.flags & FLAG_DISMISS_KEYGUARD) != 0
+                        && mDismissKeyguard == DISMISS_KEYGUARD_NONE) {
+                    if (DEBUG_LAYOUT) Slog.v(TAG, "Setting mDismissKeyguard true by win " + win);
+                    mDismissKeyguard = mWinDismissingKeyguard == win ?
+                            DISMISS_KEYGUARD_CONTINUE : DISMISS_KEYGUARD_START;
+                    mWinDismissingKeyguard = win;
+                    mForceStatusBarFromKeyguard = mShowingLockscreen && isKeyguardSecure();
+                }
+                if ((attrs.flags & FLAG_ALLOW_LOCK_WHILE_SCREEN_ON) != 0) {
+                    mAllowLockscreenWhenOn = true;
                 }
             }
         }
@@ -3703,56 +3607,49 @@ public class PhoneWindowManager implements WindowManagerPolicy {
         }
 
         if (mStatusBar != null) {
-        	if(SystemProperties.getBoolean("sys.statusbar.forcehide",false)== true){
-                mStatusBar.hideLw(false);
-                if (mTopFullscreenOpaqueWindowState != null) 
-                    topIsFullscreen = (lp.flags & WindowManager.LayoutParams.FLAG_FULLSCREEN) != 0;
-        	}
-            else{
-                if (DEBUG_LAYOUT) Slog.i(TAG, "force=" + mForceStatusBar
-                        + " forcefkg=" + mForceStatusBarFromKeyguard
-                        + " top=" + mTopFullscreenOpaqueWindowState);
-                if (mForceStatusBar || mForceStatusBarFromKeyguard) {
-                    if (DEBUG_LAYOUT) Slog.v(TAG, "Showing status bar: forced");
+            if (DEBUG_LAYOUT) Slog.i(TAG, "force=" + mForceStatusBar
+                    + " forcefkg=" + mForceStatusBarFromKeyguard
+                    + " top=" + mTopFullscreenOpaqueWindowState);
+            if (mForceStatusBar || mForceStatusBarFromKeyguard) {
+                if (DEBUG_LAYOUT) Slog.v(TAG, "Showing status bar: forced");
+                if (mStatusBarController.setBarShowingLw(true)) {
+                    changes |= FINISH_LAYOUT_REDO_LAYOUT;
+                }
+                // Maintain fullscreen layout until incoming animation is complete.
+                topIsFullscreen = mTopIsFullscreen && mStatusBar.isAnimatingLw();
+                // Transient status bar on the lockscreen is not allowed
+                if (mForceStatusBarFromKeyguard && mStatusBarController.isTransientShowing()) {
+                    mStatusBarController.updateVisibilityLw(false /*transientAllowed*/,
+                            mLastSystemUiFlags, mLastSystemUiFlags);
+                }
+            } else if (mTopFullscreenOpaqueWindowState != null) {
+                if (localLOGV) {
+                    Slog.d(TAG, "frame: " + mTopFullscreenOpaqueWindowState.getFrameLw()
+                            + " shown frame: " + mTopFullscreenOpaqueWindowState.getShownFrameLw());
+                    Slog.d(TAG, "attr: " + mTopFullscreenOpaqueWindowState.getAttrs()
+                            + " lp.flags=0x" + Integer.toHexString(lp.flags));
+                }
+                topIsFullscreen = (lp.flags & WindowManager.LayoutParams.FLAG_FULLSCREEN) != 0
+                        || (mLastSystemUiFlags & View.SYSTEM_UI_FLAG_FULLSCREEN) != 0;
+                // The subtle difference between the window for mTopFullscreenOpaqueWindowState
+                // and mTopIsFullscreen is that that mTopIsFullscreen is set only if the window
+                // has the FLAG_FULLSCREEN set.  Not sure if there is another way that to be the
+                // case though.
+                if (mStatusBarController.isTransientShowing()) {
                     if (mStatusBarController.setBarShowingLw(true)) {
                         changes |= FINISH_LAYOUT_REDO_LAYOUT;
                     }
-                    // Maintain fullscreen layout until incoming animation is complete.
-                    topIsFullscreen = mTopIsFullscreen && mStatusBar.isAnimatingLw();
-                    // Transient status bar on the lockscreen is not allowed
-                    if (mForceStatusBarFromKeyguard && mStatusBarController.isTransientShowing()) {
-                        mStatusBarController.updateVisibilityLw(false /*transientAllowed*/,
-                                mLastSystemUiFlags, mLastSystemUiFlags);
-                    }
-                } else if (mTopFullscreenOpaqueWindowState != null) {
-                    if (localLOGV) {
-                        Slog.d(TAG, "frame: " + mTopFullscreenOpaqueWindowState.getFrameLw()
-                                + " shown frame: " + mTopFullscreenOpaqueWindowState.getShownFrameLw());
-                        Slog.d(TAG, "attr: " + mTopFullscreenOpaqueWindowState.getAttrs()
-                                + " lp.flags=0x" + Integer.toHexString(lp.flags));
-                    }
-                    topIsFullscreen = (lp.flags & WindowManager.LayoutParams.FLAG_FULLSCREEN) != 0
-                            || (mLastSystemUiFlags & View.SYSTEM_UI_FLAG_FULLSCREEN) != 0;
-                    // The subtle difference between the window for mTopFullscreenOpaqueWindowState
-                    // and mTopIsFullscreen is that that mTopIsFullscreen is set only if the window
-                    // has the FLAG_FULLSCREEN set.  Not sure if there is another way that to be the
-                    // case though.
-                    if (mStatusBarController.isTransientShowing()) {
-                        if (mStatusBarController.setBarShowingLw(true)) {
-                            changes |= FINISH_LAYOUT_REDO_LAYOUT;
-                        }
-                    } else if (topIsFullscreen) {
-                        if (DEBUG_LAYOUT) Slog.v(TAG, "** HIDING status bar");
-                        if (mStatusBarController.setBarShowingLw(false)) {
-                            changes |= FINISH_LAYOUT_REDO_LAYOUT;
-                        } else {
-                            if (DEBUG_LAYOUT) Slog.v(TAG, "Status bar already hiding");
-                        }
+                } else if (topIsFullscreen) {
+                    if (DEBUG_LAYOUT) Slog.v(TAG, "** HIDING status bar");
+                    if (mStatusBarController.setBarShowingLw(false)) {
+                        changes |= FINISH_LAYOUT_REDO_LAYOUT;
                     } else {
-                        if (DEBUG_LAYOUT) Slog.v(TAG, "** SHOWING status bar: top is not fullscreen");
-                        if (mStatusBarController.setBarShowingLw(true)) {
-                            changes |= FINISH_LAYOUT_REDO_LAYOUT;
-                        }
+                        if (DEBUG_LAYOUT) Slog.v(TAG, "Status bar already hiding");
+                    }
+                } else {
+                    if (DEBUG_LAYOUT) Slog.v(TAG, "** SHOWING status bar: top is not fullscreen");
+                    if (mStatusBarController.setBarShowingLw(true)) {
+                        changes |= FINISH_LAYOUT_REDO_LAYOUT;
                     }
                 }
             }
@@ -3771,7 +3668,7 @@ public class PhoneWindowManager implements WindowManagerPolicy {
         if (mKeyguard != null) {
             if (localLOGV) Slog.v(TAG, "finishPostLayoutPolicyLw: mHideKeyguard="
                     + mHideLockScreen);
-            if (mDismissKeyguard != DISMISS_KEYGUARD_NONE && !isKeyguardSecure()) {
+            if (mDismissKeyguard != DISMISS_KEYGUARD_NONE && !mKeyguardDelegate.isSecure()) {
                 if (mKeyguard.hideLw(true)) {
                     changes |= FINISH_LAYOUT_REDO_LAYOUT
                             | FINISH_LAYOUT_REDO_CONFIG
@@ -5473,7 +5370,6 @@ public class PhoneWindowManager implements WindowManagerPolicy {
             if (mLockScreenTimerActive != enable) {
                 if (enable) {
                     if (localLOGV) Log.v(TAG, "setting lockscreen timer");
-                    mLockScreenTimeout=(mLockScreenTimeout<0)?Integer.MAX_VALUE:mLockScreenTimeout;
                     mHandler.postDelayed(mScreenLockTimeout, mLockScreenTimeout);
                 } else {
                     if (localLOGV) Log.v(TAG, "clearing lockscreen timer");

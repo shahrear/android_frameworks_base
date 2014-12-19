@@ -27,8 +27,6 @@ import android.util.TimeUtils;
 
 import java.io.PrintWriter;
 
-import android.os.SystemProperties;
-
 /**
  * Coordinates the timing of animations, input and drawing.
  * <p>
@@ -144,8 +142,6 @@ public final class Choreographer {
     private long mLastFrameTimeNanos;
     private long mFrameIntervalNanos;
 
-    private boolean mIsBenchMark = false;
-
     /**
      * Callback type: Input callback.  Runs first.
      * @hide
@@ -174,13 +170,6 @@ public final class Choreographer {
         mLastFrameTimeNanos = Long.MIN_VALUE;
 
         mFrameIntervalNanos = (long)(1000000000 / getRefreshRate());
-
-        String tmp = SystemProperties.get("sys.optimization.benchapk");
-        if (tmp != null) {
-            if (tmp.equals("true")) {
-                mIsBenchMark = true;
-            }
-        }
 
         mCallbackQueues = new CallbackQueue[CALLBACK_LAST + 1];
         for (int i = 0; i <= CALLBACK_LAST; i++) {
@@ -483,7 +472,7 @@ public final class Choreographer {
     private void scheduleFrameLocked(long now) {
         if (!mFrameScheduled) {
             mFrameScheduled = true;
-            if (USE_VSYNC && mIsBenchMark == false) {
+            if (USE_VSYNC) {
                 if (DEBUG) {
                     Log.d(TAG, "Scheduling next frame on vsync.");
                 }

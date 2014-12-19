@@ -34,7 +34,6 @@ import android.view.SurfaceSession;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
 import android.view.animation.Transformation;
-import android.os.SystemProperties;
 
 class ScreenRotationAnimation {
     static final String TAG = "ScreenRotationAnimation";
@@ -280,8 +279,6 @@ class ScreenRotationAnimation {
                         "<<< CLOSE TRANSACTION ScreenRotationAnimation");
             }
         }
-
-
     }
 
     boolean hasScreenshot() {

@@ -347,8 +347,6 @@ final class DisplayPowerController {
     // Twilight changed.  We might recalculate auto-brightness values.
     private boolean mTwilightChanged;
 
-    private int mSavePowerBrightness = -1;
-
     /**
      * Creates the display power controller.
      */
@@ -665,11 +663,6 @@ final class DisplayPowerController {
                 // Brighten quickly.
                 slow = false;
             }
-
-            if(mSavePowerBrightness >= 0) {
-                target = mSavePowerBrightness;
-            }
-
             animateScreenBrightness(clampScreenBrightness(target),
                     slow ? BRIGHTNESS_RAMP_RATE_SLOW : BRIGHTNESS_RAMP_RATE_FAST);
         } else {
@@ -803,45 +796,6 @@ final class DisplayPowerController {
             return max;
         }
         return value;
-    }
-
-    /*
-     * if mSavePowerBrightness >= 0 , this value will be first use to set ScreenBrightness 
-     * use policy at Settings apk in AutoBrightnessService
-     */
-    public void setBrightnessSavePower(int savePowerVal , int currSettingsVal) {
-        mSavePowerBrightness = savePowerVal ;
-        final int currSettings = currSettingsVal;
-        mHandler.post(new Runnable() {
-            public void run() {
-                if (wantScreenOn(mPowerRequest.screenState)) {
-                    int target;
-                    boolean slow = false;
-                    if (mScreenAutoBrightness >= 0 && mLightSensorEnabled) {
-                        target = mScreenAutoBrightness;
-                        slow = mUsingScreenAutoBrightness;
-                        mUsingScreenAutoBrightness = true;
-                    } else {
-                        target = currSettings;
-                        mUsingScreenAutoBrightness = false;
-                    }
-                    if (mPowerRequest.screenState == DisplayPowerRequest.SCREEN_STATE_DIM) {
-                        target = Math.min(target - SCREEN_DIM_MINIMUM_REDUCTION,
-                                            mScreenBrightnessDimConfig);
-                    }
-
-                    if(mSavePowerBrightness >= 0) {
-                        target = mSavePowerBrightness;
-                    }
-
-                    Slog.d(TAG,"update brightness="+target);
-                    animateScreenBrightness(clampScreenBrightness(target),
-                            slow ? BRIGHTNESS_RAMP_RATE_SLOW : BRIGHTNESS_RAMP_RATE_FAST);
-                } else {
-                    mUsingScreenAutoBrightness = false;
-                }
-            }
-        });
     }
 
     private static float normalizeAbsoluteBrightness(int value) {

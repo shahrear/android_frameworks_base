@@ -99,11 +99,6 @@ public final class KeyChain {
     private static final String ACTION_CHOOSER = "com.android.keychain.CHOOSER";
 
     /**
-     * Package name for the Certificate Installer.
-     */
-    private static final String CERT_INSTALLER_PACKAGE = "com.android.certinstaller";
-
-    /**
      * Extra for use with {@link #ACTION_CHOOSER}
      * @hide Also used by KeyChainActivity implementation
      */
@@ -211,7 +206,7 @@ public final class KeyChain {
      */
     public static Intent createInstallIntent() {
         Intent intent = new Intent(ACTION_INSTALL);
-        intent.setClassName(CERT_INSTALLER_PACKAGE,
+        intent.setClassName("com.android.certinstaller",
                             "com.android.certinstaller.CertInstallerMain");
         return intent;
     }
