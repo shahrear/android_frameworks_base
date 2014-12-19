@@ -512,12 +512,4 @@
          linebreak to position it correctly.  [CHAR LIMIT=45] -->
     <string name="ssl_ca_cert_warning">Network may\nbe monitored</string>
 
-    <string name="cling_spec">Gravity Sensor Oriention Config Spec</string>
-    <string name="cling_hint">"The following three configurations can be "</string>
-    <string name="cling_hint1">portfolio choice</string>
-    <string name="cling_hint2">,and click \"OK\" to complete the configuration</string>
-    <string name="cling_dismiss">Skip</string>
-    <string name="reverse_x">Swap Left/Right</string>
-    <string name="reverse_y">Swap Up/Down</string>
-    <string name="swap_xy">Swap Left/Up,Right/Down</string>
 </resources>

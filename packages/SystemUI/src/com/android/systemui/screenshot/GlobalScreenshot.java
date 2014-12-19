@@ -43,7 +43,6 @@ import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Environment;
 import android.os.Process;
-import android.os.SystemProperties;
 import android.provider.MediaStore;
 import android.util.DisplayMetrics;
 import android.view.Display;

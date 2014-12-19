@@ -45,7 +45,6 @@ import android.os.Handler;
 import android.os.RemoteException;
 import android.os.UserHandle;
 import android.os.UserManager;
-import android.os.SystemProperties;
 import android.provider.AlarmClock;
 import android.provider.ContactsContract;
 import android.provider.ContactsContract.CommonDataKinds.Phone;
@@ -107,10 +106,8 @@ class QuickSettings {
     private AsyncTask<Void, Void, Pair<Boolean, Boolean>> mQueryCertTask;
 
     boolean mTilesSetUp = false;
-    private final boolean isSupportAirPlaneMode = false ;
     boolean mUseDefaultAvatar = false;
 
-	private final boolean isSupportEmergencyCall = false ;
     private Handler mHandler;
 
     // The set of QuickSettingsTiles that have dynamic spans (and need to be updated on
@@ -306,8 +303,6 @@ class QuickSettings {
         QuickSettingsTileView userTile = (QuickSettingsTileView)
                 inflater.inflate(R.layout.quick_settings_tile, parent, false);
         userTile.setContent(R.layout.quick_settings_tile_user, inflater);
-        if(!UserManager.supportsMultipleUsers())
-            userTile.setVisibility(View.GONE);
         userTile.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -347,10 +342,8 @@ class QuickSettings {
                         R.string.accessibility_quick_settings_user, state.label));
             }
         });
-        if(!Boolean.parseBoolean(SystemProperties.get("ro.platform.has.mbxuimode", "false"))){
-            parent.addView(userTile);
-            mDynamicSpannedTiles.add(userTile);
-        }
+        parent.addView(userTile);
+        mDynamicSpannedTiles.add(userTile);
 
         // Brightness
         final QuickSettingsBasicTile brightnessTile
@@ -365,10 +358,8 @@ class QuickSettings {
         });
         mModel.addBrightnessTile(brightnessTile,
                 new QuickSettingsModel.BasicRefreshCallback(brightnessTile));
-        if (!Boolean.parseBoolean(SystemProperties.get("ro.platform.has.mbxuimode", "false"))) {
-            parent.addView(brightnessTile);
-            mDynamicSpannedTiles.add(brightnessTile);
-        }
+        parent.addView(brightnessTile);
+        mDynamicSpannedTiles.add(brightnessTile);
 
         // Settings tile
         final QuickSettingsBasicTile settingsTile = new QuickSettingsBasicTile(mContext);
@@ -477,10 +468,7 @@ class QuickSettings {
                             state.label));
                 }
             });
-            
-            if(!Boolean.parseBoolean(SystemProperties.get("ro.platform.has.mbxuimode", "false"))&& isSupportEmergencyCall){
-                parent.addView(rssiTile);
-            }
+            parent.addView(rssiTile);
         }
 
         // Rotation Lock
@@ -495,7 +483,6 @@ class QuickSettings {
                     mRotationLockController.setRotationLocked(!locked);
                 }
             });
-
             mModel.addRotationLockTile(rotationLockTile, mRotationLockController,
                     new QuickSettingsModel.RefreshCallback() {
                         @Override
@@ -514,9 +501,7 @@ class QuickSettings {
                             }
                         }
                     });
-            if (!Boolean.parseBoolean(SystemProperties.get("ro.platform.has.mbxuimode", "false"))) {
-                parent.addView(rotationLockTile);
-            }
+            parent.addView(rotationLockTile);
         }
 
         // Battery
@@ -549,10 +534,7 @@ class QuickSettings {
                         mContext.getString(R.string.accessibility_quick_settings_battery, t));
             }
         });
-        
-        if(!Boolean.parseBoolean(SystemProperties.get("ro.platform.has.mbxuimode", "false"))){
-            parent.addView(batteryTile);
-        }
+        parent.addView(batteryTile);
 
         // Airplane Mode
         final QuickSettingsBasicTile airplaneTile
@@ -570,10 +552,7 @@ class QuickSettings {
                 airplaneTile.setText(state.label);
             }
         });
-        
-        if(!Boolean.parseBoolean(SystemProperties.get("ro.platform.has.mbxuimode", "false")) && isSupportAirPlaneMode){
-            parent.addView(airplaneTile);
-        }
+        parent.addView(airplaneTile);
 
         // Bluetooth
         if (mModel.deviceSupportsBluetooth()

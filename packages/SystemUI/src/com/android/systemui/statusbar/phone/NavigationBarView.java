@@ -55,17 +55,8 @@ import com.android.systemui.statusbar.DelegateViewHelper;
 import com.android.systemui.statusbar.policy.DeadZone;
 import com.android.systemui.statusbar.policy.KeyButtonView;
 
-import android.content.ServiceConnection;
-import android.content.ComponentName;
-import android.content.Intent;
-import android.os.Messenger;
-import android.os.RemoteException;
-import android.os.IBinder;
-import android.os.SystemProperties;
-import java.io.File;
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
-import android.content.res.Configuration;
 
 public class NavigationBarView extends LinearLayout {
     final static boolean DEBUG = false;
@@ -95,8 +86,6 @@ public class NavigationBarView extends LinearLayout {
     private DelegateViewHelper mDelegateHelper;
     private DeadZone mDeadZone;
     private final NavigationBarTransitions mBarTransitions;
-
-    private int mOrientation = Configuration.ORIENTATION_LANDSCAPE ;
 
     // workaround for LayoutTransitions leaving the nav buttons in a weird state (bug 5549288)
     final static boolean WORKAROUND_INVALID_LAYOUT = true;
@@ -550,17 +539,6 @@ public class NavigationBarView extends LinearLayout {
         }
 
         setNavigationIconHints(mNavigationIconHints, true);
-    }
-
-    protected void setViewLayout(View view){
-        Resources resources = getResources();
-        if (mOrientation == Configuration.ORIENTATION_LANDSCAPE) {
-            view.setPadding((int)resources.getDimension(R.dimen.navigation_key_land_width_space), 0,(int)resources.getDimension(R.dimen.navigation_key_land_width_space), 0);
-            view.setLayoutParams(new LinearLayout.LayoutParams((int)resources.getDimension(R.dimen.navigation_key_land_width),ViewGroup.LayoutParams.FILL_PARENT));
-        } else  if (mOrientation == Configuration.ORIENTATION_PORTRAIT) {
-            view.setPadding((int)resources.getDimension(R.dimen.navigation_key_port_width_space), 0,(int)resources.getDimension(R.dimen.navigation_key_port_width_space), 0);
-            view.setLayoutParams(new LinearLayout.LayoutParams((int)resources.getDimension(R.dimen.navigation_key_port_width),ViewGroup.LayoutParams.FILL_PARENT));
-        }
     }
 
     @Override

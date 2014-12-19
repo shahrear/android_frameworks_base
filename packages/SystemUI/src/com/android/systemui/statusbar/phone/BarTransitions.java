@@ -48,8 +48,7 @@ public class BarTransitions {
 
     private final String mTag;
     private final View mView;
-    //private final boolean mSupportsTransitions = ActivityManager.isHighEndGfx();
-    private final boolean mSupportsTransitions = true;
+    private final boolean mSupportsTransitions = ActivityManager.isHighEndGfx();
     private final BarBackgroundDrawable mBarBackground;
 
     private int mMode;
