@@ -55,6 +55,7 @@ public class EthernetService<syncronized> extends IEthernetManager.Stub{
     private Handler mEthStateHandler;
     private boolean isEthernetServiceInited = false;    
 
+    private int mDeviceIndex;
 
     public EthernetService(Context context, EthernetStateTracker Tracker){
         mTracker = Tracker;
@@ -110,7 +111,7 @@ public class EthernetService<syncronized> extends IEthernetManager.Stub{
         final ContentResolver cr = mContext.getContentResolver();
         Slog.v(TAG,"Set ethernet mode " + DevName + " -> " + mode);
         if (DevName != null) {
-            Settings.Secure.putString(cr, Settings.Secure.ETH_IFNAME, DevName[0]);
+            Settings.Secure.putString(cr, Settings.Secure.ETH_IFNAME, DevName[mDeviceIndex]);
             Settings.Secure.putInt(cr, Settings.Secure.ETH_CONF,1);
             Settings.Secure.putString(cr, Settings.Secure.ETH_MODE, mode);
         }
@@ -160,6 +161,7 @@ public class EthernetService<syncronized> extends IEthernetManager.Stub{
 
     private int scanEthDevice() {
         int i = 0,j;
+        mDeviceIndex = 0;
         if ((i = EthernetNative.getInterfaceCnt()) != 0) {
             Slog.i(TAG, "total found " + i + " net devices");
             if (DevName == null || DevName.length != i)
@@ -172,6 +174,8 @@ public class EthernetService<syncronized> extends IEthernetManager.Stub{
             DevName[j] = EthernetNative.getInterfaceName(j);
             if (DevName[j] == null)
                 break;
+            if (DevName[j].equals("eth0"))
+                mDeviceIndex = j;
             Slog.i(TAG," device " + j + " name " + DevName[j]);
         }
 
@@ -226,8 +230,8 @@ public class EthernetService<syncronized> extends IEthernetManager.Stub{
                 String[] TetheredIfaces = mCM.getTetheredIfaces();
                 Slog.d(TAG, "TetheredIfaces size is:"+TetheredIfaces.length);
                 if(TetheredIfaces.length > 0 && getPersistedState() == 2){
-                	Slog.d(TAG,"ether dev:"+DevName[0] +" is used for tethering !!");
-                	return ;
+                    Slog.d(TAG,"ether dev:"+DevName[mDeviceIndex] +" is used for tethering !!");
+                    return ;
                 }
                 mTracker.stopInterface(false);
             }
@@ -291,7 +295,7 @@ public class EthernetService<syncronized> extends IEthernetManager.Stub{
     public boolean isEthDeviceUp() {
         try {
             boolean retval = false;
-            FileReader fr = new FileReader("/sys/class/net/" + DevName[0] +"/operstate");
+            FileReader fr = new FileReader("/sys/class/net/" + DevName[mDeviceIndex] +"/operstate");
             BufferedReader br = new BufferedReader(fr, 32);
             String status = br.readLine();
             if (status != null && status.equals("up")) {
@@ -315,18 +319,19 @@ public class EthernetService<syncronized> extends IEthernetManager.Stub{
     }
 
     public boolean isEthDeviceAdded() {
-        if (null == DevName || null == DevName[0]) {
+        int num = scanEthDevice();
+        if (null == DevName || null == DevName[mDeviceIndex]) {
             Slog.d(TAG, "isEthDeviceAdded: trigger scanEthDevice");
             scanEthDevice();
         }
 
-        if (null == DevName || null == DevName[0]) {
+        if (null == DevName || null == DevName[mDeviceIndex]) {
             Slog.d(TAG, "EthernetNative.isEthDeviceAdded: No Device Found");
             return false;
         }
 
-        int retval = EthernetNative.isInterfaceAdded(DevName[0]);
-        Slog.d(TAG, "EthernetNative.isEthDeviceAdded(" + DevName[0] +") return " + (0 == retval));
+        int retval = EthernetNative.isInterfaceAdded(DevName[mDeviceIndex]);
+        Slog.d(TAG, "EthernetNative.isEthDeviceAdded(" + DevName[mDeviceIndex] +") return " + (0 == retval));
         if (retval == 0)
             return true;
         else
