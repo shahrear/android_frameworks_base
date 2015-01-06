@@ -338,81 +338,10 @@ public class RecoverySystem {
     public static void installPackage(Context context, File packageFile)
         throws IOException {
         String filename = packageFile.getCanonicalPath();
-        String strExt2Path =Environment.getExternalStorage2Directory().toString();
-        if(filename.startsWith(strExt2Path))
-        {
-            if(Environment.isExternalStorageBeSdcard())
-            {
-            	String newpath = filename.substring(4); 
-            	Log.w(TAG, "!!! REBOOTING TO INSTALL 1 " + newpath + " !!!");
-    	        String arg = "--update_package=" + newpath;
-                arg += "\n--locale=" + Locale.getDefault().toString();
-    	        bootCommand(context, arg, true);
-    	    }
-	        else
-	        {
-            	String newpath =new String("/sdcard")+filename.substring(strExt2Path.length()); 
-            	Log.w(TAG, "!!! REBOOTING TO INSTALL 2 " + newpath + " !!!");
-    	        String arg = "--update_package=" + newpath;
-                arg += "\n--locale=" + Locale.getDefault().toString();
-    	        bootCommand(context, arg, true);
-	        }
-
-        }
-        else if(filename.startsWith(Environment.getExternalStorageDirectory().toString()))
-        {
-            if(Environment.isExternalStorageBeSdcard())
-            {
-            	String absPath = packageFile.getAbsolutePath();
-            	if(SystemProperties.getInt("vold.fakesdcard.enable",0)==1 && absPath.startsWith("/mnt/sda1/"))
-                    {
-                        String newpath =new String("/udisk/")+absPath.substring(10); 
-                        Log.w(TAG, "!!! REBOOTING TO INSTALL 3-1 " + newpath + " !!!");
-                        String arg = "--update_package=" + newpath;
-                        arg += "\n--locale=" + Locale.getDefault().toString();
-                        bootCommand(context, arg, true);
-                    }
-                else
-                {
-                	String newpath = filename.substring(4); 
-                	Log.w(TAG, "!!! REBOOTING TO INSTALL 3-2 " + newpath + " !!!");
-        	        String arg = "--update_package=" + newpath;
-                    arg += "\n--locale=" + Locale.getDefault().toString();
-        	        bootCommand(context, arg, true);
-                }
-            }
-            else
-            {
-            	String newpath = new String("/media/"+packageFile.getName()); 
-            	Log.w(TAG, "!!! REBOOTING TO INSTALL 4 " + newpath + " !!!");
-    	        String arg = "--update_package=" + newpath;
-                arg += "\n--locale=" + Locale.getDefault().toString();
-    	        bootCommand(context, arg, true);
-            }
-        }
-        else if(filename.startsWith(Environment.getInternalStorageDirectory().toString()))
-        {
-        	String newpath = new String("/media/"+packageFile.getName()); 
-        	Log.w(TAG, "!!! REBOOTING TO INSTALL 5 " + newpath + " !!!");
-	        String arg = "--update_package=" + newpath;
-            arg += "\n--locale=" + Locale.getDefault().toString();
-	        bootCommand(context, arg, true);
-        }
-        else if(filename.startsWith("/udisk"))
-        {
-                String newpath =new String("/udisk/")+filename.substring(7);
-                Log.w(TAG, "!!! REBOOTING TO INSTALL 6 " + newpath + " !!!");
-                String arg = "--update_package=" + newpath;
-                arg += "\n--locale=" + Locale.getDefault().toString();
-                bootCommand(context, arg, true);
-        }
-        else
-        {
-            Log.w(TAG, "!!! REBOOTING TO INSTALL 7 " + filename + " !!!");
-        String arg = "--update_package=" + filename;
-        arg += "\n--locale=" + Locale.getDefault().toString();
-        bootCommand(context, arg, true);
-        }
+        Log.w(TAG, "!!! REBOOTING TO INSTALL " + filename + " !!!");
+        String arg = "--update_package=" + filename +
+            "\n--locale=" + Locale.getDefault().toString();
+        bootCommand(context, arg);
     }
 
     /**
@@ -442,13 +371,8 @@ public class RecoverySystem {
 
         // Block until the ordered broadcast has completed.
         condition.block();
-        Boolean hasMassStorage = SystemProperties.getBoolean("ro.has.mass.storage",false);
-        if(isNeedWipeMedia && hasMassStorage){
-            bootCommand(context, "--wipe_data\n--wipe_media\n--locale=" + Locale.getDefault().toString(), false);
-            isNeedWipeMedia = false;
-        }else{
-            bootCommand(context, "--wipe_data\n--locale=" + Locale.getDefault().toString(), false);
-        }
+
+        bootCommand(context, "--wipe_data\n--locale=" + Locale.getDefault().toString());
     }
 
     /**
@@ -456,11 +380,11 @@ public class RecoverySystem {
      * @throws IOException if something goes wrong.
      */
     public static void rebootWipeCache(Context context) throws IOException {
-        bootCommand(context, "--wipe_cache\n--locale=" + Locale.getDefault().toString(), false);
+        bootCommand(context, "--wipe_cache\n--locale=" + Locale.getDefault().toString());
     }
 
     public static void rebootRestoreSystem(Context context) throws IOException {
-	bootCommand(context, "--restore_system\n--locale=" + Locale.getDefault().toString(), false);
+	bootCommand(context, "--restore_system\n--locale=" + Locale.getDefault().toString());
 }
 
     /**
@@ -468,7 +392,7 @@ public class RecoverySystem {
      * @param arg to pass to the recovery utility.
      * @throws IOException if something goes wrong.
      */
-    private static void bootCommand(Context context, String arg, Boolean update) throws IOException {
+    private static void bootCommand(Context context, String arg) throws IOException {
         RECOVERY_DIR.mkdirs();  // In case we need it
         COMMAND_FILE.delete();  // In case it's not writable
         LOG_FILE.delete();
@@ -483,10 +407,7 @@ public class RecoverySystem {
 
         // Having written the command file, go ahead and reboot
         PowerManager pm = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
-        if(update)
-	    pm.reboot("update");
-        else 
-            pm.reboot("recovery");
+        pm.reboot("recovery");
 
         throw new IOException("Reboot failed (no permissions?)");
     }
