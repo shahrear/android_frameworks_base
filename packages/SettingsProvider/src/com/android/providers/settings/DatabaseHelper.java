@@ -1972,10 +1972,6 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             loadIntegerSetting(stmt, Settings.System.SCREEN_OFF_TIMEOUT,
                     R.integer.def_screen_off_timeout);
 
-            // Set default wifi policy
-            loadIntegerSetting(stmt, Settings.System.WIFI_SLEEP_POLICY, 
-                    R.integer.def_wifi_sleep_policy);
-
             // Set default cdma DTMF type
             loadSetting(stmt, Settings.System.DTMF_TONE_TYPE_WHEN_DIALING, 0);
 
@@ -2095,9 +2091,6 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                         R.bool.def_lockscreen_disabled);
             }
 
-            loadIntegerSetting(stmt, Settings.Secure.WIFI_MAX_DHCP_RETRY_COUNT,
-                    R.integer.def_max_dhcp_retries);
-                    
             loadBooleanSetting(stmt, Settings.Secure.SCREENSAVER_ENABLED,
                     com.android.internal.R.bool.config_dreamsEnabledByDefault);
             loadBooleanSetting(stmt, Settings.Secure.SCREENSAVER_ACTIVATE_ON_DOCK,

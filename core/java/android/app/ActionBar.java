@@ -1059,9 +1059,4 @@ public abstract class ActionBar {
             super(source);
         }
     }
-
-    /**
-     * @hide
-     */
-    public abstract View getActionView() ;
 }

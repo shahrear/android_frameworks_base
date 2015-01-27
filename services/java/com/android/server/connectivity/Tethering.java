@@ -40,7 +40,6 @@ import android.os.Binder;
 import android.os.INetworkManagementService;
 import android.os.Looper;
 import android.os.Message;
-import android.os.PowerManager;
 import android.os.RemoteException;
 import android.os.UserHandle;
 import android.provider.Settings;
@@ -78,9 +77,6 @@ public class Tethering extends INetworkManagementEventObserver.Stub {
     private final static boolean DBG = true;
     private final static boolean VDBG = false;
 
-    private boolean mWifiTethered = false;
-    private PowerManager.WakeLock mShutdownLock;
-    
     // TODO - remove both of these - should be part of interface inspection/selection stuff
     private String[] mTetherableUsbRegexs;
     private String[] mTetherableWifiRegexs;
@@ -164,11 +160,6 @@ public class Tethering extends INetworkManagementEventObserver.Stub {
         filter.addAction(Intent.ACTION_MEDIA_UNSHARED);
         filter.addDataScheme("file");
         mContext.registerReceiver(mStateReceiver, filter);
-        
-        filter = new IntentFilter();
-        filter.addAction(Intent.ACTION_SCREEN_ON);
-        filter.addAction(Intent.ACTION_SCREEN_OFF);
-        mContext.registerReceiver(mStateReceiver, filter);        
 
         mDhcpRange = context.getResources().getStringArray(
                 com.android.internal.R.array.config_tether_dhcp_range);
@@ -183,9 +174,6 @@ public class Tethering extends INetworkManagementEventObserver.Stub {
         mDefaultDnsServers = new String[2];
         mDefaultDnsServers[0] = DNS_DEFAULT_SERVER1;
         mDefaultDnsServers[1] = DNS_DEFAULT_SERVER2;
-        
-        PowerManager powerManager = (PowerManager)mContext.getSystemService(Context.POWER_SERVICE);
-        mShutdownLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, TAG);
     }
 
     void updateConfiguration() {
@@ -423,9 +411,6 @@ public class Tethering extends INetworkManagementEventObserver.Stub {
                 }
             }
         }
-        
-        mWifiTethered = wifiTethered;
-        
         Intent broadcast = new Intent(ConnectivityManager.ACTION_TETHER_STATE_CHANGED);
         broadcast.addFlags(Intent.FLAG_RECEIVER_REPLACE_PENDING |
                 Intent.FLAG_RECEIVER_REGISTERED_ONLY_BEFORE_BOOT);
@@ -510,16 +495,6 @@ public class Tethering extends INetworkManagementEventObserver.Stub {
         }
     }
 
-    private void acquireShutdownLock() {
-        if (!mShutdownLock.isHeld())
-            mShutdownLock.acquire();
-    }
-	
-    private void releaseShutdownLock() {
-        if (mShutdownLock.isHeld())
-            mShutdownLock.release();
-    }
-
     private class StateReceiver extends BroadcastReceiver {
         public void onReceive(Context content, Intent intent) {
             String action = intent.getAction();
@@ -540,12 +515,6 @@ public class Tethering extends INetworkManagementEventObserver.Stub {
                         networkInfo.getDetailedState() != NetworkInfo.DetailedState.FAILED) {
                     if (VDBG) Log.d(TAG, "Tethering got CONNECTIVITY_ACTION");
                     mTetherMasterSM.sendMessage(TetherMasterSM.CMD_UPSTREAM_CHANGED);
-                }
-            } else if (action.equals(Intent.ACTION_SCREEN_ON)) {
-                releaseShutdownLock();
-            } else if (action.equals(Intent.ACTION_SCREEN_OFF)) {
-                if (mWifiTethered) {
-                    acquireShutdownLock();
                 }
             } else if (action.equals(Intent.ACTION_CONFIGURATION_CHANGED)) {
                 updateConfiguration();
@@ -1366,7 +1335,21 @@ public class Tethering extends INetworkManagementEventObserver.Stub {
                         linkProperties = mConnService.getLinkProperties(upType);
                     } catch (RemoteException e) { }
                     if (linkProperties != null) {
-                        iface = linkProperties.getInterfaceName();
+                        // Find the interface with the default IPv4 route. It may be the
+                        // interface described by linkProperties, or one of the interfaces
+                        // stacked on top of it.
+                        Log.i(TAG, "Finding IPv4 upstream interface on: " + linkProperties);
+                        RouteInfo ipv4Default = RouteInfo.selectBestRoute(
+                            linkProperties.getAllRoutes(), Inet4Address.ANY);
+                        if (ipv4Default != null) {
+                            iface = ipv4Default.getInterface();
+                            Log.i(TAG, "Found interface " + ipv4Default.getInterface());
+                        } else {
+                            Log.i(TAG, "No IPv4 upstream interface, giving up.");
+                        }
+                    }
+
+                    if (iface != null) {
                         String[] dnsServers = mDefaultDnsServers;
                         Collection<InetAddress> dnses = linkProperties.getDnses();
                         if (dnses != null) {

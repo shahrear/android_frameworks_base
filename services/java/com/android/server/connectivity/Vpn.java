@@ -45,7 +45,6 @@ import android.net.LinkProperties;
 import android.net.LocalSocket;
 import android.net.LocalSocketAddress;
 import android.net.NetworkInfo;
-import android.net.NetworkUtils;
 import android.net.RouteInfo;
 import android.net.NetworkInfo.DetailedState;
 import android.os.Binder;
@@ -78,7 +77,6 @@ import com.android.server.net.BaseNetworkObserver;
 import java.io.File;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.net.InetAddress;
 import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.nio.charset.StandardCharsets;
@@ -87,10 +85,6 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import libcore.io.IoUtils;
-
-import android.net.ethernet.EthernetManager;
-import android.net.ethernet.EthernetStateTracker;
-import android.os.SystemProperties;
 
 /**
  * @hide
@@ -113,7 +107,6 @@ public class Vpn extends BaseNetworkStateTracker {
     private volatile boolean mEnableTeardown = true;
     private final IConnectivityManager mConnService;
     private VpnConfig mConfig;
-    private INetworkManagementService mNetService = null;
 
     /* list of users using this VPN. */
     @GuardedBy("this")
@@ -130,8 +123,6 @@ public class Vpn extends BaseNetworkStateTracker {
         mCallback = callback;
         mConnService = connService;
         mUserId = userId;
-
-        mNetService = netService;
 
         try {
             netService.registerObserver(mObserver);
@@ -202,14 +193,6 @@ public class Vpn extends BaseNetworkStateTracker {
     public String getTcpBufferSizesPropName() {
         return PROP_TCP_BUFFER_UNKNOWN;
     }
-	
-	public void setMtuEx(String net_interface, int mtu) {
- 		try{
- 			mNetService.setMtu(net_interface, mtu);}
- 		catch(Exception e){
- 		Log.e(TAG,"exception in updateState setMtuEx()"+e);
- 		}
- 	  }
 
     /**
      * Update current state, dispaching event to listeners.
@@ -218,13 +201,6 @@ public class Vpn extends BaseNetworkStateTracker {
         if (LOGD) Log.d(TAG, "setting state=" + detailedState + ", reason=" + reason);
         mNetworkInfo.setDetailedState(detailedState, reason, null);
         mCallback.onStateChanged(new NetworkInfo(mNetworkInfo));
-		
-		if( DetailedState.CONNECTED == detailedState ) {
- 		setMtuEx("wlan0", Integer.parseInt(SystemProperties.get("ro.vpn_wlan_mtu","1400")));
- 		setMtuEx("ppp0", Integer.parseInt(SystemProperties.get("ro.vpn_ppp_mtu","1250")));
- 		} else if( DetailedState.DISCONNECTED == detailedState ) {
- 		setMtuEx("wlan0", Integer.parseInt(SystemProperties.get("ro.default_wlan_mtu","1500")));
- 		}
     }
 
     /**
@@ -457,18 +433,6 @@ public class Vpn extends BaseNetworkStateTracker {
         // TODO: ensure that contract class eventually marks as connected
         updateState(DetailedState.AUTHENTICATING, "establish");
         return tun;
-    }
-
-    /**
-     * Check if a given address is covered by the VPN's routing rules.
-     */
-    public boolean isAddressCovered(InetAddress address) {
-        synchronized (Vpn.this) {
-            if (!isRunningLocked()) {
-                return false;
-            }
-            return RouteInfo.selectBestRoute(mConfig.routes, address) != null;
-        }
     }
 
     private boolean isRunningLocked() {

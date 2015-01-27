@@ -17,7 +17,6 @@
 package android.test;
 
 import android.app.Instrumentation;
-import android.util.Log;
 import android.content.Context;
 import android.os.PerformanceCollector.PerformanceResultsWriter;
 
@@ -189,17 +188,6 @@ public class AndroidTestRunner extends BaseTestRunner {
             setContextIfAndroidTestCase(testCase, mContext, testContext);
             setInstrumentationIfInstrumentationTestCase(testCase, mInstrumentation);
             setPerformanceWriterIfPerformanceCollectorTestCase(testCase, mPerfWriter);
-            if (testCase.getName().equals("testSynthesizeToFile") 
-                    || testCase.getName().equals("testOnOrientationChanged")
-                    || testCase.getName().equals("testOnScaleChanged")
-                    || testCase.getName().equals("testZoom")
-                    || testCase.getName().equals("testSetWebViewClient")){
-                //Log.w("AndroidTestRunner", "###################SynthesizeToFile");
-                try {
-                    Thread.sleep(2000);
-                } catch (InterruptedException e) {
-                }
-            }
             testCase.run(mTestResult);
         }
     }

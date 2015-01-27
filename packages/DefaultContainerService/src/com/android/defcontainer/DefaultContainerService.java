@@ -40,7 +40,6 @@ import android.os.RemoteException;
 import android.os.ServiceManager;
 import android.os.StatFs;
 import android.os.SystemClock;
-import android.os.SystemProperties;
 import android.provider.Settings;
 import android.util.DisplayMetrics;
 import android.util.Log;
@@ -452,30 +451,11 @@ public class DefaultContainerService extends IntentService {
     }
 
     private static void copyToFile(InputStream inputStream, OutputStream out) throws IOException {
-        /*
         byte[] buffer = new byte[16384];
         int bytesRead;
         while ((bytesRead = inputStream.read(buffer)) >= 0) {
             out.write(buffer, 0, bytesRead);
-        }*/
-
-        try {
-            byte[] buffer = new byte[16384];
-            int bytesRead;
-            while ((bytesRead = inputStream.read(buffer)) >= 0) {
-                out.write(buffer, 0, bytesRead);
-            }
-        } finally {
-            out.flush();
-
-            java.io.FileOutputStream syncOut = (java.io.FileOutputStream)out;
-            try {
-                syncOut.getFD().sync();
-            } catch (IOException e) {
-            }
-            //out.close();
         }
-            
     }
 
     private void copyFile(Uri pPackageURI, OutputStream outStream,
@@ -737,8 +717,7 @@ public class DefaultContainerService extends IntentService {
             prefer = PREFER_INTERNAL;
         }
 
-        final boolean emulated = (Environment.isExternalStorageEmulated() 
-			&& !SystemProperties.getBoolean("ro.storage.move2sdcard",false));
+        final boolean emulated = Environment.isExternalStorageEmulated();
 
         final File apkFile = new File(archiveFilePath);
 
@@ -827,8 +806,7 @@ public class DefaultContainerService extends IntentService {
      */
     private boolean isUnderExternalThreshold(File apkFile, boolean isForwardLocked)
             throws IOException {
-        if (Environment.isExternalStorageEmulated()
-			&& !SystemProperties.getBoolean("ro.storage.move2sdcard",false)) {
+        if (Environment.isExternalStorageEmulated()) {
             return false;
         }
 

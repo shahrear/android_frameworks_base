@@ -309,13 +309,6 @@ class ServerThread {
             ServiceManager.addService(Context.SYSTEM_WRITE_SERVICE, systemWrite);
 
 
-	        Boolean hasMbxUI = SystemProperties.getBoolean("ro.platform.has.mbxuimode",false);
-            if (hasMbxUI){
-                Slog.i(TAG, "Mbox Outputmode Manager");
-                MboxOutputModeService output = new MboxOutputModeService(context);
-                ServiceManager.addService(Context.MBOX_OUTPUTMODE_SERVICE, output);
-            }
-
             Slog.i(TAG, "Init Watchdog");
             Watchdog.getInstance().init(context, battery, power, alarm,
                     ActivityManagerService.self());
@@ -1188,10 +1181,6 @@ public class SystemServer {
         Environment.setUserRequired(true);
 
         System.loadLibrary("android_servers");
-
-    	if(SystemProperties.getBoolean("ro.app.optimization",false)){
-    		System.loadLibrary("optimization");
-    	}
 
         Slog.i(TAG, "Entered the Android system server!");
 
