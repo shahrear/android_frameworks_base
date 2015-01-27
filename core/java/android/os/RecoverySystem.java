@@ -20,8 +20,6 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.util.Log;
-import android.os.Environment;
-import android.os.SystemProperties;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
@@ -78,11 +76,6 @@ public class RecoverySystem {
 
     // Length limits for reading files.
     private static int LOG_FILE_MAX_LENGTH = 64 * 1024;
-
-    /**
-     * @hide
-    */
-    public static boolean isNeedWipeMedia = false; 
 
     /**
      * Interface definition for a callback to be invoked regularly as
@@ -382,10 +375,6 @@ public class RecoverySystem {
     public static void rebootWipeCache(Context context) throws IOException {
         bootCommand(context, "--wipe_cache\n--locale=" + Locale.getDefault().toString());
     }
-
-    public static void rebootRestoreSystem(Context context) throws IOException {
-	bootCommand(context, "--restore_system\n--locale=" + Locale.getDefault().toString());
-}
 
     /**
      * Reboot into the recovery system with the supplied argument.

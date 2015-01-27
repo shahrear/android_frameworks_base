@@ -793,8 +793,6 @@ public class PhoneWindowManager implements WindowManagerPolicy {
                 break;
             case LONG_PRESS_POWER_SHUT_OFF:
             case LONG_PRESS_POWER_SHUT_OFF_NO_CONFIRM:
-                if (SystemProperties.getBoolean("ro.platform.has.mbxuimode", false))
-                    break; 
                 mPowerKeyHandled = true;
                 performHapticFeedbackLw(null, HapticFeedbackConstants.LONG_PRESS, false);
                 sendCloseSystemWindows(SYSTEM_DIALOG_REASON_GLOBAL_ACTIONS);
@@ -1159,20 +1157,6 @@ public class PhoneWindowManager implements WindowManagerPolicy {
             mHasNavigationBar = false;
         } else if ("0".equals(navBarOverride)) {
             mHasNavigationBar = true;
-        }
-
-         if (mHasNavigationBar) {
-            // The navigation bar is at the right in landscape; it seems always
-            // useful to hide it for showing a video.
-            mCanHideNavigationBar = true;
-        } else {
-            mCanHideNavigationBar = false;
-        }
-        
-   
-        if(SystemProperties.getBoolean("ro.platform.has.mbxuimode",false)){
-            mNavigationBarCanMove = false;
-            mCanHideNavigationBar = true;
         }
 
         // For demo purposes, allow the rotation of the HDMI display to be controlled.
@@ -2192,11 +2176,6 @@ public class PhoneWindowManager implements WindowManagerPolicy {
                             res, Settings.Global.SHOW_PROCESSES, shown ? 0 : 1);
                     return -1;
                 }
-            }else if(!mMenuKeyUp && repeatCount > 8 && SystemProperties.getBoolean("ro.platform.has.mbxuimode", false)){
-                mContext.sendBroadcast(new Intent(Intent.ACTION_ONEKEY_CLEAN));
-                mMenuKeyUp = true;
-            }else if(!down){
-                mMenuKeyUp = false;
             }
         } else if (keyCode == KeyEvent.KEYCODE_SEARCH) {
             if (down) {
@@ -2284,40 +2263,6 @@ public class PhoneWindowManager implements WindowManagerPolicy {
             }
             return -1;
         }
-//        else if(keyCode == KeyEvent.KEYCODE_VOLUME_UP)
-//        {
-//               if(down)
-//               {
-//                       mVolumeMute = false;
-//               }
-//        }
-//        else if(keyCode == KeyEvent.KEYCODE_VOLUME_MUTE)
-//        {
-//        	// Log.d(getClass().getName(), "mVolumeMute is: " + mVolumeMute);
-//
-//        	AudioManager audioManager = (AudioManager)mContext.getSystemService(Context.AUDIO_SERVICE);
-//        	if(down)
-//        	{
-//        		if(mVolumeMute)
-//        		{
-//        			// audioManager.setStreamMute(AudioManager.STREAM_MUSIC, false);
-//                		// int volume = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC);
-//        			audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, mPreVolume, 
-//        					AudioManager.FLAG_SHOW_UI);
-//        			mVolumeMute = false;
-//        		}
-//        		else
-//        		{
-//        			// audioManager.setStreamMute(AudioManager.STREAM_MUSIC, true);
-//        			mPreVolume = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC);
-//        			audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, 0, 
-//        					AudioManager.FLAG_SHOW_UI);
-//        			mVolumeMute = true;
-//        		}
-//        	}
-//        	
-//        	return 0;
-//        }
 
         // Shortcuts are invoked through Search+key, so intercept those here
         // Any printing key that is chorded with Search should be consumed
@@ -3776,13 +3721,6 @@ public class PhoneWindowManager implements WindowManagerPolicy {
             Slog.e(TAG, "setHdmiHwPlugged " + plugged);
             mHdmiHwPlugged = plugged;
 
-            if (SystemProperties.getBoolean("ro.platform.has.mbxuimode", false)){
-                if (plugged)
-                    mMboxOutputModeManager.setHdmiPlugged();
-                else
-                    mMboxOutputModeManager.setHdmiUnPlugged();
-                    
-            }
             Intent intent = new Intent(WindowManagerPolicy.ACTION_HDMI_HW_PLUGGED);
             intent.addFlags(Intent.FLAG_RECEIVER_REGISTERED_ONLY_BEFORE_BOOT);
             intent.putExtra(EXTRA_HDMI_HW_PLUGGED_STATE, plugged);
@@ -3874,9 +3812,6 @@ public class PhoneWindowManager implements WindowManagerPolicy {
         boolean plugged = false;
         // watch for HDMI plug messages if the hdmi switch exists
         if (new File("/sys/devices/virtual/switch/hdmi/state").exists()) {
-            if (SystemProperties.getBoolean("ro.platform.has.mbxuimode", false)){
-                mMboxOutputModeManager.initOutputMode();
-            }
             mHDMIObserver.startObserving("DEVPATH=/devices/virtual/switch/hdmi");
 
             final String filename = "/sys/class/switch/hdmi/state";
@@ -3907,11 +3842,6 @@ public class PhoneWindowManager implements WindowManagerPolicy {
         //setHdmiHwPlugged(!mHdmiHwPlugged);
         
         mHdmiHwPlugged =  plugged;
-        if (!SystemProperties.getBoolean("ro.vout.dualdisplay", false)) {
-            if (getCurDisplayMode().equals("panel") || !plugged || SystemProperties.getBoolean("ro.platform.has.mbxuimode", false)) {
-                plugged = false;
-            }
-        }
 
         if (SystemProperties.getBoolean("ro.vout.dualdisplay", false)) {
             setDualDisplay(plugged);
@@ -4434,22 +4364,6 @@ public class PhoneWindowManager implements WindowManagerPolicy {
             case KeyEvent.KEYCODE_POWER: {
                 result &= ~ACTION_PASS_TO_USER;
                 if (down) {
-                    if("true".equalsIgnoreCase(SystemProperties.get("ro.platform.has.mbxuimode"))) {
-                        Intent inte=new Intent("com.android.music.musicservicecommand.pause");
-                        mContext.sendBroadcast(inte);
-                        
-                        OnAudioFocusChangeListener mAudioFocusListener = new OnAudioFocusChangeListener() {
-                            public void onAudioFocusChange(int focusChange) {
-                                Log.e(TAG, "+++****====: onAudioFocusChange");
-                            }
-                        };
-                        AudioManager mAudioManager = (AudioManager) mContext.getSystemService(Context.AUDIO_SERVICE);
-                        mAudioManager.requestAudioFocus(mAudioFocusListener, AudioManager.STREAM_MUSIC,AudioManager.AUDIOFOCUS_GAIN);
-
-                        inte = new Intent("com.amlogic.hdmiin.pause");
-                        mContext.sendBroadcast(inte);
-                    }
-
                     mImmersiveModeConfirmation.onPowerKeyDown(isScreenOn, event.getDownTime(),
                             isImmersiveMode(mLastSystemUiFlags));
                     if (isScreenOn && !mPowerKeyTriggered

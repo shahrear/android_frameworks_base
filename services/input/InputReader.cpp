@@ -2180,16 +2180,11 @@ void KeyboardInputMapper::processKey(nsecs_t when, bool down, int32_t keyCode,
     // For internal keyboards, the key layout file should specify the policy flags for
     // each wake key individually.
     // TODO: Use the input device configuration to control this behavior more finely.
-
-    char value[PROPERTY_VALUE_MAX];
-    property_get("ro.platform.has.mbxuimode", value, "false");
-    if(strcmp(value, "true") != 0) {
-        if (down && getDevice()->isExternal()
+    if (down && getDevice()->isExternal()
             && !(policyFlags & (POLICY_FLAG_WAKE | POLICY_FLAG_WAKE_DROPPED))) {
-            policyFlags |= POLICY_FLAG_WAKE_DROPPED;
-        }
+        policyFlags |= POLICY_FLAG_WAKE_DROPPED;
     }
-	
+
     if (metaStateChanged) {
         getContext()->updateGlobalMetaState();
     }
@@ -2529,12 +2524,8 @@ void CursorInputMapper::sync(nsecs_t when) {
     // the device in your pocket.
     // TODO: Use the input device configuration to control this behavior more finely.
     uint32_t policyFlags = 0;
-    char value[PROPERTY_VALUE_MAX];
-    property_get("ro.platform.has.mbxuimode", value, "false");
-    if(strcmp(value, "true") != 0) {
-        if ((buttonsPressed || moved || scrolled) && getDevice()->isExternal()) {
-            policyFlags |= POLICY_FLAG_WAKE_DROPPED;
-        }
+    if ((buttonsPressed || moved || scrolled) && getDevice()->isExternal()) {
+        policyFlags |= POLICY_FLAG_WAKE_DROPPED;
     }
 
     // Synthesize key down from buttons if needed.

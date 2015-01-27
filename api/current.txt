@@ -8408,7 +8408,6 @@ package android.database.sqlite {
     field public static final int OPEN_READONLY = 1; // 0x1
     field public static final int OPEN_READWRITE = 0; // 0x0
     field public static final int SQLITE_MAX_LIKE_PATTERN_LENGTH = 50000; // 0xc350
-    field public int mNativeHandle;
   }
 
   public static abstract interface SQLiteDatabase.CursorFactory {
@@ -18380,7 +18379,6 @@ package android.os {
   public class RecoverySystem {
     ctor public RecoverySystem();
     method public static void installPackage(android.content.Context, java.io.File) throws java.io.IOException;
-    method public static void rebootRestoreSystem(android.content.Context) throws java.io.IOException;
     method public static void rebootWipeCache(android.content.Context) throws java.io.IOException;
     method public static void rebootWipeUserData(android.content.Context) throws java.io.IOException;
     method public static void verifyPackage(java.io.File, android.os.RecoverySystem.ProgressListener, java.io.File) throws java.security.GeneralSecurityException, java.io.IOException;

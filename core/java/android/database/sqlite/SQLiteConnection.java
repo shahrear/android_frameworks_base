@@ -117,8 +117,6 @@ public final class SQLiteConnection implements CancellationSignal.OnCancelListen
     // we can ensure that we detach the signal at the right time.
     private int mCancellationSignalAttachCount;
 
-    public int db;
-
     private static native int nativeOpen(String path, int openFlags, String label,
             boolean enableTrace, boolean enableProfile);
     private static native void nativeClose(int connectionPtr);
@@ -158,7 +156,6 @@ public final class SQLiteConnection implements CancellationSignal.OnCancelListen
     private static native int nativeGetDbLookaside(int connectionPtr);
     private static native void nativeCancel(int connectionPtr);
     private static native void nativeResetCancel(int connectionPtr, boolean cancelable);
-    private static native int nativeGetDB(int connectionPtr);
 
     private SQLiteConnection(SQLiteConnectionPool pool,
             SQLiteDatabaseConfiguration configuration,
@@ -212,7 +209,7 @@ public final class SQLiteConnection implements CancellationSignal.OnCancelListen
         mConnectionPtr = nativeOpen(mConfiguration.path, mConfiguration.openFlags,
                 mConfiguration.label,
                 SQLiteDebug.DEBUG_SQL_STATEMENTS, SQLiteDebug.DEBUG_SQL_TIME);
-	 db = nativeGetDB(mConnectionPtr);
+
         setPageSize();
         setForeignKeyModeFromConfiguration();
         setWalModeFromConfiguration();
@@ -393,10 +390,8 @@ public final class SQLiteConnection implements CancellationSignal.OnCancelListen
                 execute(success ? "COMMIT" : "ROLLBACK", null, null);
             }
         } catch (RuntimeException ex) {
-            Log.d(TAG,"Failed to change locale for db" + mConfiguration.label +  "' to '" + 
-                newLocale + ", Get error : " + ex.toString());
-            //throw new SQLiteException("Failed to change locale for db '" + mConfiguration.label
-            //        + "' to '" + newLocale + "'.", ex);
+            throw new SQLiteException("Failed to change locale for db '" + mConfiguration.label
+                    + "' to '" + newLocale + "'.", ex);
         }
     }
 

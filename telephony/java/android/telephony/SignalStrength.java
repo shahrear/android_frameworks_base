@@ -469,18 +469,12 @@ public class SignalStrength implements Parcelable {
      */
     public int getLevel() {
         int level;
-        int level_gsm;
 
         if (isGsm) {
             level = getLteLevel();
-	    level_gsm = getGsmLevel();
-	  /*	
             if (level == SIGNAL_STRENGTH_NONE_OR_UNKNOWN) {
-            */
-		if ( level_gsm > level  )
-		{
-			level = level_gsm;
-	         }
+                level = getGsmLevel();
+            }
         } else {
             int cdmaLevel = getCdmaLevel();
             int evdoLevel = getEvdoLevel();

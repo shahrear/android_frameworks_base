@@ -1789,18 +1789,12 @@ final class Settings {
             mReadMessages.append("Error reading: " + e.toString());
             PackageManagerService.reportSettingsProblem(Log.ERROR, "Error reading settings: " + e);
             Log.wtf(PackageManagerService.TAG, "Error reading package manager settings", e);
-            mSettingsFilename.delete();
+
         } catch (java.io.IOException e) {
             mReadMessages.append("Error reading: " + e.toString());
             PackageManagerService.reportSettingsProblem(Log.ERROR, "Error reading settings: " + e);
             Log.wtf(PackageManagerService.TAG, "Error reading package manager settings", e);
-            mSettingsFilename.delete();
-        } catch (ArrayIndexOutOfBoundsException e) {
-            mReadMessages.append("Error reading: " + e.toString());
-            PackageManagerService.reportSettingsProblem(Log.ERROR, "Error reading settings: " + e);
-            Log.wtf(PackageManagerService.TAG, "ArrayIndexOutOfBoundsException, Error reading package manager settings", e);
-	    mSettingsFilename.delete();
-	}
+        }
 
         final int N = mPendingPackages.size();
         for (int i = 0; i < N; i++) {
@@ -2897,44 +2891,8 @@ final class Settings {
         ApplicationInfo.FLAG_CANT_SAVE_STATE, "CANT_SAVE_STATE",
     };
 
-    void dumpPackageLPr(PrintWriter pw, String prefix, String checkinTag, PackageSetting ps,
-            SimpleDateFormat sdf, Date date, List<UserInfo> users) {
-        if (checkinTag != null) {
-            pw.print(checkinTag);
-            pw.print(",");
-            pw.print(ps.realName != null ? ps.realName : ps.name);
-            pw.print(",");
-            pw.print(ps.appId);
-            pw.print(",");
-            pw.print(ps.versionCode);
-            pw.print(",");
-            pw.print(ps.firstInstallTime);
-            pw.print(",");
-            pw.print(ps.lastUpdateTime);
-            pw.print(",");
-            pw.print(ps.installerPackageName != null ? ps.installerPackageName : "?");
-            pw.println();
-            for (UserInfo user : users) {
-                pw.print(checkinTag);
-                pw.print("-");
-                pw.print("usr");
-                pw.print(",");
-                pw.print(user.id);
-                pw.print(",");
-                pw.print(ps.getInstalled(user.id) ? "I" : "i");
-                pw.print(ps.getBlocked(user.id) ? "B" : "b");
-                pw.print(ps.getStopped(user.id) ? "S" : "s");
-                pw.print(ps.getNotLaunched(user.id) ? "l" : "L");
-                pw.print(",");
-                pw.print(ps.getEnabled(user.id));
-                String lastDisabledAppCaller = ps.getLastDisabledAppCaller(user.id);
-                pw.print(",");
-                pw.print(lastDisabledAppCaller != null ? lastDisabledAppCaller : "?");
-                pw.println();
-            }
-            return;
-        }
-
+    void dumpPackageLPr(PrintWriter pw, String prefix, PackageSetting ps, SimpleDateFormat sdf,
+            Date date, List<UserInfo> users) {
         pw.print(prefix); pw.print("Package [");
             pw.print(ps.realName != null ? ps.realName : ps.name);
             pw.print("] (");
@@ -3096,7 +3054,7 @@ final class Settings {
         }
     }
 
-    void dumpPackagesLPr(PrintWriter pw, String packageName, DumpState dumpState, boolean checkin) {
+    void dumpPackagesLPr(PrintWriter pw, String packageName, DumpState dumpState) {
         final SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
         final Date date = new Date();
         boolean printedSomething = false;
@@ -3107,39 +3065,35 @@ final class Settings {
                 continue;
             }
 
-            if (!checkin && packageName != null) {
+            if (packageName != null) {
                 dumpState.setSharedUser(ps.sharedUser);
             }
 
-            if (!checkin && !printedSomething) {
+            if (!printedSomething) {
                 if (dumpState.onTitlePrinted())
                     pw.println();
                 pw.println("Packages:");
                 printedSomething = true;
             }
-            dumpPackageLPr(pw, "  ", checkin ? "pkg" : null, ps, sdf, date, users);
+            dumpPackageLPr(pw, "  ", ps, sdf, date, users);
         }
 
         printedSomething = false;
-        if (!checkin && mRenamedPackages.size() > 0) {
+        if (mRenamedPackages.size() > 0) {
             for (final Map.Entry<String, String> e : mRenamedPackages.entrySet()) {
                 if (packageName != null && !packageName.equals(e.getKey())
                         && !packageName.equals(e.getValue())) {
                     continue;
                 }
-                if (!checkin) {
-                    if (!printedSomething) {
-                        if (dumpState.onTitlePrinted())
-                            pw.println();
-                        pw.println("Renamed packages:");
-                        printedSomething = true;
-                    }
-                    pw.print("  ");
-                } else {
-                    pw.print("ren,");
+                if (!printedSomething) {
+                    if (dumpState.onTitlePrinted())
+                        pw.println();
+                    pw.println("Renamed packages:");
+                    printedSomething = true;
                 }
+                pw.print("  ");
                 pw.print(e.getKey());
-                pw.print(checkin ? " -> " : ",");
+                pw.print(" -> ");
                 pw.println(e.getValue());
             }
         }
@@ -3151,13 +3105,13 @@ final class Settings {
                         && !packageName.equals(ps.name)) {
                     continue;
                 }
-                if (!checkin && !printedSomething) {
+                if (!printedSomething) {
                     if (dumpState.onTitlePrinted())
                         pw.println();
                     pw.println("Hidden system packages:");
                     printedSomething = true;
                 }
-                dumpPackageLPr(pw, "  ", checkin ? "dis" : null, ps, sdf, date, users);
+                dumpPackageLPr(pw, "  ", ps, sdf, date, users);
             }
         }
     }

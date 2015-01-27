@@ -452,7 +452,7 @@ public class WindowManagerService extends IWindowManager.Stub
     /** All DisplayContents in the world, kept here */
     SparseArray<DisplayContent> mDisplayContents = new SparseArray<DisplayContent>(2);
 
-    int mRotation = SystemProperties.getInt("ro.display.defaultorientation", 0);
+    int mRotation = 0;
     int mForcedAppOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED;
     boolean mAltOrientation = false;
     ArrayList<IRotationWatcher> mRotationWatchers
@@ -6670,10 +6670,6 @@ public class WindowManagerService extends IWindowManager.Stub
         sl = reduceConfigLayout(sl, Surface.ROTATION_270, density, unrotDh, unrotDw);
         outConfig.smallestScreenWidthDp = (int)(displayInfo.smallestNominalAppWidth / density);
         outConfig.screenLayout = sl;
-        if((outConfig.smallestScreenWidthDp < 720)&&(SystemProperties.getBoolean("ro.platform.has.mbxuimode",false))){
-            outConfig.smallestScreenWidthDp = 720;
-            outConfig.screenLayout = 0x10000023;
-        }
     }
 
     private int reduceCompatConfigWidthSize(int curSize, int rotation, DisplayMetrics dm,

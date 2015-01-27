@@ -74,7 +74,6 @@ import android.os.Parcel;
 import android.os.RemoteException;
 import android.os.ResultReceiver;
 import android.os.ServiceManager;
-import android.os.SystemProperties;
 import android.os.SystemClock;
 import android.os.UserHandle;
 import android.provider.Settings;
@@ -701,19 +700,17 @@ public class InputMethodManagerService extends IInputMethodManager.Stub
 
         // IMMS wants to receive Intent.ACTION_LOCALE_CHANGED in order to update the current IME
         // according to the new system locale.
-        if (!SystemProperties.getBoolean("ro.platform.has.mbxuimode", false)) {
-            final IntentFilter filter = new IntentFilter();
-            filter.addAction(Intent.ACTION_LOCALE_CHANGED);
-            mContext.registerReceiver(
-                    new BroadcastReceiver() {
-                        @Override
-                        public void onReceive(Context context, Intent intent) {
-                            synchronized(mMethodMap) {
-                                resetStateIfCurrentLocaleChangedLocked();
-                            }
+        final IntentFilter filter = new IntentFilter();
+        filter.addAction(Intent.ACTION_LOCALE_CHANGED);
+        mContext.registerReceiver(
+                new BroadcastReceiver() {
+                    @Override
+                    public void onReceive(Context context, Intent intent) {
+                        synchronized(mMethodMap) {
+                            resetStateIfCurrentLocaleChangedLocked();
                         }
-                    }, filter);
-        }
+                    }
+                }, filter);
     }
 
     private void resetDefaultImeLocked(Context context) {

@@ -251,10 +251,6 @@ public final class SQLiteDatabase extends SQLiteClosable {
      */
     public static final int MAX_SQL_CACHE_SIZE = 100;
 
-
-	/*export sqlite handle for dvb*/
-    public int mNativeHandle;
-
     private SQLiteDatabase(String path, int openFlags, CursorFactory cursorFactory,
             DatabaseErrorHandler errorHandler) {
         mCursorFactory = cursorFactory;
@@ -806,7 +802,6 @@ public final class SQLiteDatabase extends SQLiteClosable {
         synchronized (mLock) {
             assert mConnectionPoolLocked == null;
             mConnectionPoolLocked = SQLiteConnectionPool.open(mConfigurationLocked);
-	     mNativeHandle = mConnectionPoolLocked.db;
             mCloseGuardLocked.open("close");
         }
 

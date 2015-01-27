@@ -135,9 +135,6 @@ public class InstrumentationTestCase extends TestCase {
         getInstrumentation().runOnMainSync(new Runnable() {
             public void run() {
                 try {
-                    if (getName().equals("testSetDismissMessage")){
-                        Thread.sleep(800);
-                    }
                     r.run();
                 } catch (Throwable throwable) {
                     exceptions[0] = throwable;
@@ -199,9 +196,6 @@ public class InstrumentationTestCase extends TestCase {
                 throw exceptions[0];
             }
         } else {
-            if (getName().equals("testSetInitialScale")){
-                Thread.sleep(1000);
-            }
             runMethod(method, runCount, isRepetitive);
         }
     }
