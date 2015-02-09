@@ -285,7 +285,7 @@ public class LoadAverageService extends Service {
             canvas.drawText(str, 2, y+mFH2*4+1, mShadow3Paint);
             canvas.drawText(str, 1, y+mFH2*4, mInfoPaint);
 
-            str = "CPU Temperature : " + temp + "°C";
+            str = "CPU Temperature : " + temp + " m°C";
             canvas.drawText(str, 2, y+mFH2*5-1, mShadow3Paint);
             canvas.drawText(str, 2, y+mFH2*5+1, mShadow3Paint);
             canvas.drawText(str, 1, y+mFH2*5, mInfoPaint);

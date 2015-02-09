@@ -65,10 +65,10 @@ static jstring native_GetTemperature(JNIEnv* env, jobject obj) {
         return NULL;
     }
 
-    char buf[4] = {'\0',};
+    char buf[6] = {'\0',};
     int read = -1;
 
-    read = fread(buf, 1, 4, fp);
+    read = fread(buf, 1, 5, fp);
 
     fclose(fp);
 
