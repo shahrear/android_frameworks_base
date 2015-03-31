@@ -1860,6 +1860,10 @@ public class LocationManagerService extends ILocationManager.Stub {
     public void reportLocation(Location location, boolean passive) {
         checkCallerIsProvider();
 
+        /*[fix by J. Wolff (acc missing in location from libmbm-gps)]*/
+        location.makeComplete();
+        /*[/fix]*/
+
         if (!location.isComplete()) {
             Log.w(TAG, "Dropping incomplete location: " + location);
             return;
