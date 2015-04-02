@@ -57,6 +57,8 @@
 #define SYSTEM_ENCRYPTED_BOOTANIMATION_FILE "/system/media/bootanimation-encrypted.zip"
 #define EXIT_PROP_NAME "service.bootanim.exit"
 
+#define BOOTDELAY_PROP_NAME "bootanim.delay"
+
 extern "C" int clock_nanosleep(clockid_t clock_id, int flags,
                            const struct timespec *request,
                            struct timespec *remain);
@@ -342,6 +344,7 @@ bool BootAnimation::android()
     glTexEnvx(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
 
     const nsecs_t startTime = systemTime();
+    mBootAnimEnd = 0;
     do {
         nsecs_t now = systemTime();
         double time = now - startTime;
@@ -379,6 +382,12 @@ bool BootAnimation::android()
     return false;
 }
 
+static double now_ms(void) {
+
+    struct timespec res;
+    clock_gettime(CLOCK_REALTIME, &res);
+    return 1000.0 * res.tv_sec + (double) res.tv_nsec / 1e6;
+}
 
 void BootAnimation::checkExit() {
     // Allow surface flinger to gracefully request shutdown
@@ -386,7 +395,14 @@ void BootAnimation::checkExit() {
     property_get(EXIT_PROP_NAME, value, "0");
     int exitnow = atoi(value);
     if (exitnow) {
-        requestExit();
+        if (mBootAnimEnd == 0) {
+            property_get(BOOTDELAY_PROP_NAME, value, "0");
+            ALOGE("value = %s", value);
+            mBootaminDelay = atoi(value);
+            mBootAnimEnd = now_ms();
+        }
+        if (now_ms() - mBootAnimEnd > mBootaminDelay * 1000)
+            requestExit();
     }
 }
 

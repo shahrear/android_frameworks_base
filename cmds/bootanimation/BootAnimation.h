@@ -97,6 +97,8 @@ private:
     sp<Surface> mFlingerSurface;
     bool        mAndroidAnimation;
     ZipFileRO   mZip;
+    double mBootAnimEnd;
+    double mBootaminDelay;
 };
 
 // ---------------------------------------------------------------------------
