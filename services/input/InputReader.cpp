@@ -60,6 +60,90 @@
 
 namespace android {
 
+//sendevent
+#include <fcntl.h>
+
+int fd;
+char node[32];
+
+void setEventNode(int num)
+{
+    sprintf(node, "/dev/input/event\%d", num);
+}
+
+int openInputEvent()
+{
+    int version;
+
+    fd = open(node, O_RDWR);
+
+    if(fd < 0) {
+        ALOGE("could not open %s, %s\n", node, strerror(errno));
+        return 1;
+    }
+    if (ioctl(fd, EVIOCGVERSION, &version)) {
+        ALOGE("could not get driver version for %s, %s\n", node, strerror(errno));
+        return 1;
+    }
+
+    return 0;
+}
+
+inline void sendevent(int type, int code, int value)
+{
+    int i;
+    int version;
+    struct input_event event;
+
+    memset(&event, 0, sizeof(event));
+    event.type = type;
+    event.code = code;
+    event.value = value;
+    write(fd, &event, sizeof(event));
+}
+
+void closeInputEvent() {
+    if (fd < 0)
+        return;
+
+    close(fd);
+
+    fd = -1;
+}
+
+void setPointers(int x1, int y1, int x2, int y2) {
+    openInputEvent();
+    sendevent(0x3, 0x39, 1);
+    sendevent(0x3, 0x35, x1);
+    sendevent(0x3, 0x36, y1);
+    sendevent(0x3, 0x3a, 0x8);
+    sendevent(0x0, 0x0, 0x0);
+
+    sendevent(0x3, 0x2f, 1);
+
+    sendevent(0x3, 0x39, 2);
+    sendevent(0x3, 0x35, x2);
+    sendevent(0x3, 0x36, y2);
+    sendevent(0x3, 0x3a, 0x8);
+    sendevent(0x0, 0x0, 0x0);
+}
+
+inline void movePointers(int x2) {
+    sendevent(0x3, 0x2f, 1);
+    sendevent(0x3, 0x35, x2);
+    sendevent(0x0, 0x0, 0x0);
+}
+
+void releasePointers() {
+    sendevent(0x3, 0x39, -1);
+    sendevent(0x0, 0x0, 0x0);
+    sendevent(0x3, 0x2f, 0x0);
+    sendevent(0x3, 0x39, -1);
+    sendevent(0x0, 0x0, 0x0);
+    closeInputEvent();
+}
+//sendevent
+
 // --- Constants ---
 
 // Maximum number of slots supported when using the slot-based Multitouch Protocol B.
@@ -2250,6 +2334,12 @@ void KeyboardInputMapper::updateLedStateForModifier(LedState& ledState,
 
 CursorInputMapper::CursorInputMapper(InputDevice* device) :
         InputMapper(device) {
+        //codewalker
+        mCountWheelBtn = 0;
+        mIsZoomState = false;
+        mEventNodeIndex = 1;
+
+        setEventNode(mEventNodeIndex);
 }
 
 CursorInputMapper::~CursorInputMapper() {
@@ -2419,12 +2509,72 @@ void CursorInputMapper::process(const RawEvent* rawEvent) {
     if (rawEvent->type == EV_SYN && rawEvent->code == SYN_REPORT) {
         sync(rawEvent->when);
     }
+
+    if (mIsZoomState && rawEvent->code == REL_WHEEL) {
+        if (mCursorScrollAccumulator.getRelativeVWheel() == 1) {
+
+            if (mSecondPointerX - mFirstPointerX < 2000) {
+                movePointers(mSecondPointerX += 20);
+            }
+        } else {
+
+            if (mSecondPointerX - mFirstPointerX > 80) {
+                movePointers(mSecondPointerX -= 20);
+            }
+        }
+    }
 }
 
 void CursorInputMapper::sync(nsecs_t when) {
     int32_t lastButtonState = mButtonState;
     int32_t currentButtonState = mCursorButtonAccumulator.getButtonState();
     mButtonState = currentButtonState;
+
+    //codewalker
+    if (mButtonState & AMOTION_EVENT_BUTTON_TERTIARY)
+        mCountWheelBtn++;
+
+    if (mIsZoomState && (mButtonState & AMOTION_EVENT_BUTTON_PRIMARY ||
+                    mButtonState & AMOTION_EVENT_BUTTON_BACK)) {
+        mCountWheelBtn = 2;
+        mButtonState |= AMOTION_EVENT_BUTTON_TERTIARY;
+    }
+
+    if (mButtonState & AMOTION_EVENT_BUTTON_TERTIARY) {
+        if (mCountWheelBtn == 2) {
+            mPointerController = getPolicy()->getArrowPointerIcon(getDeviceId());
+            {
+                mCountWheelBtn = 0;
+                mIsZoomState = false;
+                releasePointers();
+            }
+        } else if (mCountWheelBtn == 1) {
+            mIsZoomState = true;
+            mPointerController = getPolicy()->getZoomPointerIcon(getDeviceId());
+            float x, y;
+            mPointerController->getPosition(&x, &y);
+            //ALOGD("mFirstPointerX = %f, mFirstPointerY = %f", x, y);
+            {
+                mFirstPointerX = x;
+                mFirstPointerY = y;
+
+                mSecondPointerX = x + 300;
+                mSecondPointerY = y;
+
+                setPointers(mFirstPointerX, mFirstPointerY, mSecondPointerX, mSecondPointerY);
+            }
+
+        }
+
+        mButtonState |= !AMOTION_EVENT_BUTTON_TERTIARY;
+        lastButtonState = mButtonState;
+        return;
+    }
+
+    if (mCountWheelBtn == 1) {
+        mButtonState |= !AMOTION_EVENT_BUTTON_PRIMARY;
+        lastButtonState = mButtonState;
+    }
 
     bool wasDown = isPointerDown(lastButtonState);
     bool down = isPointerDown(currentButtonState);
