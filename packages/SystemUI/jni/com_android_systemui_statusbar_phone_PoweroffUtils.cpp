@@ -4,25 +4,24 @@
 #include <stdio.h>
 #include <string.h>
 
-#define POWEROFF_NODE   "/sys/devices/odroid_sysfs.16/poweroff_trigger" 
-//"/sys/bus/platform/drivers/odroid-sysfs/odroid_sysfs.16/poweroff_trigger"
+#define POWEROFF_NODE   "/sys/devices/odroid_sysfs.15/poweroff_trigger"
 #define LOG_TAG "PowerOff-JNI"
 
 namespace android {
 
 static void native_Poweroff(JNIEnv* env, jobject obj) {
-	FILE *fp = NULL;
-	fp = fopen(POWEROFF_NODE, "w");
+    FILE *fp = NULL;
+    fp = fopen(POWEROFF_NODE, "w");
 
-	if (fp == NULL) {
-		return;
-	}
+    if (fp == NULL) {
+        return;
+    }
 
-	fwrite("3", 1, 1, fp);
+    fwrite("3", 1, 1, fp);
 
-	fclose(fp);
+    fclose(fp);
 
-	return;
+    return;
 }
 
 static const JNINativeMethod g_methods[] = {
