@@ -5,7 +5,9 @@ package android.os;
  * It will be available in framework through import android.os.ExecutionZoneManager;
  * Use this Singleton class to call the functionality of ExecutionZoneService
  * It is a like a ServiceFetcher for the ContextImpl.
+ * created by shah oct 5
  */
+import android.util.Log;
 import android.os.IBinder;
 import android.os.IExecutionZoneService;
 import android.os.RemoteException;
@@ -21,7 +23,7 @@ public class ExecutionZoneManager {
      */
     public static synchronized ExecutionZoneManager getExecutionZoneManager() {
         if(executionZoneManager == null) {
-            IBinder binder = android.os.ServiceManager.getService("executionzone");
+            IBinder binder = android.os.ServiceManager.getService("execution_zone");
             if(binder != null) {
                 IExecutionZoneService managerService = IExecutionZoneService.Stub.asInterface(binder);
                 executionZoneManager = new ExecutionZoneManager(managerService);
@@ -48,18 +50,12 @@ public class ExecutionZoneManager {
     public void setZone(String packageName, String zoneName){
         try{
             Log.d(TAG, "Going to call service from framework proxy");
-            mExecutionZoneService.setZone(packageName,zoneName);
+            mExecutionZoneService.setZone(packageName, zoneName);
             Log.d(TAG, "Service called successfully from framework proxy");
         } catch (Exception e) {
             Log.d(TAG, "FAILED to call service from framework proxy");
             e.printStackTrace();
         }
-    }
-    /**
-     * Get the binder of IExecutionZoneService.
-     */
-    public IExecutionZoneService getExecutionZoneService(){
-        return mExecutionZoneService;
     }
 
 }

@@ -272,6 +272,19 @@ class ServerThread {
             contentService = ContentService.main(context,
                     factoryTest == SystemServer.FACTORY_TEST_LOW_LEVEL);
 
+            //shah oct 6
+
+            try {
+                Slog.i(TAG, "Starting ExecutionZone Service");
+                ServiceManager.addService("execution_zone", new ExecutionZoneService(context));
+                Slog.i(TAG, "ExecutionZone Service Started");
+            } catch (Throwable e) {
+                Slog.e(TAG, "Failure starting ExecutionZoneService Service", e);
+            }
+
+            //shah
+
+
             Slog.i(TAG, "System Content Providers");
             ActivityManagerService.installSystemProviders();
 

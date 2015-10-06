@@ -17757,6 +17757,11 @@ package android.os {
     field public static final java.lang.String MEDIA_UNMOUNTED = "unmounted";
   }
 
+  public class ExecutionZoneManager {
+    method public static synchronized android.os.ExecutionZoneManager getExecutionZoneManager();
+    method public void setZone(java.lang.String, java.lang.String);
+  }
+
   public abstract class FileObserver {
     ctor public FileObserver(java.lang.String);
     ctor public FileObserver(java.lang.String, int);
@@ -21790,7 +21795,7 @@ package android.renderscript {
   }
 
   public class BaseObj {
-    method public synchronized void destroy();
+    method public void destroy();
     method public java.lang.String getName();
     method public void setName(java.lang.String);
   }

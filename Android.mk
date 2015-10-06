@@ -112,7 +112,6 @@ LOCAL_SRC_FILES += \
 	core/java/android/bluetooth/IBluetoothDun.aidl \
 	core/java/android/content/IClipboard.aidl \
 	core/java/android/content/IContentService.aidl \
-	core/java/android/content/IExecutionZoneService.aidl \
 	core/java/android/content/IIntentReceiver.aidl \
 	core/java/android/content/IIntentSender.aidl \
 	core/java/android/content/IOnPrimaryClipChangedListener.aidl \
@@ -162,6 +161,7 @@ LOCAL_SRC_FILES += \
 	core/java/android/os/IBatteryPropertiesListener.aidl \
 	core/java/android/os/IBatteryPropertiesRegistrar.aidl \
 	core/java/android/os/ICancellationSignal.aidl \
+	core/java/android/os/IExecutionZoneService.aidl \
 	core/java/android/os/IHardwareService.aidl \
 	core/java/android/os/IMessenger.aidl \
 	core/java/android/os/INetworkManagementService.aidl \
@@ -382,6 +382,7 @@ aidl_files := \
 	frameworks/base/core/java/android/nfc/Tag.aidl \
 	frameworks/base/core/java/android/os/Bundle.aidl \
 	frameworks/base/core/java/android/os/DropBoxManager.aidl \
+	frameworks/base/core/java/android/os/IExecutionZoneService.aidl \
 	frameworks/base/core/java/android/os/ParcelFileDescriptor.aidl \
 	frameworks/base/core/java/android/os/ParcelUuid.aidl \
 	frameworks/base/core/java/android/view/KeyEvent.aidl \

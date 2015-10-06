@@ -79,6 +79,7 @@ import android.os.Bundle;
 import android.os.Debug;
 import android.os.DropBoxManager;
 import android.os.Environment;
+import android.os.ExecutionZoneManager;
 import android.os.FileUtils;
 import android.os.Handler;
 import android.os.IBinder;
@@ -396,6 +397,11 @@ class ContextImpl extends Context {
                 public Object createStaticService() {
                     return createDropBoxManager();
                 }});
+
+        registerService(EXECUTIONZONE_SERVICE , new ServiceFetcher() {
+            public Object createService(ContextImpl ctx) {
+                return ExecutionZoneManager.getExecutionZoneManager();
+            }});
 
         registerService(INPUT_SERVICE, new StaticServiceFetcher() {
                 public Object createStaticService() {

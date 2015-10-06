@@ -2337,6 +2337,16 @@ public abstract class Context {
      *
      * @see #getSystemService
      */
+
+    /**
+            * Use with {@link #getSystemService} to retrieve a
+    * {@link android.os.ExecutionZoneManager} for using ExecutionZoneService
+    *
+            * @see #getSystemService shah shah
+    * @hide
+    */
+    public static final String EXECUTIONZONE_SERVICE = "execution_zone";
+
     public static final String UI_MODE_SERVICE = "uimode";
 
     /**
