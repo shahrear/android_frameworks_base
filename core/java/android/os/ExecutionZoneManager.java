@@ -45,7 +45,8 @@ public class ExecutionZoneManager {
     }
     /**
      * Sets the value in Service
-     * @param arg
+     * @param packageName The name of the package
+     * @param zoneName The zone to be assigned
      */
     public void setZone(String packageName, String zoneName){
         try{
