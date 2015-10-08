@@ -2343,7 +2343,6 @@ public abstract class Context {
     * {@link android.os.ExecutionZoneManager} for using ExecutionZoneService
     *
             * @see #getSystemService shah shah
-    * @hide
     */
     public static final String EXECUTIONZONE_SERVICE = "execution_zone";
 
