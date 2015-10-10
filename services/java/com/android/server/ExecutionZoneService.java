@@ -118,6 +118,7 @@ public class ExecutionZoneService extends IExecutionZoneService.Stub {
                 values.put(APPZONES_ZONE_ID, zone_id);
 
                 long appzoneId = db.insert(TABLE_APPZONES, APPZONES_APP_NAME, values);
+
                 if (appzoneId < 0) {
                     Log.w(TAG, "insertZoneIntoDatabase: " + zone_id
                             + ", skipping the DB insert failed");
@@ -140,8 +141,9 @@ public class ExecutionZoneService extends IExecutionZoneService.Stub {
         public void handleMessage(Message msg) {
             try {
                 if (msg.what == SET_ZONE) {
-                    Log.i(TAG,"set zone message received:" + msg.getData().getString("packagename") + "assign to zone " + msg.getData().getString("zonename"));
-
+                    Log.i(TAG,"set zone message received:" + msg.getData().getString("packagename") + " assign to zone " + msg.getData().getString("zonename"));
+                    if(setZoneToApp(msg.getData().getString("packagename"),msg.getData().getString("zonename")))
+                        Log.i(TAG, "zone info inserted successfully.");
                 }
             } catch (Exception e) {
                 // Log, don't crash!
