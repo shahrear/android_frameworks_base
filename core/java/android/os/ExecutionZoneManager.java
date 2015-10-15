@@ -126,8 +126,7 @@ public class ExecutionZoneManager {
      * @param action The action to be performed
      * @param paramList The parameters of the action to be performed
      */
-    public
-    {
+    public void editPolicy(String policyName, String action, String paramList){
         try{
             Log.d(TAG, "Going to call editPolicy service from ExecutionZoneManager");
             mExecutionZoneService.editPolicy(policyName, action, paramList);
