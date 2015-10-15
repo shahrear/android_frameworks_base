@@ -6,7 +6,12 @@
  * created by shah oct 5
  */
 package android.os;
-/**{@hide}*/
+
 interface IExecutionZoneService {
+        void createZone(String zoneName, String policyList);
         void setZone(String packageName, String zoneName);
+        void editZone(String zoneName, String action, String paramList);
+        void createPolicy(String policyName, String ruleList);
+        void setPolicy(String policyName, String zoneName);
+        void editPolicy(String policyName, String action, String paramList);
 }

@@ -94,24 +94,32 @@ public class ExecutionZoneService extends IExecutionZoneService.Stub {
                         Log.i(TAG, "zone info inserted successfully.");
                 }
                 if (msg.what == CREATE_ZONE) {
-                    Log.i(TAG,"create zone message received:" + msg.getData().getString("packagename") + " assign to zone " + msg.getData().getString("zonename"));
-
+                    Log.i(TAG,"create zone message received: zonename: " + msg.getData().getString("zonename") + " policylist " + msg.getData().getString("policylist"));
+                    if(createZoneWithPolicies(msg.getData().getString("zonename"),msg.getData().getString("policylist")))
+                        Log.i(TAG, "zone created successfully.");
                 }
                 if (msg.what == EDIT_ZONE) {
-                    Log.i(TAG,"edit zone message received:" + msg.getData().getString("packagename") + " assign to zone " + msg.getData().getString("zonename"));
+                    Log.i(TAG,"edit zone message received: zone: " + msg.getData().getString("zonename") + " action " + msg.getData().getString("action") + " param: "+msg.getData().getString("paramlist"));
+                    if(editZoneOrPolicies(msg.getData().getString("zonename"), msg.getData().getString("action"),msg.getData().getString("paramlist")))
+                        Log.i(TAG, "zone edited successfully.");
 
                 }
                 if (msg.what == CREATE_POLICY) {
-                    Log.i(TAG,"create policy message received:" + msg.getData().getString("packagename") + " assign to zone " + msg.getData().getString("zonename"));
+                    Log.i(TAG,"create policy message received: policyname " + msg.getData().getString("policyname") + " rule list " + msg.getData().getString("rulelist"));
+                    if(createPolicyInDB(msg.getData().getString("policyname"), msg.getData().getString("rulelist")))
+                        Log.i(TAG, "policy created successfully.");
 
                 }
                 if (msg.what == EDIT_POLICY) {
-                    Log.i(TAG,"edit policy message received:" + msg.getData().getString("packagename") + " assign to zone " + msg.getData().getString("zonename"));
+                    Log.i(TAG,"edit policy message received: policy: " + msg.getData().getString("policyname") + " action " + msg.getData().getString("action") + " param: "+msg.getData().getString("paramlist"));
+                    if(editPoliciesInDB(msg.getData().getString("policyname"), msg.getData().getString("action"),msg.getData().getString("paramlist")))
+                        Log.i(TAG, "policy edited successfully.");
 
                 }
                 if (msg.what == SET_POLICY) {
-                    Log.i(TAG,"set policy message received:" + msg.getData().getString("packagename") + " assign to zone " + msg.getData().getString("zonename"));
-
+                    Log.i(TAG,"set policy message received: policyname: " + msg.getData().getString("policyname") + " zone " + msg.getData().getString("zonename"));
+                    if(setPolicyToZone(msg.getData().getString("policyname"), msg.getData().getString("zonename")))
+                        Log.i(TAG, "set policy to zone successfully.");
                 }
             } catch (Exception e) {
                 // Log, don't crash!
@@ -325,6 +333,195 @@ public class ExecutionZoneService extends IExecutionZoneService.Stub {
         return true;
     }
 
+    public void createPolicy(String policyName, String ruleList) {
+        Log.i(TAG, "create policy " + policyName + "with rules " + ruleList);
+
+        // Creating Bundle object
+        Bundle b = new Bundle();
+
+        // Storing data into bundle
+        b.putString("policyname", policyName);
+        b.putString("rulelist", ruleList);
+
+        Message msg = Message.obtain();
+        msg.what = ExecutionZoneWorkerHandler.CREATE_POLICY;
+        msg.setData(b);
+        mHandler.sendMessage(msg);
+    }
+
+    private boolean createPolicyInDB (String policyName, String ruleList)
+    {
+        synchronized (zonedbLock) {
+            final SQLiteDatabase db = openHelper.getWritableDatabase();
+            db.beginTransaction();
+            try {
+                ContentValues values = new ContentValues();
+
+                values.put(POLICIES_NAME, policyName);
+                values.put(POLICIES_RULES, ruleList);
+
+                long apppolicy = db.insert(TABLE_POLICIES, null, values);
+
+                if (apppolicy < 0) {
+                    Log.w(TAG, "insert policy Into Database: " + policyName
+                            + ", skipping the DB insert failed");
+                    return false;
+                }
+
+                db.setTransactionSuccessful();
+            } finally {
+                db.endTransaction();
+            }
+
+        }
+        return true;
+    }
+
+    public void setPolicy(String policyName, String zoneName) {
+        Log.i(TAG, "set policy " + policyName + "to zone " + zoneName);
+
+        // Creating Bundle object
+        Bundle b = new Bundle();
+
+        // Storing data into bundle
+        b.putString("policyname", policyName);
+        b.putString("zonename", zoneName);
+
+        Message msg = Message.obtain();
+        msg.what = ExecutionZoneWorkerHandler.SET_POLICY;
+        msg.setData(b);
+        mHandler.sendMessage(msg);
+    }
+
+    private boolean setPolicyToZone (String policyName, String zoneName)
+    {
+        synchronized (zonedbLock) {
+            final SQLiteDatabase db = openHelper.getWritableDatabase();
+            db.beginTransaction();
+            try {
+                int zone_id = getZoneID(zoneName);
+                int policy_id = getPolicyID(policyName);
+
+                ContentValues values = new ContentValues();
+
+                String policyList = DatabaseUtils.stringForQuery(db,
+                        "select "+ ZONEPOLICIES_POLICYLIST +" from " + TABLE_ZONEPOLICIES
+                                + " WHERE " + ZONEPOLICIES_ZONE_ID + "=?",
+                        new String[]{zone_id+""});
+
+                if(policyList.contains(";"+policy_id+";"))
+                {
+                    Log.w(TAG, "set policy to zone  in Database: zoneid: " + zone_id + " policy :"
+                            + policy_id+" : already exists, skipping the DB update failed");
+                    return false;
+                }
+
+                values.put(ZONEPOLICIES_POLICYLIST, policyList+policy_id+";");
+
+                long apppolicy = db.update(TABLE_ZONEPOLICIES, values, ZONEPOLICIES_ZONE_ID + "=" + zone_id, null);
+
+                if (apppolicy < 0) {
+                    Log.w(TAG, "set policy to zone  in Database: zoneid: " + zone_id + " policy :"
+                            +policy_id+ ", skipping the DB update failed");
+                    return false;
+                }
+
+                db.setTransactionSuccessful();
+            } finally {
+                db.endTransaction();
+            }
+
+        }
+
+        return true;
+    }
+
+    //param optional here, can receive null/either new name, or new policies
+    public void editPolicy(String policyName, String action, String paramList) {
+        Log.i(TAG, "edit policy " + policyName + "with action " + action);
+
+        // Creating Bundle object
+        Bundle b = new Bundle();
+
+        // Storing data into bundle
+        b.putString("policyname", policyName);
+        b.putString("action", action);
+        b.putString("paramlist", paramList);
+
+        Message msg = Message.obtain();
+        msg.what = ExecutionZoneWorkerHandler.EDIT_POLICY;
+        msg.setData(b);
+        mHandler.sendMessage(msg);
+    }
+
+    private boolean editPoliciesInDB (String policyName, String action, String paramList)
+    {
+        synchronized (zonedbLock) {
+            final SQLiteDatabase db = openHelper.getWritableDatabase();
+            db.beginTransaction();
+            try {
+                ContentValues values = new ContentValues();
+                int policy_id = getPolicyID(policyName);
+                long appzoneId = 0;
+
+                if(action.toUpperCase().equals("RENAME")) {
+                    values.put(POLICIES_NAME, paramList);
+
+                    appzoneId = db.update(TABLE_POLICIES, values, POLICIES_ID + "=" +policy_id, null);
+
+                    if (appzoneId < 0) {
+                        Log.w(TAG, "update policy rename Into Database: policy name:" + policyName
+                                + ", skipping the DB update, failed");
+                        return false;
+                    }
+                }
+                else if(action.toUpperCase().equals("DELETE"))
+                {
+                    long isZoneEmpty = DatabaseUtils.queryNumEntries(db,TABLE_ZONEPOLICIES,APPZONES_ZONE_ID + "LIKE ?s", new String[]{"%;"+policy_id+";%"});
+
+                    if(isZoneEmpty > 0)
+                    {
+                        Log.w(TAG, "delete policy in Database: " + policyName
+                                + ", skipping the DB update, failed, policy is used");
+                        return false;
+                    }
+                    else
+                    {
+                        if(db.delete(TABLE_POLICIES,POLICIES_ID+"="+policy_id,null)!=1)
+                        {
+                            Log.w(TAG, "delete policy in Database: " + policyName
+                                    + ", skipping the DB update, failed");
+                            return false;
+                        }
+
+                    }
+
+                }
+                else if(action.toUpperCase().equals("UPDATEPOLICY")) //a new set of policy for the zone, full set must be given from the app
+                {
+                    values.put(POLICIES_ID, policy_id);
+
+
+                    values.put(POLICIES_RULES, paramList);
+
+                    appzoneId = db.update(TABLE_POLICIES, values, POLICIES_ID + "=" +policy_id, null);
+
+                    if (appzoneId < 0) {
+                        Log.w(TAG, "update policy Into Database: policy id: " + policy_id + " policyname: " + policyName
+                                + ", skipping the DB update failed");
+                        return false;
+                    }
+                }
+
+                db.setTransactionSuccessful();
+            } finally {
+                db.endTransaction();
+            }
+
+        }
+
+        return true;
+    }
 
     private int getZoneID (String zoneName)
     {
