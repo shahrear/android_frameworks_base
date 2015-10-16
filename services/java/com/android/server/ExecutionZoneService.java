@@ -112,7 +112,7 @@ public class ExecutionZoneService extends IExecutionZoneService.Stub {
                 }
                 if (msg.what == EDIT_POLICY) {
                     Log.i(TAG,"edit policy message received: policy: " + msg.getData().getString("policyname") + " action " + msg.getData().getString("action") + " param: "+msg.getData().getString("paramlist"));
-                    if(editPoliciesInDB(msg.getData().getString("policyname"), msg.getData().getString("action"),msg.getData().getString("paramlist")))
+                    if(editPoliciesInDB(msg.getData().getString("policyname"), msg.getData().getString("action"), msg.getData().getString("paramlist")))
                         Log.i(TAG, "policy edited successfully.");
 
                 }
@@ -145,6 +145,7 @@ public class ExecutionZoneService extends IExecutionZoneService.Stub {
         mHandler.sendMessage(msg);
     }
 
+    //if not present, insert, otherwise update
     private boolean setZoneToApp (String packageName, String zoneName)
     {
         synchronized (zonedbLock) {
@@ -152,17 +153,49 @@ public class ExecutionZoneService extends IExecutionZoneService.Stub {
             db.beginTransaction();
             try {
                 int zone_id = getZoneID(zoneName);
-                ContentValues values = new ContentValues();
-                values.put(APPZONES_APP_NAME, packageName);
-                values.put(APPZONES_ZONE_ID, zone_id);
 
-                long appzoneId = db.insert(TABLE_APPZONES, null, values);
-
-                if (appzoneId < 0) {
-                    Log.w(TAG, "insertZoneIntoDatabase: " + zone_id
-                            + ", skipping the DB insert failed");
+                Log.d(TAG,"Set zone: "+zoneName+" to package: "+packageName);
+                long isPackageInstalled = 0;
+                try {
+                    isPackageInstalled = DatabaseUtils.queryNumEntries(db, TABLE_APPZONES, APPZONES_APP_NAME + "=?", new String[]{packageName});
+                    Log.d(TAG,"ispackageinstalled value in setzone: "+isPackageInstalled);
+                }
+                catch (Exception e)
+                {
+                    Log.e(TAG,"Error in queryNumEntries in setzone");
                     return false;
                 }
+
+                ContentValues values = new ContentValues();
+
+                if(isPackageInstalled>0)
+                {
+                    values.put(APPZONES_ZONE_ID, zone_id);
+
+                    long appzoneId = db.update(TABLE_APPZONES, values, APPZONES_APP_NAME + "='" +packageName+"'", null);
+
+                    if (appzoneId < 0) {
+                        Log.w(TAG, "update Zone Into Database: " + zone_id + " for packagename: " + packageName
+                                + ", skipping the DB update failed");
+                        return false;
+                    }
+
+                }
+                else
+                {
+                    values.put(APPZONES_APP_NAME, packageName);
+                    values.put(APPZONES_ZONE_ID, zone_id);
+
+                    long appzoneId = db.insert(TABLE_APPZONES, null, values);
+
+                    if (appzoneId < 0) {
+                        Log.w(TAG, "insertZoneIntoDatabase: " + zone_id + " for package: " + packageName
+                                + ", skipping the DB insert failed");
+                        return false;
+                    }
+                }
+
+
 
                 db.setTransactionSuccessful();
             } finally {
@@ -293,7 +326,13 @@ public class ExecutionZoneService extends IExecutionZoneService.Stub {
                     {
                         if(db.delete(TABLE_ZONES,ZONES_ID+"="+zone_id,null)!=1)
                         {
-                            Log.w(TAG, "delete Zone in Database: " + zoneName
+                            Log.w(TAG, "delete Zone in zones Database: " + zoneName
+                                    + ", skipping the DB update, failed");
+                            return false;
+                        }
+                        if(db.delete(TABLE_ZONEPOLICIES,ZONEPOLICIES_ZONE_ID+"="+zone_id,null)!=1)
+                        {
+                            Log.w(TAG, "delete Zone in zonepolicies Database: " + zoneName
                                     + ", skipping the DB update, failed");
                             return false;
                         }
@@ -438,7 +477,7 @@ public class ExecutionZoneService extends IExecutionZoneService.Stub {
 
     //param optional here, can receive null/either new name, or new policies
     public void editPolicy(String policyName, String action, String paramList) {
-        Log.i(TAG, "edit policy " + policyName + "with action " + action);
+        Log.i(TAG, "edit policy " + policyName + " with action " + action);
 
         // Creating Bundle object
         Bundle b = new Bundle();
@@ -477,7 +516,16 @@ public class ExecutionZoneService extends IExecutionZoneService.Stub {
                 }
                 else if(action.toUpperCase().equals("DELETE"))
                 {
-                    long isZoneEmpty = DatabaseUtils.queryNumEntries(db,TABLE_ZONEPOLICIES,APPZONES_ZONE_ID + "LIKE ?s", new String[]{"%;"+policy_id+";%"});
+                    Log.d(TAG,"Deleting policy: "+policyName+" with id: "+policy_id+" checking isZoneEmpty");
+                    long isZoneEmpty = 0;
+                    try {
+                        isZoneEmpty = DatabaseUtils.queryNumEntries(db, TABLE_ZONEPOLICIES, ZONEPOLICIES_POLICYLIST + " LIKE ?", new String[]{"%;" + policy_id + ";%"});
+                        Log.d(TAG,"Deleting policy: "+policyName+" with id: "+policy_id+" checking isZoneEmpty: value: "+isZoneEmpty);
+                    }
+                    catch (Exception e)
+                    {
+                        Log.e(TAG,"Error in queryNumEntries in deleting policy");
+                    }
 
                     if(isZoneEmpty > 0)
                     {
@@ -497,7 +545,7 @@ public class ExecutionZoneService extends IExecutionZoneService.Stub {
                     }
 
                 }
-                else if(action.toUpperCase().equals("UPDATEPOLICY")) //a new set of policy for the zone, full set must be given from the app
+                else if(action.toUpperCase().equals("UPDATEPOLICY")) //a new set of RULES FOR THE policy
                 {
                     values.put(POLICIES_ID, policy_id);
 
@@ -525,23 +573,20 @@ public class ExecutionZoneService extends IExecutionZoneService.Stub {
 
     private int getZoneID (String zoneName)
     {
-        long zone_id_long = 0;
+        long zone_id_long = -1111;
 
         synchronized (zonedbLock) {
             final SQLiteDatabase db = openHelper.getReadableDatabase();
-            db.beginTransaction();
+
             try {
                 zone_id_long = DatabaseUtils.longForQuery(db,
                         "select "+ ZONES_ID +" from " + TABLE_ZONES
                                 + " WHERE " + ZONES_NAME + "=?",
                         new String[]{zoneName});
-
-                db.setTransactionSuccessful();
             } catch (Exception e) {
                 // Log, don't crash!
                 Log.e(TAG, "Exception in getZoneID");
-            } finally {
-                db.endTransaction();
+                zone_id_long = -11111;
             }
         }
 
@@ -550,27 +595,26 @@ public class ExecutionZoneService extends IExecutionZoneService.Stub {
 
     private int getPolicyID (String policyName)
     {
-        long zone_id_long = 0;
+        long policy_id_long = -1111;
 
         synchronized (zonedbLock) {
             final SQLiteDatabase db = openHelper.getReadableDatabase();
-            db.beginTransaction();
+
             try {
-                zone_id_long = DatabaseUtils.longForQuery(db,
+                policy_id_long = DatabaseUtils.longForQuery(db,
                         "select "+ POLICIES_ID +" from " + TABLE_POLICIES
                                 + " WHERE " + POLICIES_NAME + "=?",
                         new String[]{policyName});
 
-                db.setTransactionSuccessful();
+
             } catch (Exception e) {
                 // Log, don't crash!
                 Log.e(TAG, "Exception in getPolicyID");
-            } finally {
-                db.endTransaction();
+                policy_id_long = -11111;
             }
         }
 
-        return (int) zone_id_long;
+        return (int) policy_id_long;
     }
 
     private static String getDatabaseName() {
@@ -625,7 +669,7 @@ public class ExecutionZoneService extends IExecutionZoneService.Stub {
                 "<DEFAULT,RECEIVE_WAP_PUSH,TIME_ALWAYS,DENY>;" +
                 "<DEFAULT,RECEIVE_MMS,TIME_ALWAYS,DENY>;" +
                 "<DEFAULT,READ_EXTERNAL_STORAGE,TIME_ALWAYS,DENY>;" +
-                "<DEFAULT,WRITE_EXTERNAL_STORAGE,TIME_ALWAYS,DENY>";
+                "<DEFAULT,WRITE_EXTERNAL_STORAGE,TIME_ALWAYS,DENY>;";
     }
 
     static class DatabaseHelper extends SQLiteOpenHelper {
@@ -675,6 +719,10 @@ public class ExecutionZoneService extends IExecutionZoneService.Stub {
                         + " VALUES ( "
                         + "'RESTRICTED' );");
 
+                db.execSQL("INSERT OR REPLACE INTO " + TABLE_ZONES + " ( "
+                        + ZONES_NAME + ") "
+                        + " VALUES ( "
+                        + "'UNINSTALLED' );");
                 //create table to save zone to app mapping
 
                 db.execSQL("CREATE TABLE " + TABLE_APPZONES + " (  "
@@ -732,9 +780,45 @@ public class ExecutionZoneService extends IExecutionZoneService.Stub {
                         + ZONEPOLICIES_ID + " INTEGER PRIMARY KEY AUTOINCREMENT,  "
                         + ZONEPOLICIES_ZONE_ID + " INTEGER NOT NULL, "
                         + ZONEPOLICIES_POLICYLIST + " TEXT NOT NULL,  "
-                        + "UNIQUE (" + APPZONES_APP_NAME + "))");
+                        + "UNIQUE (" + ZONEPOLICIES_ZONE_ID + "))");
 
                 //add default zone policy mappings
+
+                c = db.rawQuery("select " + ZONES_ID + " from " + TABLE_ZONES
+                                + " WHERE " + ZONES_NAME + "=?",
+                        new String[]{"TRUSTED"});
+
+                if (c.getCount() > 0) {
+                    c.moveToFirst();
+
+                    zoneID = c.getInt(0);
+                }
+
+                db.execSQL("INSERT OR REPLACE INTO " + TABLE_ZONEPOLICIES + " (  "
+                        + ZONEPOLICIES_ZONE_ID + ", "
+                        + ZONEPOLICIES_POLICYLIST + ") "
+                        + " VALUES ( "
+                        + zoneID
+                        + ", ''"
+                        + ");");
+
+                c = db.rawQuery("select " + ZONES_ID + " from " + TABLE_ZONES
+                                + " WHERE " + ZONES_NAME + "=?",
+                        new String[]{"UNINSTALLED"});
+
+                if (c.getCount() > 0) {
+                    c.moveToFirst();
+
+                    zoneID = c.getInt(0);
+                }
+
+                db.execSQL("INSERT OR REPLACE INTO " + TABLE_ZONEPOLICIES + " (  "
+                        + ZONEPOLICIES_ZONE_ID + ", "
+                        + ZONEPOLICIES_POLICYLIST + ") "
+                        + " VALUES ( "
+                        + zoneID
+                        + ", ''"
+                        + ");");
 
                 c = db.rawQuery("select " + ZONES_ID + " from " + TABLE_ZONES
                                 + " WHERE " + ZONES_NAME + "=?",
@@ -763,7 +847,7 @@ public class ExecutionZoneService extends IExecutionZoneService.Stub {
                         + ZONEPOLICIES_POLICYLIST + ") "
                         + " VALUES ( "
                         + zoneID
-                        + ", '" + policyID + "'"
+                        + ", '" + policyID + ";'"
                         + ");");
 
                 c = db.rawQuery("select " + ZONES_ID + " from " + TABLE_ZONES
@@ -781,7 +865,7 @@ public class ExecutionZoneService extends IExecutionZoneService.Stub {
                         + ZONEPOLICIES_POLICYLIST + ") "
                         + " VALUES ( "
                         + zoneID
-                        + ", '" + policyID + "'"
+                        + ", '" + policyID + ";'"
                         + ");");
 
                 c = db.rawQuery("select " + ZONES_ID + " from " + TABLE_ZONES
@@ -798,7 +882,7 @@ public class ExecutionZoneService extends IExecutionZoneService.Stub {
                         + ZONEPOLICIES_POLICYLIST + ") "
                         + " VALUES ( "
                         + zoneID
-                        + ", '" + policyID + "'"
+                        + ", '" + policyID + ";'"
                         + ");");
             }
             catch (Exception once)

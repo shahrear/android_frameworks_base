@@ -97,6 +97,7 @@ import android.os.Binder;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.ExecutionZoneManager;
 import android.os.FileObserver;
 import android.os.FileUtils;
 import android.os.Handler;
@@ -177,18 +178,18 @@ adb shell am instrument -w -e class com.android.unit_tests.PackageManagerTests c
  */
 public class PackageManagerService extends IPackageManager.Stub {
     static final String TAG = "PackageManager";
-    static final boolean DEBUG_SETTINGS = false;
-    static final boolean DEBUG_PREFERRED = false;
-    static final boolean DEBUG_UPGRADE = false;
-    private static final boolean DEBUG_INSTALL = false;
-    private static final boolean DEBUG_REMOVE = false;
-    private static final boolean DEBUG_BROADCASTS = false;
-    private static final boolean DEBUG_SHOW_INFO = false;
-    private static final boolean DEBUG_PACKAGE_INFO = false;
-    private static final boolean DEBUG_INTENT_MATCHING = false;
-    private static final boolean DEBUG_PACKAGE_SCANNING = false;
-    private static final boolean DEBUG_APP_DIR_OBSERVER = false;
-    private static final boolean DEBUG_VERIFY = false;
+    static final boolean DEBUG_SETTINGS = true;
+    static final boolean DEBUG_PREFERRED = true;
+    static final boolean DEBUG_UPGRADE = true;
+    private static final boolean DEBUG_INSTALL = true;
+    private static final boolean DEBUG_REMOVE = true;
+    private static final boolean DEBUG_BROADCASTS = true;
+    private static final boolean DEBUG_SHOW_INFO = true;
+    private static final boolean DEBUG_PACKAGE_INFO = true;
+    private static final boolean DEBUG_INTENT_MATCHING = true;
+    private static final boolean DEBUG_PACKAGE_SCANNING = true;
+    private static final boolean DEBUG_APP_DIR_OBSERVER = true;
+    private static final boolean DEBUG_VERIFY = true;
 
     private static final int RADIO_UID = Process.PHONE_UID;
     private static final int LOG_UID = Process.LOG_UID;
@@ -419,6 +420,9 @@ public class PackageManagerService extends IPackageManager.Stub {
             = new SparseArray<PackageVerificationState>();
 
     HashSet<PackageParser.Package> mDeferredDexOpt = null;
+
+    //shah executionmanager shah shah oct 16
+    private ExecutionZoneManager mExecutionZoneManager = null;
 
     /** Token for keys in mPendingVerification. */
     private int mPendingVerificationToken = 0;
@@ -1111,6 +1115,10 @@ public class PackageManagerService extends IPackageManager.Stub {
             mDefParseFlags = 0;
             mSeparateProcesses = null;
         }
+
+
+
+
 
         mInstaller = installer;
 
@@ -8609,7 +8617,7 @@ public class PackageManagerService extends IPackageManager.Stub {
     }
 
     /*
-     * Install a non-existing package.
+     * Install a non-existing package. shah change to add zone info oct 16 shah shah
      */
     private void installNewPackageLI(PackageParser.Package pkg,
             int parseFlags, int scanMode, UserHandle user,
@@ -8662,6 +8670,20 @@ public class PackageManagerService extends IPackageManager.Stub {
                 deletePackageLI(pkgName, UserHandle.ALL, false, null, null,
                         dataDirExists ? PackageManager.DELETE_KEEP_DATA : 0,
                                 res.removedInfo, true);
+            }
+            //after successful installation, add zone info shah oct 16
+            else if(res.returnCode == PackageManager.INSTALL_SUCCEEDED) //shah added here
+            {
+                if(DEBUG_REMOVE) Log.d(TAG,"assigning zone NEW app: "+pkgName+" when installing");
+                try {
+                    mExecutionZoneManager = ExecutionZoneManager.getExecutionZoneManager();
+
+                    mExecutionZoneManager.setZone(pkgName, "NEW");
+                }
+                catch(Exception e)
+                {
+                    Log.e(TAG,"oops shah!! something wrong happened when assigning zone NEW to app: "+pkgName+" when installing!! :(. exception message: "+e.getMessage());
+                }
             }
         }
     }
@@ -9535,6 +9557,7 @@ public class PackageManagerService extends IPackageManager.Stub {
         return true;
     }
 
+    //shah shah change for zoning oct 16
     private boolean deleteInstalledPackageLI(PackageSetting ps,
             boolean deleteCodeAndResources, int flags,
             int[] allUserHandles, boolean[] perUserInstalled,
@@ -9551,6 +9574,19 @@ public class PackageManagerService extends IPackageManager.Stub {
             outInfo.args = createInstallArgs(packageFlagsToInstallFlags(ps), ps.codePathString,
                     ps.resourcePathString, ps.nativeLibraryPathString);
         }
+
+        //SHAH SHAH OCT 16 set zone of the uninstalled app to uninstalled
+        if(DEBUG_REMOVE) Log.d(TAG,"assigning zone UNINSTALLED app: "+ps.name+" when uninstalling");
+        try {
+            mExecutionZoneManager = ExecutionZoneManager.getExecutionZoneManager();
+
+            mExecutionZoneManager.setZone(ps.name, "UNINSTALLED");
+        }
+        catch(Exception e)
+        {
+            Log.e(TAG,"oops shah!! something wrong happened when assigning zone UNINSTALLED to app: "+ps.name+" when uninstalling!! :(. exception message: "+e.getMessage());
+        }
+
         return true;
     }
 
