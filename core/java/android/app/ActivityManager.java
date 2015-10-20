@@ -2135,14 +2135,32 @@ public class ActivityManager {
             return PackageManager.PERMISSION_GRANTED;
         }
         try {
-            return AppGlobals.getPackageManager()
+            if(checkZonePermission(permission, uid) == PackageManager.PERMISSION_GRANTED)
+                return AppGlobals.getPackageManager()
                     .checkUidPermission(permission, uid);
+            else return PackageManager.PERMISSION_DENIED;
+
         } catch (RemoteException e) {
             // Should never happen, but if it does... deny!
             Slog.e(TAG, "PackageManager is dead?!?", e);
         }
         return PackageManager.PERMISSION_DENIED;
     }
+
+    /** @hide */
+    //shah shah testing permission ot 20 from office shah shah
+    public static int checkZonePermission(String permission, int uid) {
+        try {
+
+        } catch (Exception e) {
+            // Should never happen, but if it does... deny!
+            Log.e(TAG,"shah Error in checkZonePermission, permission: "+permission+" uid: "+uid);
+
+            Slog.e(TAG, "Someone is dead?!?", e);
+        }
+        return PackageManager.PERMISSION_DENIED;
+    }
+
 
     /** @hide */
     public static int checkUidPermission(String permission, int uid) {
