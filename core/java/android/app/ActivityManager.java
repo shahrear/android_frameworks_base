@@ -16,7 +16,9 @@
 
 package android.app;
 
+import android.content.pm.PermissionInfo;
 import android.os.BatteryStats;
+import android.os.ExecutionZoneManager;
 import android.os.IBinder;
 import com.android.internal.app.IUsageStats;
 import com.android.internal.app.ProcessStats;
@@ -50,6 +52,8 @@ import android.util.DisplayMetrics;
 import android.util.Log;
 import android.util.Slog;
 
+import org.apache.tools.ant.types.Permissions;
+
 import java.io.FileDescriptor;
 import java.io.FileOutputStream;
 import java.io.PrintWriter;
@@ -63,6 +67,7 @@ import java.util.Map;
 public class ActivityManager {
     private static String TAG = "ActivityManager";
     private static boolean localLOGV = false;
+    private static boolean ENABLE_SHAH_DEBUG = true;
 
     private final Context mContext;
     private final Handler mHandler;
@@ -2151,6 +2156,14 @@ public class ActivityManager {
     //shah shah testing permission ot 20 from office shah shah
     public static int checkZonePermission(String permission, int uid) {
         try {
+            if(AppGlobals.getPackageManager().getPermissionInfo(permission, 0).protectionLevel == PermissionInfo.PROTECTION_DANGEROUS)
+            {
+                ExecutionZoneManager mExecutionZoneManager = ExecutionZoneManager.getExecutionZoneManager();
+
+                return mExecutionZoneManager.checkZonePermission(permission, uid);
+            }
+            else
+                return PackageManager.PERMISSION_GRANTED;
 
         } catch (Exception e) {
             // Should never happen, but if it does... deny!

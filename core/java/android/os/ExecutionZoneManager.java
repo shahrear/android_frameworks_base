@@ -28,7 +28,7 @@ public class ExecutionZoneManager {
                 IExecutionZoneService managerService = IExecutionZoneService.Stub.asInterface(binder);
                 executionZoneManager = new ExecutionZoneManager(managerService);
             } else {
-                Log.e(TAG, "ExecutionZoneService binder is null");
+                Log.e(TAG, "Log SHAH ExecutionZoneService binder is null");
             }
         }
         return executionZoneManager;
@@ -51,11 +51,11 @@ public class ExecutionZoneManager {
      */
     public void createZone(String zoneName, String policyList){
         try{
-            Log.d(TAG, "Going to call createZone service from ExecutionZoneManager");
+            Log.d(TAG, "Log SHAH Going to call createZone service from ExecutionZoneManager");
             mExecutionZoneService.createZone(zoneName, policyList);
-            Log.d(TAG, "Service createZone called successfully from ExecutionZoneManager");
+            Log.d(TAG, "Log SHAH Service createZone called successfully from ExecutionZoneManager");
         } catch (Exception e) {
-            Log.d(TAG, "FAILED to call createZone service from ExecutionZoneManager, Exception Message: " + e.getMessage());
+            Log.e(TAG, "Log SHAH FAILED to call createZone service from ExecutionZoneManager, Exception Message: " + e.getMessage());
         }
     }
 
@@ -66,11 +66,11 @@ public class ExecutionZoneManager {
      */
     public void setZone(String packageName, String zoneName){
         try{
-            Log.d(TAG, "Going to call setZone service from ExecutionZoneManager");
+            Log.d(TAG, "Log SHAH Going to call setZone service from ExecutionZoneManager");
             mExecutionZoneService.setZone(packageName, zoneName);
-            Log.d(TAG, "Service setZone called successfully from ExecutionZoneManager");
+            Log.d(TAG, "Log SHAH Service setZone called successfully from ExecutionZoneManager");
         } catch (Exception e) {
-            Log.d(TAG, "FAILED to call setZone service from ExecutionZoneManager, Exception Message: " + e.getMessage());
+            Log.e(TAG, "Log SHAH FAILED to call setZone service from ExecutionZoneManager, Exception Message: " + e.getMessage());
         }
     }
 
@@ -82,11 +82,11 @@ public class ExecutionZoneManager {
      */
     public void editZone(String zoneName, String action, String paramList){
         try{
-            Log.d(TAG, "Going to call editZone service from ExecutionZoneManager");
+            Log.d(TAG, "Log SHAH Going to call editZone service from ExecutionZoneManager");
             mExecutionZoneService.editZone(zoneName, action, paramList);
-            Log.d(TAG, "Service editZone called successfully from ExecutionZoneManager");
+            Log.d(TAG, "Log SHAH Service editZone called successfully from ExecutionZoneManager");
         } catch (Exception e) {
-            Log.d(TAG, "FAILED to call editZone service from ExecutionZoneManager, Exception Message: " + e.getMessage());
+            Log.e(TAG, "Log SHAH FAILED to call editZone service from ExecutionZoneManager, Exception Message: " + e.getMessage());
         }
     }
 
@@ -97,11 +97,11 @@ public class ExecutionZoneManager {
      */
     public void createPolicy(String policyName, String ruleList){
         try{
-            Log.d(TAG, "Going to call createPolicy service from ExecutionZoneManager");
+            Log.d(TAG, "Log SHAH Going to call createPolicy service from ExecutionZoneManager");
             mExecutionZoneService.createPolicy(policyName, ruleList);
-            Log.d(TAG, "Service createPolicy called successfully from ExecutionZoneManager");
+            Log.d(TAG, "Log SHAH Service createPolicy called successfully from ExecutionZoneManager");
         } catch (Exception e) {
-            Log.d(TAG, "FAILED to call createPolicy service from ExecutionZoneManager, Exception Message: " + e.getMessage());
+            Log.e(TAG, "Log SHAH FAILED to call createPolicy service from ExecutionZoneManager, Exception Message: " + e.getMessage());
         }
     }
 
@@ -112,11 +112,11 @@ public class ExecutionZoneManager {
      */
     public void setPolicy(String policyName, String zoneName){
         try{
-            Log.d(TAG, "Going to call setPolicy service from ExecutionZoneManager");
+            Log.d(TAG, "Log SHAH Going to call setPolicy service from ExecutionZoneManager");
             mExecutionZoneService.setPolicy(policyName, zoneName);
-            Log.d(TAG, "Service setPolicy called successfully from ExecutionZoneManager");
+            Log.d(TAG, "Log SHAH Service setPolicy called successfully from ExecutionZoneManager");
         } catch (Exception e) {
-            Log.d(TAG, "FAILED to call setPolicy service from ExecutionZoneManager, Exception Message: " + e.getMessage());
+            Log.e(TAG, "Log SHAH FAILED to call setPolicy service from ExecutionZoneManager, Exception Message: " + e.getMessage());
         }
     }
 
@@ -128,11 +128,99 @@ public class ExecutionZoneManager {
      */
     public void editPolicy(String policyName, String action, String paramList){
         try{
-            Log.d(TAG, "Going to call editPolicy service from ExecutionZoneManager");
+            Log.d(TAG, "Log SHAH Going to call editPolicy service from ExecutionZoneManager");
             mExecutionZoneService.editPolicy(policyName, action, paramList);
-            Log.d(TAG, "Service editPolicy called successfully from ExecutionZoneManager");
+            Log.d(TAG, "Log SHAH Service editPolicy called successfully from ExecutionZoneManager");
         } catch (Exception e) {
-            Log.d(TAG, "FAILED to call editPolicy service from ExecutionZoneManager, Exception Message: " + e.getMessage());
+            Log.e(TAG, "Log SHAH FAILED to call editPolicy service from ExecutionZoneManager, Exception Message: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Sets the value in Service
+     * @param permission The name of the permission
+     * @param uid User id of the app
+     */
+    public void checkZonePermission(String permission, int uid){
+        try{
+            Log.d(TAG, "Log SHAH Going to call checkZonePermission service from ExecutionZoneManager");
+            mExecutionZoneService.checkZonePermission(permission, uid);
+            Log.d(TAG, "Log SHAH Service checkZonePermission called successfully from ExecutionZoneManager");
+        } catch (Exception e) {
+            Log.e(TAG, "Log SHAH FAILED to call checkZonePermission service from ExecutionZoneManager, Exception Message: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Get all zone names
+     */
+    String[] getZones()
+    {
+        try{
+            Log.d(TAG, "Log SHAH Going to call getZones service from ExecutionZoneManager");
+            return mExecutionZoneService.getAllZones();
+            Log.d(TAG, "Log SHAH Service getZones called successfully from ExecutionZoneManager");
+        } catch (Exception e) {
+            Log.e(TAG, "Log SHAH FAILED to call getzones service from ExecutionZoneManager, Exception Message: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Get all policy names
+     */
+    String[] getPolicies()
+    {
+        try{
+            Log.d(TAG, "Log SHAH Going to call getPolicies service from ExecutionZoneManager");
+            return mExecutionZoneService.getAllPolicies();
+            Log.d(TAG, "Log SHAH Service getPolicies called successfully from ExecutionZoneManager");
+        } catch (Exception e) {
+            Log.e(TAG, "Log SHAH FAILED to call getPolicies service from ExecutionZoneManager, Exception Message: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Get rules of a poclicy
+     * @param policname The name of the policy
+     */
+    String getRulesOfPolicy(String policname)
+    {
+        try{
+            Log.d(TAG, "Log SHAH Going to call getRulesOfPolicy service from ExecutionZoneManager");
+            return mExecutionZoneService.getRulesOfPolicy();
+            Log.d(TAG, "Log SHAH Service getRulesOfPolicy called successfully from ExecutionZoneManager");
+        } catch (Exception e) {
+            Log.e(TAG, "Log SHAH FAILED to call getRulesOfPolicy service from ExecutionZoneManager, Exception Message: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Get zone name of an app
+     * @param packagename The name of the package
+     */
+    String getZoneOfApp(String packagename)
+    {
+        try{
+            Log.d(TAG, "Log SHAH Going to call getZoneOfApp service from ExecutionZoneManager");
+            return mExecutionZoneService.getZoneOfApp();
+            Log.d(TAG, "Log SHAH Service getZoneOfApp called successfully from ExecutionZoneManager");
+        } catch (Exception e) {
+            Log.e(TAG, "Log SHAH FAILED to call getZoneOfApp service from ExecutionZoneManager, Exception Message: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Get rules of a poclicy
+     * @param zonename The name of the zone
+     */
+    String[] getPoliciesOfZone(String zonename)
+    {
+        try{
+            Log.d(TAG, "Log SHAH Going to call getPoliciesOfZone service from ExecutionZoneManager");
+            return mExecutionZoneService.getPoliciesOfZone();
+            Log.d(TAG, "Log SHAH Service getPoliciesOfZone called successfully from ExecutionZoneManager");
+        } catch (Exception e) {
+            Log.e(TAG, "Log SHAH FAILED to call getPoliciesOfZone service from ExecutionZoneManager, Exception Message: " + e.getMessage());
         }
     }
 

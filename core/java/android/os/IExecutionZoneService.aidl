@@ -14,4 +14,10 @@ interface IExecutionZoneService {
         void createPolicy(String policyName, String ruleList);
         void setPolicy(String policyName, String zoneName);
         void editPolicy(String policyName, String action, String paramList);
+        int checkZonePermission(String permission, int uid);
+        String[] getZones();
+        String[] getPolicies();
+        String getRulesOfPolicy(String policname);
+        String getZoneOfApp(String packagename);
+        String[] getPoliciesOfZone(String zonename);
 }
