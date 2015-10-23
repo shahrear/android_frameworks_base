@@ -15,9 +15,17 @@ import android.os.Bundle;
 import android.content.Context;
 import android.os.Message;
 import android.util.Log;
-import java.io.File;
-import java.util.List;
 
+import com.google.android.collect.Lists;
+
+import java.io.File;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 
 /**
@@ -670,8 +678,9 @@ public class ExecutionZoneService extends IExecutionZoneService.Stub {
     }
     String[] getPoliciesOfZone(String zonename) {
         final SQLiteDatabase db = openHelper.getReadableDatabase();
-        String[] policies = null;
+        List<String> policies = new ArrayList<String>();
         String policylist = null;
+        String tmpPolicyName= null;
 
         try {
             policylist = DatabaseUtils.stringForQuery(db,"SELECT ZP." + ZONEPOLICIES_POLICYLIST + " FROM " + TABLE_ZONES
@@ -680,14 +689,74 @@ public class ExecutionZoneService extends IExecutionZoneService.Stub {
         }
         catch (Exception e) {
             // Log, don't crash!
-            Log.e(TAG, "Log SHAH Exception in getAllZones, message: "+e.getMessage());
+            Log.e(TAG, "Log SHAH Exception in getPoliciesOfZone when fetching policylist, message: "+e.getMessage());
         }
 
-        for(String policyid: policylist.split(";"))
+        for(String policyid: policylist.split(";")) {
+            if(policyid.isEmpty()==false) {
+                try {
+                     tmpPolicyName = DatabaseUtils.stringForQuery(db,"SELECT " + POLICIES_NAME + " FROM " + TABLE_POLICIES
+                                    + " WHERE " + POLICIES_ID + "=?",
+                            new String[]{policyid.trim()});
+                }
+                catch (Exception e) {
+                    // Log, don't crash!
+                    Log.e(TAG, "Log SHAH Exception in getPoliciesOfZone when fetching policy name from id, message: "+e.getMessage());
+                }
+
+                policies.add(tmpPolicyName);
+            }
+        }
 
         db.close();
 
-        return zonename;
+        String[] policyNames = new String[policies.size()];
+        return policies.toArray(policyNames);
+    }
+
+    Map<String,String> getPoliciesOfZoneWithRules(String zonename) {
+        final SQLiteDatabase db = openHelper.getReadableDatabase();
+        Map<String,String> policiesAndRules = new HashMap<String, String>();
+        String policylist = null;
+
+
+        try {
+            policylist = DatabaseUtils.stringForQuery(db,"SELECT ZP." + ZONEPOLICIES_POLICYLIST + " FROM " + TABLE_ZONES
+                            + " Z INNER JOIN "+TABLE_ZONEPOLICIES+" ZP ON Z." + ZONES_ID + "=ZP." + ZONEPOLICIES_ZONE_ID + " WHERE Z." + ZONES_NAME + "=?",
+                    new String[]{zonename});
+        }
+        catch (Exception e) {
+            // Log, don't crash!
+            Log.e(TAG, "Log SHAH Exception in getPoliciesOfZone when fetching policylist, message: "+e.getMessage());
+        }
+
+        for(String policyid: policylist.split(";")) {
+            if(policyid.isEmpty()==false) {
+                try {
+                    Cursor cur = db.rawQuery("SELECT " + POLICIES_NAME + ","+POLICIES_RULES+" FROM " + TABLE_POLICIES
+                                    + " WHERE " + POLICIES_ID + "=?",
+                            new String[]{policyid.trim()});
+
+                    if (cur != null) {
+                        if (cur.moveToFirst()) {
+                            do {
+                                policiesAndRules.put(cur.getString(0),cur.getString(1));
+                            } while (cur.moveToNext());
+                        }
+                    }
+
+                }
+                catch (Exception e) {
+                    // Log, don't crash!
+                    Log.e(TAG, "Log SHAH Exception in getPoliciesOfZone when fetching policy name from id, message: "+e.getMessage());
+                }
+            }
+        }
+
+        db.close();
+
+
+        return policiesAndRules;
     }
 
 
@@ -710,9 +779,14 @@ public class ExecutionZoneService extends IExecutionZoneService.Stub {
     private boolean checkZonePermission (String permission, String packageName)
     {
             try {
-                int zone_id = getZoneID()
+                Map<String,String> policyRules = getPoliciesOfZoneWithRules(getZoneOfApp(packageName));
 
-                int policy_id = getPolicyID(policyName);
+                Set<String> rules = new HashSet<String>();
+
+
+                for(String value:policyRules.values()) {
+                    rules.addAll(Lists.newArrayList(value.split(";")));
+                }
 
                 ContentValues values = new ContentValues();
 

@@ -13,6 +13,9 @@ import android.os.IExecutionZoneService;
 import android.os.RemoteException;
 import android.util.Log;
 
+import java.util.HashMap;
+import java.util.Map;
+
 public class ExecutionZoneManager {
     private static final String TAG = "ExecutionZoneManager";
     private final IExecutionZoneService mExecutionZoneService;
@@ -210,7 +213,7 @@ public class ExecutionZoneManager {
     }
 
     /**
-     * Get rules of a poclicy
+     * Get policynames of a zone
      * @param zonename The name of the zone
      */
     String[] getPoliciesOfZone(String zonename)
@@ -221,6 +224,21 @@ public class ExecutionZoneManager {
             Log.d(TAG, "Log SHAH Service getPoliciesOfZone called successfully from ExecutionZoneManager");
         } catch (Exception e) {
             Log.e(TAG, "Log SHAH FAILED to call getPoliciesOfZone service from ExecutionZoneManager, Exception Message: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Get rules of the policies of a zone
+     * @param zonename The name of the zone
+     */
+    Map<String,String> getPoliciesOfZoneWithRules(String zonename)
+    {
+        try{
+            Log.d(TAG, "Log SHAH Going to call getPoliciesOfZoneWithRules service from ExecutionZoneManager");
+            return mExecutionZoneService.getPoliciesOfZoneWithRules();
+            Log.d(TAG, "Log SHAH Service getPoliciesOfZoneWithRules called successfully from ExecutionZoneManager");
+        } catch (Exception e) {
+            Log.e(TAG, "Log SHAH FAILED to call getPoliciesOfZoneWithRules service from ExecutionZoneManager, Exception Message: " + e.getMessage());
         }
     }
 
