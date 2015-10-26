@@ -160,7 +160,7 @@ public class ExecutionZoneManager {
     /**
      * Get all zone names
      */
-    String[] getZones()
+    public String[] getZones()
     {
         String []zones = null;
         try{
@@ -177,7 +177,7 @@ public class ExecutionZoneManager {
     /**
      * Get all policy names
      */
-    String[] getPolicies()
+    public String[] getPolicies()
     {
         String []policies = null;
         try{
@@ -195,7 +195,7 @@ public class ExecutionZoneManager {
      * Get rules of a poclicy
      * @param policyname The name of the policy
      */
-    String getRulesOfPolicy(String policyname)
+    public String getRulesOfPolicy(String policyname)
     {
         String ret = null;
         try{
@@ -212,7 +212,7 @@ public class ExecutionZoneManager {
      * Get zone name of an app
      * @param packagename The name of the package
      */
-    String getZoneOfApp(String packagename)
+    public String getZoneOfApp(String packagename)
     {
         String ret = null;
         try{
@@ -229,7 +229,7 @@ public class ExecutionZoneManager {
      * Get policynames of a zone
      * @param zonename The name of the zone
      */
-    String[] getPoliciesOfZone(String zonename)
+    public String[] getPoliciesOfZone(String zonename)
     {
         String[] ret = null;
         try{
@@ -246,7 +246,7 @@ public class ExecutionZoneManager {
      * Get rules of the policies of a zone
      * @param zonename The name of the zone
      */
-    Map<String,String> getPoliciesOfZoneWithRules(String zonename)
+    public Map<String,String> getPoliciesOfZoneWithRules(String zonename)
     {
         Map<String,String> ret = null;
         try{
