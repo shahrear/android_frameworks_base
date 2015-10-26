@@ -52,7 +52,7 @@ import android.util.DisplayMetrics;
 import android.util.Log;
 import android.util.Slog;
 
-import org.apache.tools.ant.types.Permissions;
+
 
 import java.io.FileDescriptor;
 import java.io.FileOutputStream;
@@ -2153,7 +2153,7 @@ public class ActivityManager {
     }
 
     /** @hide */
-    //shah shah testing permission ot 20 from office shah shah
+    //shah shah testing permission oct 20 from office shah shah
     public static int checkZonePermission(String permission, int uid) {
         try {
             if(AppGlobals.getPackageManager().getPermissionInfo(permission, 0).protectionLevel == PermissionInfo.PROTECTION_DANGEROUS)

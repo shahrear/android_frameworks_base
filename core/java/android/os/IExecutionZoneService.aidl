@@ -7,6 +7,8 @@
  */
 package android.os;
 
+import java.util.Map;
+
 interface IExecutionZoneService {
         void createZone(String zoneName, String policyList);
         void setZone(String packageName, String zoneName);
@@ -15,10 +17,10 @@ interface IExecutionZoneService {
         void setPolicy(String policyName, String zoneName);
         void editPolicy(String policyName, String action, String paramList);
         int checkZonePermission(String permission, int uid);
-        String[] getZones();
-        String[] getPolicies();
+        String[] getAllZones();
+        String[] getAllPolicies();
         String getRulesOfPolicy(String policname);
         String getZoneOfApp(String packagename);
         String[] getPoliciesOfZone(String zonename);
-        Map<String,String> getPoliciesOfZoneWithRules(String zonename);
+        Map getPoliciesOfZoneWithRules(String zonename);
 }

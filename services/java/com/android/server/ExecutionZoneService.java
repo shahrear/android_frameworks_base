@@ -19,7 +19,9 @@ import android.util.Log;
 import com.google.android.collect.Lists;
 
 import java.io.File;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -36,6 +38,11 @@ public class ExecutionZoneService extends IExecutionZoneService.Stub {
 
     private static final String DATABASE_NAME = "zones.db";
     private static final int DATABASE_VERSION = 5;
+
+    private static final boolean DEBUG_ENABLE = true;
+
+    private static final int PERMISSION_PERMITTED_IN_ZONE = 100;
+    private static final int PERMISSION_NOT_PERMITTED_IN_ZONE = -100;
 
     private static final String TABLE_ZONES = "zones";
     private static final String ZONES_ID = "_id";
@@ -582,7 +589,7 @@ public class ExecutionZoneService extends IExecutionZoneService.Stub {
         return true;
     }
 
-    String[] getAllZones()
+    public String[] getAllZones()
     {
         final SQLiteDatabase db = openHelper.getReadableDatabase();
         String[] zones = null;
@@ -610,7 +617,7 @@ public class ExecutionZoneService extends IExecutionZoneService.Stub {
         return zones;
 
     }
-    String[] getAllPolicies()
+    public String[] getAllPolicies()
     {
         final SQLiteDatabase db = openHelper.getReadableDatabase();
         String[] policies = null;
@@ -637,7 +644,7 @@ public class ExecutionZoneService extends IExecutionZoneService.Stub {
 
         return policies;
     }
-    String getRulesOfPolicy(String policyname)
+    public String getRulesOfPolicy(String policyname)
     {
         final SQLiteDatabase db = openHelper.getReadableDatabase();
         String rules = null;
@@ -649,14 +656,14 @@ public class ExecutionZoneService extends IExecutionZoneService.Stub {
         }
         catch (Exception e) {
             // Log, don't crash!
-            Log.e(TAG, "Log SHAH Exception in getAllZones, message: "+e.getMessage());
+            Log.e(TAG, "Log SHAH Exception in getRulesOfPolicy, message: "+e.getMessage());
         }
 
         db.close();
 
         return rules;
     }
-    String getZoneOfApp(String packagename)
+    public String getZoneOfApp(String packagename)
     {
         final SQLiteDatabase db = openHelper.getReadableDatabase();
         String zonename = null;
@@ -668,7 +675,7 @@ public class ExecutionZoneService extends IExecutionZoneService.Stub {
         }
         catch (Exception e) {
             // Log, don't crash!
-            Log.e(TAG, "Log SHAH Exception in getAllZones, message: "+e.getMessage());
+            Log.e(TAG, "Log SHAH Exception in getZoneOfApp, message: "+e.getMessage());
         }
 
         db.close();
@@ -676,7 +683,7 @@ public class ExecutionZoneService extends IExecutionZoneService.Stub {
         return zonename;
 
     }
-    String[] getPoliciesOfZone(String zonename) {
+    public String[] getPoliciesOfZone(String zonename) {
         final SQLiteDatabase db = openHelper.getReadableDatabase();
         List<String> policies = new ArrayList<String>();
         String policylist = null;
@@ -714,7 +721,7 @@ public class ExecutionZoneService extends IExecutionZoneService.Stub {
         return policies.toArray(policyNames);
     }
 
-    Map<String,String> getPoliciesOfZoneWithRules(String zonename) {
+    public Map<String,String> getPoliciesOfZoneWithRules(String zonename) {
         final SQLiteDatabase db = openHelper.getReadableDatabase();
         Map<String,String> policiesAndRules = new HashMap<String, String>();
         String policylist = null;
@@ -727,7 +734,7 @@ public class ExecutionZoneService extends IExecutionZoneService.Stub {
         }
         catch (Exception e) {
             // Log, don't crash!
-            Log.e(TAG, "Log SHAH Exception in getPoliciesOfZone when fetching policylist, message: "+e.getMessage());
+            Log.e(TAG, "Log SHAH Exception in getPoliciesOfZoneWithRules when fetching policylist, message: "+e.getMessage());
         }
 
         for(String policyid: policylist.split(";")) {
@@ -748,7 +755,7 @@ public class ExecutionZoneService extends IExecutionZoneService.Stub {
                 }
                 catch (Exception e) {
                     // Log, don't crash!
-                    Log.e(TAG, "Log SHAH Exception in getPoliciesOfZone when fetching policy name from id, message: "+e.getMessage());
+                    Log.e(TAG, "Log SHAH Exception in getPoliciesOfZoneWithRules when fetching policy name from id, message: "+e.getMessage());
                 }
             }
         }
@@ -769,56 +776,67 @@ public class ExecutionZoneService extends IExecutionZoneService.Stub {
 
         for(String packageName: packages)
         {
-            if(checkZonePermission(permission, packageName)==false)
+            if(checkZonePermission(permission, packageName)==PERMISSION_NOT_PERMITTED_IN_ZONE)
                 return PackageManager.PERMISSION_DENIED;
         }
 
         return PackageManager.PERMISSION_GRANTED;
     }
 
-    private boolean checkZonePermission (String permission, String packageName)
+    private int checkZonePermission (String permission, String packageName)
     {
             try {
+                //a zone can have multiple policies, each policy can have multiple rules separated by ;
                 Map<String,String> policyRules = getPoliciesOfZoneWithRules(getZoneOfApp(packageName));
 
                 Set<String> rules = new HashSet<String>();
 
+                if(DEBUG_ENABLE)
+                    Log.d(TAG,"SHAH in checkzonepermission permission: "+permission+" packagename: "+packageName );
+
 
                 for(String value:policyRules.values()) {
-                    rules.addAll(Lists.newArrayList(value.split(";")));
+                    String []tmpRules = value.split(";"); //separating rules of a policy
+
+                    for(String ss: tmpRules)
+                    {
+                        String []tmpRuleParams = ss.split(",");
+                        if(tmpRuleParams[1].equals(permission))
+                        {
+                            rules.add(tmpRuleParams[2]+"{"+tmpRuleParams[3]+"}"); //adding to hashset in a format [TIME_ALWAYS+PHONENUMBER_3433333599]{DENY}
+                        }
+                    }
                 }
 
-                ContentValues values = new ContentValues();
-
-                String policyList = DatabaseUtils.stringForQuery(db,
-                        "select "+ ZONEPOLICIES_POLICYLIST +" from " + TABLE_ZONEPOLICIES
-                                + " WHERE " + ZONEPOLICIES_ZONE_ID + "=?",
-                        new String[]{zone_id+""});
-
-                if(policyList.contains(";"+policy_id+";"))
+                for(String check: rules)//only allows time for now, phone number will be added later
                 {
-                    Log.w(TAG, "Log SHAH set policy to zone  in Database: zoneid: " + zone_id + " policy :"
-                            + policy_id+" : already exists, skipping the DB update failed");
-                    return false;
-                }
+                    String time = check.substring(check.indexOf('['),check.lastIndexOf(']'));
+                    String allowordeny = check.substring(check.indexOf('{',check.lastIndexOf(']')+1),check.lastIndexOf('}'));
 
-                values.put(ZONEPOLICIES_POLICYLIST, policyList+policy_id+";");
+                    String []startendTime = time.split("_");
 
-                long apppolicy = db.update(TABLE_ZONEPOLICIES, values, ZONEPOLICIES_ZONE_ID + "=" + zone_id, null);
+                    SimpleDateFormat simpleDateFormat = new SimpleDateFormat("HH:mm");
+                    Date startTime = simpleDateFormat.parse(startendTime[1]);
+                    Date endTime = simpleDateFormat.parse(startendTime[2]);
 
-                if (apppolicy < 0) {
-                    Log.w(TAG, "Log SHAH set policy to zone  in Database: zoneid: " + zone_id + " policy :"
-                            +policy_id+ ", skipping the DB update failed");
-                    return false;
+                    if(DEBUG_ENABLE)
+                        Log.d(TAG,"SHAH in checkzonepermission current rule: "+check+" parsed starttime: "+startTime.toString()+" endtime:"+endTime.toString());
+
+                    Date now = new Date();
+
+                    if (startTime.before(now) && endTime.after(now)) {
+                        if(allowordeny.equals("DENY"))
+                            return PERMISSION_NOT_PERMITTED_IN_ZONE;
+
+                    }
+
                 }
             } catch (Exception e)
             {
                 Log.e(TAG, "Log SHAH something bad happened man, in checkzonepermission in executionzoneservice, exception: "+e.getMessage());
             }
 
-        }
-
-        return true;
+        return PERMISSION_PERMITTED_IN_ZONE;
     }
 
     private int getZoneID (String zoneName)
@@ -892,30 +910,30 @@ public class ExecutionZoneService extends IExecutionZoneService.Stub {
 
     private static String getDefaultAllDangerousDenyPolicyString() {
 
-        return "<DEFAULT,READ_CALENDAR,TIME_ALWAYS,DENY>;" +
-                "<DEFAULT,WRITE_CALENDAR,TIME_ALWAYS,DENY>;" +
-                "<DEFAULT,CAMERA,TIME_ALWAYS,DENY>;" +
-                "<DEFAULT,READ_CONTACTS,TIME_ALWAYS,DENY>;" +
-                "<DEFAULT,WRITE_CONTACTS,TIME_ALWAYS,DENY>;" +
-                "<DEFAULT,GET_ACCOUNTS,TIME_ALWAYS,DENY>;" +
-                "<DEFAULT,ACCESS_FINE_LOCATION,TIME_ALWAYS,DENY>;" +
-                "<DEFAULT,ACCESS_COARSE_LOCATION,TIME_ALWAYS,DENY>;" +
-                "<DEFAULT,RECORD_AUDIO,TIME_ALWAYS,DENY>;" +
-                "<DEFAULT,READ_PHONE_STATE,TIME_ALWAYS,DENY>;" +
-                "<DEFAULT,CALL_PHONE,TIME_ALWAYS,DENY>;" +
-                "<DEFAULT,READ_CALL_LOG,TIME_ALWAYS,DENY>;" +
-                "<DEFAULT,WRITE_CALL_LOG,TIME_ALWAYS,DENY>;" +
-                "<DEFAULT,ADD_VOICEMAIL,TIME_ALWAYS,DENY>;" +
-                "<DEFAULT,USE_SIP,TIME_ALWAYS,DENY>;" +
-                "<DEFAULT,PROCESS_OUTGOING_CALLS,TIME_ALWAYS,DENY>;" +
-                "<DEFAULT,BODY_SENSORS,TIME_ALWAYS,DENY>;" +
-                "<DEFAULT,SEND_SMS,TIME_ALWAYS,DENY>;" +
-                "<DEFAULT,RECEIVE_SMS,TIME_ALWAYS,DENY>;" +
-                "<DEFAULT,READ_SMS,TIME_ALWAYS,DENY>;" +
-                "<DEFAULT,RECEIVE_WAP_PUSH,TIME_ALWAYS,DENY>;" +
-                "<DEFAULT,RECEIVE_MMS,TIME_ALWAYS,DENY>;" +
-                "<DEFAULT,READ_EXTERNAL_STORAGE,TIME_ALWAYS,DENY>;" +
-                "<DEFAULT,WRITE_EXTERNAL_STORAGE,TIME_ALWAYS,DENY>;";
+        return "<DEFAULT,READ_CALENDAR,[TIME_ALWAYS],DENY>;" +
+                "<DEFAULT,WRITE_CALENDAR,[TIME_ALWAYS],DENY>;" +
+                "<DEFAULT,CAMERA,[TIME_ALWAYS],DENY>;" +
+                "<DEFAULT,READ_CONTACTS,[TIME_ALWAYS],DENY>;" +
+                "<DEFAULT,WRITE_CONTACTS,[TIME_ALWAYS],DENY>;" +
+                "<DEFAULT,GET_ACCOUNTS,[TIME_ALWAYS],DENY>;" +
+                "<DEFAULT,ACCESS_FINE_LOCATION,[TIME_ALWAYS],DENY>;" +
+                "<DEFAULT,ACCESS_COARSE_LOCATION,[TIME_ALWAYS],DENY>;" +
+                "<DEFAULT,RECORD_AUDIO,[TIME_ALWAYS],DENY>;" +
+                "<DEFAULT,READ_PHONE_STATE,[TIME_ALWAYS],DENY>;" +
+                "<DEFAULT,CALL_PHONE,[TIME_ALWAYS],DENY>;" +
+                "<DEFAULT,READ_CALL_LOG,[TIME_ALWAYS],DENY>;" +
+                "<DEFAULT,WRITE_CALL_LOG,[TIME_ALWAYS],DENY>;" +
+                "<DEFAULT,ADD_VOICEMAIL,[TIME_ALWAYS],DENY>;" +
+                "<DEFAULT,USE_SIP,[TIME_ALWAYS],DENY>;" +
+                "<DEFAULT,PROCESS_OUTGOING_CALLS,[TIME_ALWAYS],DENY>;" +
+                "<DEFAULT,BODY_SENSORS,[TIME_ALWAYS],DENY>;" +
+                "<DEFAULT,SEND_SMS,[TIME_ALWAYS],DENY>;" +
+                "<DEFAULT,RECEIVE_SMS,[TIME_ALWAYS],DENY>;" +
+                "<DEFAULT,READ_SMS,[TIME_ALWAYS],DENY>;" +
+                "<DEFAULT,RECEIVE_WAP_PUSH,[TIME_ALWAYS],DENY>;" +
+                "<DEFAULT,RECEIVE_MMS,[TIME_ALWAYS],DENY>;" +
+                "<DEFAULT,READ_EXTERNAL_STORAGE,[TIME_ALWAYS],DENY>;" +
+                "<DEFAULT,WRITE_EXTERNAL_STORAGE,[TIME_ALWAYS],DENY>;";
     }
 
     static class DatabaseHelper extends SQLiteOpenHelper {
