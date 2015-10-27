@@ -17759,7 +17759,19 @@ package android.os {
   }
 
   public class ExecutionZoneManager {
+    method public int checkZonePermission(java.lang.String, int);
+    method public void createPolicy(java.lang.String, java.lang.String);
+    method public void createZone(java.lang.String, java.lang.String);
+    method public void editPolicy(java.lang.String, java.lang.String, java.lang.String);
+    method public void editZone(java.lang.String, java.lang.String, java.lang.String);
     method public static synchronized android.os.ExecutionZoneManager getExecutionZoneManager();
+    method public java.lang.String[] getPolicies();
+    method public java.lang.String[] getPoliciesOfZone(java.lang.String);
+    method public java.util.Map<java.lang.String, java.lang.String> getPoliciesOfZoneWithRules(java.lang.String);
+    method public java.lang.String getRulesOfPolicy(java.lang.String);
+    method public java.lang.String getZoneOfApp(java.lang.String);
+    method public java.lang.String[] getZones();
+    method public void setPolicy(java.lang.String, java.lang.String);
     method public void setZone(java.lang.String, java.lang.String);
   }
 
@@ -17856,6 +17868,29 @@ package android.os {
 
   public static abstract interface IBinder.DeathRecipient {
     method public abstract void binderDied();
+  }
+
+  public abstract interface IExecutionZoneService implements android.os.IInterface {
+    method public abstract int checkZonePermission(java.lang.String, int) throws android.os.RemoteException;
+    method public abstract void createPolicy(java.lang.String, java.lang.String) throws android.os.RemoteException;
+    method public abstract void createZone(java.lang.String, java.lang.String) throws android.os.RemoteException;
+    method public abstract void editPolicy(java.lang.String, java.lang.String, java.lang.String) throws android.os.RemoteException;
+    method public abstract void editZone(java.lang.String, java.lang.String, java.lang.String) throws android.os.RemoteException;
+    method public abstract java.lang.String[] getAllPolicies() throws android.os.RemoteException;
+    method public abstract java.lang.String[] getAllZones() throws android.os.RemoteException;
+    method public abstract java.lang.String[] getPoliciesOfZone(java.lang.String) throws android.os.RemoteException;
+    method public abstract java.util.Map getPoliciesOfZoneWithRules(java.lang.String) throws android.os.RemoteException;
+    method public abstract java.lang.String getRulesOfPolicy(java.lang.String) throws android.os.RemoteException;
+    method public abstract java.lang.String getZoneOfApp(java.lang.String) throws android.os.RemoteException;
+    method public abstract void setPolicy(java.lang.String, java.lang.String) throws android.os.RemoteException;
+    method public abstract void setZone(java.lang.String, java.lang.String) throws android.os.RemoteException;
+  }
+
+  public static abstract class IExecutionZoneService.Stub extends android.os.Binder implements android.os.IExecutionZoneService {
+    ctor public IExecutionZoneService.Stub();
+    method public android.os.IBinder asBinder();
+    method public static android.os.IExecutionZoneService asInterface(android.os.IBinder);
+    method public boolean onTransact(int, android.os.Parcel, android.os.Parcel, int) throws android.os.RemoteException;
   }
 
   public abstract interface IInterface {
