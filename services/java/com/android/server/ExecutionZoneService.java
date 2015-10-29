@@ -827,10 +827,16 @@ public class ExecutionZoneService extends IExecutionZoneService.Stub {
             if(checkIfPackageExists(packageName)) {
                 if (DEBUG_ENABLE)
                     Log.d(TAG, "package name of uid: " + uid + " is " + packageName);
-                if (checkZonePermission(permission, packageName) == PERMISSION_NOT_PERMITTED_IN_ZONE)
+                if (checkZonePermission(permission, packageName) == PERMISSION_NOT_PERMITTED_IN_ZONE) {
+                    if (DEBUG_ENABLE)
+                        Log.d(TAG, "package uid: " + uid + " packagename: " + packageName+" permission "+permission+" denied by zone service");
                     return PackageManager.PERMISSION_DENIED;
+                }
             }
         }
+
+        if (DEBUG_ENABLE)
+            Log.d(TAG, "package uid: " + uid +" permission "+permission+" denied by zone service");
 
         return PackageManager.PERMISSION_GRANTED;
     }
