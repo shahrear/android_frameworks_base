@@ -171,21 +171,12 @@ public class ExecutionZoneService extends IExecutionZoneService.Stub {
             try {
                 int zone_id = getZoneID(zoneName);
 
-                Log.d(TAG,"Set zone: "+zoneName+" to package: "+packageName);
-                long isPackageInstalled = 0;
-                try {
-                    isPackageInstalled = DatabaseUtils.queryNumEntries(db, TABLE_APPZONES, APPZONES_APP_NAME + "=?", new String[]{packageName});
-                    Log.d(TAG,"ispackageinstalled value in setzone: "+isPackageInstalled);
-                }
-                catch (Exception e)
-                {
-                    Log.e(TAG,"Error in queryNumEntries in setzone");
-                    return false;
-                }
+                if(DEBUG_ENABLE)
+                    Log.d(TAG,"Set zone: "+zoneName+" to package: "+packageName);
 
                 ContentValues values = new ContentValues();
 
-                if(isPackageInstalled>0)
+                if(checkIfPackageExists(packageName))
                 {
                     values.put(APPZONES_ZONE_ID, zone_id);
 
@@ -534,11 +525,13 @@ public class ExecutionZoneService extends IExecutionZoneService.Stub {
                 }
                 else if(action.toUpperCase().equals("DELETE"))
                 {
-                    Log.d(TAG,"Deleting policy: "+policyName+" with id: "+policy_id+" checking isZoneEmpty");
+                    if(DEBUG_ENABLE)
+                        Log.d(TAG,"Deleting policy: "+policyName+" with id: "+policy_id+" checking isZoneEmpty");
                     long isZoneEmpty = 0;
                     try {
                         isZoneEmpty = DatabaseUtils.queryNumEntries(db, TABLE_ZONEPOLICIES, ZONEPOLICIES_POLICYLIST + " LIKE ?", new String[]{"%;" + policy_id + ";%"});
-                        Log.d(TAG,"Deleting policy: "+policyName+" with id: "+policy_id+" checking isZoneEmpty: value: "+isZoneEmpty);
+                        if(DEBUG_ENABLE)
+                            Log.d(TAG,"Deleting policy: "+policyName+" with id: "+policy_id+" checking isZoneEmpty: value: "+isZoneEmpty);
                     }
                     catch (Exception e)
                     {
@@ -649,6 +642,12 @@ public class ExecutionZoneService extends IExecutionZoneService.Stub {
         final SQLiteDatabase db = openHelper.getReadableDatabase();
         String rules = null;
 
+        if(policyname == null) {
+            if(DEBUG_ENABLE)
+                Log.d(TAG,"SHAH Debug Log in getRulesOfPolicy of polict: "+policyname+" null null pssst whats wrong man");
+            return null;
+        }
+
         try {
             rules = DatabaseUtils.stringForQuery(db,"SELECT " + POLICIES_RULES + " FROM " + TABLE_POLICIES
                             + " WHERE " + POLICIES_NAME + "=?",
@@ -667,6 +666,15 @@ public class ExecutionZoneService extends IExecutionZoneService.Stub {
     {
         final SQLiteDatabase db = openHelper.getReadableDatabase();
         String zonename = null;
+
+        if(packagename == null) {
+            if(DEBUG_ENABLE)
+                Log.d(TAG,"SHAH Debug Log in getZoneOfApp of package: "+packagename+" null null pssst whats wrong man");
+            return null;
+        }
+
+        if(DEBUG_ENABLE)
+            Log.d(TAG,"SHAH Debug Log in getZoneOfApp of package: "+packagename);
 
         try {
             zonename = DatabaseUtils.stringForQuery(db,"SELECT Z." + ZONES_NAME + " FROM " + TABLE_ZONES
@@ -688,6 +696,15 @@ public class ExecutionZoneService extends IExecutionZoneService.Stub {
         List<String> policies = new ArrayList<String>();
         String policylist = null;
         String tmpPolicyName= null;
+
+        if(zonename == null) {
+            if(DEBUG_ENABLE)
+                Log.d(TAG,"SHAH Debug Log in getPoliciesOfZone of zone: "+zonename+" null null pssst whats wrong man");
+            return null;
+        }
+
+        if(DEBUG_ENABLE)
+            Log.d(TAG,"SHAH Debug Log in getPoliciesOfZone of zone: "+zonename);
 
         try {
             policylist = DatabaseUtils.stringForQuery(db,"SELECT ZP." + ZONEPOLICIES_POLICYLIST + " FROM " + TABLE_ZONES
@@ -726,6 +743,15 @@ public class ExecutionZoneService extends IExecutionZoneService.Stub {
         Map<String,String> policiesAndRules = new HashMap<String, String>();
         String policylist = null;
 
+        if(DEBUG_ENABLE)
+            Log.d(TAG,"SHAH Debug Log in getPoliciesOfZoneWithRules of zone: "+zonename);
+
+
+        if(zonename == null) {
+            if(DEBUG_ENABLE)
+                Log.d(TAG,"SHAH Debug Log in getPoliciesOfZoneWithRules of zone: "+zonename+" null null pssst whats wrong man");
+            return null;
+        }
 
         try {
             policylist = DatabaseUtils.stringForQuery(db,"SELECT ZP." + ZONEPOLICIES_POLICYLIST + " FROM " + TABLE_ZONES
@@ -740,6 +766,9 @@ public class ExecutionZoneService extends IExecutionZoneService.Stub {
         for(String policyid: policylist.split(";")) {
             if(policyid.isEmpty()==false) {
                 try {
+                    if(DEBUG_ENABLE)
+                        Log.d(TAG,"SHAH Debug Log in getPoliciesOfZoneWithRules of policyid: "+policyid.trim());
+
                     Cursor cur = db.rawQuery("SELECT " + POLICIES_NAME + ","+POLICIES_RULES+" FROM " + TABLE_POLICIES
                                     + " WHERE " + POLICIES_ID + "=?",
                             new String[]{policyid.trim()});
@@ -766,9 +795,28 @@ public class ExecutionZoneService extends IExecutionZoneService.Stub {
         return policiesAndRules;
     }
 
+    private boolean checkIfPackageExists(String packagename)
+    {
+        final SQLiteDatabase db = openHelper.getReadableDatabase();
+
+        long isPackageInstalled = 0;
+        try {
+            isPackageInstalled = DatabaseUtils.queryNumEntries(db, TABLE_APPZONES, APPZONES_APP_NAME + "=?", new String[]{packagename});
+            if(DEBUG_ENABLE)
+                Log.d(TAG,"ispackageinstalled value in checkIfPackageExists: "+isPackageInstalled+" packagename: "+packagename);
+        }
+        catch (Exception e)
+        {
+            Log.e(TAG,"Error in queryNumEntries in checkIfPackageExists");
+            return false;
+        }
+        if(isPackageInstalled>0)
+            return true;
+        else return false;
+    }
 
     public int checkZonePermission(String permission, int uid) {
-        Log.i(TAG, "Log SHAH check zone permission " + permission + "of uid " + uid);
+        Log.i(TAG, "Log SHAH check zone permission " + permission + " of uid " + uid);
 
 
         PackageManager pm = mContext.getPackageManager();
@@ -776,8 +824,12 @@ public class ExecutionZoneService extends IExecutionZoneService.Stub {
 
         for(String packageName: packages)
         {
-            if(checkZonePermission(permission, packageName)==PERMISSION_NOT_PERMITTED_IN_ZONE)
-                return PackageManager.PERMISSION_DENIED;
+            if(checkIfPackageExists(packageName)) {
+                if (DEBUG_ENABLE)
+                    Log.d(TAG, "package name of uid: " + uid + " is " + packageName);
+                if (checkZonePermission(permission, packageName) == PERMISSION_NOT_PERMITTED_IN_ZONE)
+                    return PackageManager.PERMISSION_DENIED;
+            }
         }
 
         return PackageManager.PERMISSION_GRANTED;
@@ -786,13 +838,22 @@ public class ExecutionZoneService extends IExecutionZoneService.Stub {
     private int checkZonePermission (String permission, String packageName)
     {
             try {
+                if(DEBUG_ENABLE)
+                    Log.d(TAG,"SHAH in checkzonepermission permission: "+permission+" packagename: "+packageName );
                 //a zone can have multiple policies, each policy can have multiple rules separated by ;
                 Map<String,String> policyRules = getPoliciesOfZoneWithRules(getZoneOfApp(packageName));
+
+                if(policyRules == null)
+                {
+                    if(DEBUG_ENABLE)
+                        Log.d(TAG,"SHAH Debug Log in checkzonepermission policylist null null pssst whats wrong man");
+                    return PERMISSION_PERMITTED_IN_ZONE;
+                }
 
                 Set<String> rules = new HashSet<String>();
 
                 if(DEBUG_ENABLE)
-                    Log.d(TAG,"SHAH in checkzonepermission permission: "+permission+" packagename: "+packageName );
+                    Log.d(TAG,"SHAH in checkzonepermission getPoliciesOfZoneWithRules call successful" );
 
 
                 for(String value:policyRules.values()) {
@@ -801,6 +862,10 @@ public class ExecutionZoneService extends IExecutionZoneService.Stub {
                     for(String ss: tmpRules)
                     {
                         String []tmpRuleParams = ss.split(",");
+
+                        if(DEBUG_ENABLE)
+                            Log.d(TAG,"SHAH in checkzonepermission permission in db: "+tmpRuleParams[1]+" permission checking: "+permission );
+
                         if(tmpRuleParams[1].equals(permission))
                         {
                             rules.add(tmpRuleParams[2]+"{"+tmpRuleParams[3]+"}"); //adding to hashset in a format [TIME_ALWAYS+PHONENUMBER_3433333599]{DENY}
@@ -910,30 +975,30 @@ public class ExecutionZoneService extends IExecutionZoneService.Stub {
 
     private static String getDefaultAllDangerousDenyPolicyString() {
 
-        return "<DEFAULT,READ_CALENDAR,[TIME_ALWAYS],DENY>;" +
-                "<DEFAULT,WRITE_CALENDAR,[TIME_ALWAYS],DENY>;" +
-                "<DEFAULT,CAMERA,[TIME_ALWAYS],DENY>;" +
-                "<DEFAULT,READ_CONTACTS,[TIME_ALWAYS],DENY>;" +
-                "<DEFAULT,WRITE_CONTACTS,[TIME_ALWAYS],DENY>;" +
-                "<DEFAULT,GET_ACCOUNTS,[TIME_ALWAYS],DENY>;" +
-                "<DEFAULT,ACCESS_FINE_LOCATION,[TIME_ALWAYS],DENY>;" +
-                "<DEFAULT,ACCESS_COARSE_LOCATION,[TIME_ALWAYS],DENY>;" +
-                "<DEFAULT,RECORD_AUDIO,[TIME_ALWAYS],DENY>;" +
-                "<DEFAULT,READ_PHONE_STATE,[TIME_ALWAYS],DENY>;" +
-                "<DEFAULT,CALL_PHONE,[TIME_ALWAYS],DENY>;" +
-                "<DEFAULT,READ_CALL_LOG,[TIME_ALWAYS],DENY>;" +
-                "<DEFAULT,WRITE_CALL_LOG,[TIME_ALWAYS],DENY>;" +
-                "<DEFAULT,ADD_VOICEMAIL,[TIME_ALWAYS],DENY>;" +
-                "<DEFAULT,USE_SIP,[TIME_ALWAYS],DENY>;" +
-                "<DEFAULT,PROCESS_OUTGOING_CALLS,[TIME_ALWAYS],DENY>;" +
-                "<DEFAULT,BODY_SENSORS,[TIME_ALWAYS],DENY>;" +
-                "<DEFAULT,SEND_SMS,[TIME_ALWAYS],DENY>;" +
-                "<DEFAULT,RECEIVE_SMS,[TIME_ALWAYS],DENY>;" +
-                "<DEFAULT,READ_SMS,[TIME_ALWAYS],DENY>;" +
-                "<DEFAULT,RECEIVE_WAP_PUSH,[TIME_ALWAYS],DENY>;" +
-                "<DEFAULT,RECEIVE_MMS,[TIME_ALWAYS],DENY>;" +
-                "<DEFAULT,READ_EXTERNAL_STORAGE,[TIME_ALWAYS],DENY>;" +
-                "<DEFAULT,WRITE_EXTERNAL_STORAGE,[TIME_ALWAYS],DENY>;";
+        return "<DEFAULT,android.permission.READ_CALENDAR,[TIME_ALWAYS],DENY>;" +
+                "<DEFAULT,android.permission.WRITE_CALENDAR,[TIME_ALWAYS],DENY>;" +
+                "<DEFAULT,android.permission.CAMERA,[TIME_ALWAYS],DENY>;" +
+                "<DEFAULT,android.permission.READ_CONTACTS,[TIME_ALWAYS],DENY>;" +
+                "<DEFAULT,android.permission.WRITE_CONTACTS,[TIME_ALWAYS],DENY>;" +
+                "<DEFAULT,android.permission.GET_ACCOUNTS,[TIME_ALWAYS],DENY>;" +
+                "<DEFAULT,android.permission.ACCESS_FINE_LOCATION,[TIME_ALWAYS],DENY>;" +
+                "<DEFAULT,android.permission.ACCESS_COARSE_LOCATION,[TIME_ALWAYS],DENY>;" +
+                "<DEFAULT,android.permission.RECORD_AUDIO,[TIME_ALWAYS],DENY>;" +
+                "<DEFAULT,android.permission.READ_PHONE_STATE,[TIME_ALWAYS],DENY>;" +
+                "<DEFAULT,android.permission.CALL_PHONE,[TIME_ALWAYS],DENY>;" +
+                "<DEFAULT,android.permission.READ_CALL_LOG,[TIME_ALWAYS],DENY>;" +
+                "<DEFAULT,android.permission.WRITE_CALL_LOG,[TIME_ALWAYS],DENY>;" +
+                "<DEFAULT,android.permission.ADD_VOICEMAIL,[TIME_ALWAYS],DENY>;" +
+                "<DEFAULT,android.permission.USE_SIP,[TIME_ALWAYS],DENY>;" +
+                "<DEFAULT,android.permission.PROCESS_OUTGOING_CALLS,[TIME_ALWAYS],DENY>;" +
+                "<DEFAULT,android.permission.BODY_SENSORS,[TIME_ALWAYS],DENY>;" +
+                "<DEFAULT,android.permission.SEND_SMS,[TIME_ALWAYS],DENY>;" +
+                "<DEFAULT,android.permission.RECEIVE_SMS,[TIME_ALWAYS],DENY>;" +
+                "<DEFAULT,android.permission.READ_SMS,[TIME_ALWAYS],DENY>;" +
+                "<DEFAULT,android.permission.RECEIVE_WAP_PUSH,[TIME_ALWAYS],DENY>;" +
+                "<DEFAULT,android.permission.RECEIVE_MMS,[TIME_ALWAYS],DENY>;" +
+                "<DEFAULT,android.permission.READ_EXTERNAL_STORAGE,[TIME_ALWAYS],DENY>;" +
+                "<DEFAULT,android.permission.WRITE_EXTERNAL_STORAGE,[TIME_ALWAYS],DENY>;";
     }
 
     static class DatabaseHelper extends SQLiteOpenHelper {
