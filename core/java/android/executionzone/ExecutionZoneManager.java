@@ -1,4 +1,4 @@
-package android.os;
+package android.executionzone;
 
 /**
  * Created by shahrear on 10/5/15.
@@ -9,10 +9,10 @@ package android.os;
  */
 import android.util.Log;
 import android.os.IBinder;
-import android.os.IExecutionZoneService;
+import android.executionzone.IExecutionZoneService;
 import android.os.RemoteException;
 import android.util.Log;
-
+import android.content.Context;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -20,13 +20,14 @@ public class ExecutionZoneManager {
     private static final String TAG = "ExecutionZoneManager";
     private final IExecutionZoneService mExecutionZoneService;
     private static ExecutionZoneManager executionZoneManager;
+    private final Context mContext;
 
     /** Get a handle to the Service.
      * @return the Service, or null.
      */
     public static synchronized ExecutionZoneManager getExecutionZoneManager() {
         if(executionZoneManager == null) {
-            IBinder binder = android.os.ServiceManager.getService("execution_zone");
+            IBinder binder = android.os.ServiceManager.getService(Context.EXECUTIONZONE_SERVICE);
             if(binder != null) {
                 IExecutionZoneService managerService = IExecutionZoneService.Stub.asInterface(binder);
                 executionZoneManager = new ExecutionZoneManager(managerService);
@@ -40,11 +41,12 @@ public class ExecutionZoneManager {
     /**
      * Use {@link #getExecutionZoneManager} to get the ExecutionZoneManager instance.
      */
-    ExecutionZoneManager(IExecutionZoneService executionZoneService) {
+    ExecutionZoneManager(Context ctx, IExecutionZoneService executionZoneService) {
         if(executionZoneService == null){
             throw new IllegalArgumentException("executionzoneservice is null");
         }
         mExecutionZoneService = executionZoneService;
+        mContext = ctx;
     }
 
     /**

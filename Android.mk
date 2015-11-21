@@ -144,6 +144,7 @@ LOCAL_SRC_FILES += \
 	core/java/android/content/pm/IPackageStatsObserver.aidl \
 	core/java/android/content/pm/IOnPermissionsChangeListener.aidl \
 	core/java/android/database/IContentObserver.aidl \
+	core/java/android/executionzone/IExecutionZoneService.aidl \
 	core/java/android/hardware/ICameraService.aidl \
 	core/java/android/hardware/ICameraServiceListener.aidl \
 	core/java/android/hardware/ICameraServiceProxy.aidl \
@@ -203,7 +204,6 @@ LOCAL_SRC_FILES += \
 	core/java/android/os/IBatteryPropertiesRegistrar.aidl \
 	core/java/android/os/ICancellationSignal.aidl \
 	core/java/android/os/IDeviceIdleController.aidl \
-	core/java/android/os/IExecutionZoneService.aidl \
 	core/java/android/os/IMessenger.aidl \
 	core/java/android/os/INetworkActivityListener.aidl \
 	core/java/android/os/INetworkManagementService.aidl \

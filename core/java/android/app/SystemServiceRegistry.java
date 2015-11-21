@@ -38,6 +38,8 @@ import android.content.RestrictionsManager;
 import android.content.pm.ILauncherApps;
 import android.content.pm.LauncherApps;
 import android.content.res.Resources;
+import android.executionzone.ExecutionZoneManager;
+import android.executionzone.IExecutionZoneService;
 import android.hardware.ConsumerIrManager;
 import android.hardware.ISerialManager;
 import android.hardware.SensorManager;
@@ -329,6 +331,15 @@ final class SystemServiceRegistry {
                 IBinder b = ServiceManager.getService(Context.LOCATION_SERVICE);
                 return new LocationManager(ctx, ILocationManager.Stub.asInterface(b));
             }});
+
+                  //shah nov 20
+            registerService(Context.EXECUTIONZONE_SERVICE, ExecutionZoneManager.class,
+                    new CachedServiceFetcher<ExecutionZoneManager>() {
+                @Override
+                public ExecutionZoneManager createService(ContextImpl ctx) {
+                    IBinder b = ServiceManager.getService(Context.EXECUTIONZONE_SERVICE);
+                    return new ExecutionZoneManager(ctx, IExecutionZoneService.Stub.asInterface(b));
+                }});
 
         registerService(Context.NETWORK_POLICY_SERVICE, NetworkPolicyManager.class,
                 new CachedServiceFetcher<NetworkPolicyManager>() {

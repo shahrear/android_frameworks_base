@@ -59,6 +59,7 @@ import com.android.server.content.ContentService;
 import com.android.server.devicepolicy.DevicePolicyManagerService;
 import com.android.server.display.DisplayManagerService;
 import com.android.server.dreams.DreamManagerService;
+import com.android.server.executionzone.ExecutionZoneService;
 import com.android.server.fingerprint.FingerprintService;
 import com.android.server.hdmi.HdmiControlService;
 import com.android.server.input.InputManagerService;
@@ -476,14 +477,7 @@ public final class SystemServer {
 
             //shah nov 20
 
-            try {
-                Slog.i(TAG, "Starting ExecutionZone Service");
-                ServiceManager.addService("execution_zone", new ExecutionZoneService(context));
-                Slog.i(TAG, "ExecutionZone Service Started");
-            } catch (Throwable e) {
-                Slog.e(TAG, "Failure starting ExecutionZoneService Service", e);
-            }
-
+            mSystemServiceManager.startService(ExecutionZoneService.class);
             //shah
 
             Slog.i(TAG, "System Content Providers");

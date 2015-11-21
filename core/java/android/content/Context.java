@@ -3009,6 +3009,15 @@ public abstract class Context {
      */
     public static final String DEVICE_POLICY_SERVICE = "device_policy";
 
+      //shah
+        /**
+         * Use with {@link #getSystemService} to retrieve a
+         * {@link android.executionzone.ExecutionZoneManager} for controlling Execution Zones
+         *
+         * @see #getSystemService
+         */
+    public static final String EXECUTIONZONE_SERVICE = "execution_zone";
+
     /**
      * Use with {@link #getSystemService} to retrieve a
      * {@link android.app.UiModeManager} for controlling UI modes.
