@@ -1,5 +1,6 @@
 package com.android.server.executionzone;
 
+import com.android.server.SystemService;
 import android.content.ContentValues;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
@@ -8,24 +9,17 @@ import android.database.DatabaseUtils;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.os.Environment;
-import android.os.Handler;
-import android.os.IExecutionZoneService;
-import android.os.Looper;
-import android.os.Bundle;
+import android.os.IBinder;
+import android.executionzone.IExecutionZoneService;
 import android.content.Context;
-import android.os.Message;
 import android.util.Log;
 import android.util.Slog;
-
-import com.google.android.collect.Lists;
-
 import java.io.File;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -67,8 +61,7 @@ public class ExecutionZoneService extends SystemService {
     private final Object zonedbLock = new Object();
     private final DatabaseHelper openHelper;
 
-    private ExecutionZoneWorkerThread mWorker;
-    private ExecutionZoneWorkerHandler mHandler;
+
     private Context mContext;
     public ExecutionZoneService(Context context) {
         super(context);
@@ -84,7 +77,7 @@ public class ExecutionZoneService extends SystemService {
 
         mContext = context;
 
-        publishBinderService(context.EXECUTIONZONE_SERVICE, mService);
+        publishBinderService(Context.EXECUTIONZONE_SERVICE, mService);
 
     }
 
@@ -93,7 +86,7 @@ public class ExecutionZoneService extends SystemService {
        */
       @Override
       public void onStart() {
-          if (DEBUG){
+          if (DEBUG_ENABLE){
               Slog.d(TAG, "Start service executionzone");
           }
 
@@ -108,7 +101,7 @@ public class ExecutionZoneService extends SystemService {
          */
 
         //if not present, insert, otherwise update
-        @override
+        @Override
         public boolean setZone(String packageName, String zoneName) {
             synchronized (zonedbLock) {
                 final SQLiteDatabase db = openHelper.getWritableDatabase();
@@ -156,7 +149,7 @@ public class ExecutionZoneService extends SystemService {
             return true;
         }
 
-        @override
+        @Override
         public boolean createZone(String zoneName, String policyList) {
             if (DEBUG_ENABLE == true)
                 Slog.i(TAG, "Log SHAH create Zone " + zoneName + "with policies " + policyList);
@@ -205,7 +198,7 @@ public class ExecutionZoneService extends SystemService {
             return true;
         }
 
-        @override
+        @Override
         public boolean editZone(String zoneName, String action, String paramList) {
             if (DEBUG_ENABLE == true)
                 Slog.i(TAG, "Log SHAH edit Zone " + zoneName + "with action " + action);
@@ -282,7 +275,7 @@ public class ExecutionZoneService extends SystemService {
             return true;
         }
 
-        @override
+        @Override
         public boolean createPolicy(String policyName, String ruleList) {
             if (DEBUG_ENABLE == true)
                 Slog.i(TAG, "Log SHAH create policy " + policyName + "with rules " + ruleList);
@@ -312,7 +305,7 @@ public class ExecutionZoneService extends SystemService {
             return true;
         }
 
-        @override
+        @Override
         public boolean setPolicy(String policyName, String zoneName) {
             if (DEBUG_ENABLE == true)
                 Slog.i(TAG, "Log SHAH set policy " + policyName + "to zone " + zoneName);
@@ -356,7 +349,7 @@ public class ExecutionZoneService extends SystemService {
             return true;
         }
 
-        @override
+        @Override
         public boolean editPolicy(String policyName, String action, String paramList) {
             if (DEBUG_ENABLE == true)
                 Slog.i(TAG, "Log SHAH edit policy " + policyName + " with action " + action);
@@ -429,7 +422,7 @@ public class ExecutionZoneService extends SystemService {
             return true;
         }
 
-        @override
+        @Override
         public String[] getAllZones() {
             final SQLiteDatabase db = openHelper.getReadableDatabase();
             String[] zones = null;
@@ -457,7 +450,7 @@ public class ExecutionZoneService extends SystemService {
 
         }
 
-      @override
+        @Override
         public String[] getAllPolicies() {
             final SQLiteDatabase db = openHelper.getReadableDatabase();
             String[] policies = null;
@@ -484,7 +477,7 @@ public class ExecutionZoneService extends SystemService {
             return policies;
         }
 
-        @override
+        @Override
         public String getRulesOfPolicy(String policyname) {
             final SQLiteDatabase db = openHelper.getReadableDatabase();
             String rules = null;
@@ -509,7 +502,7 @@ public class ExecutionZoneService extends SystemService {
             return rules;
         }
 
-        @override
+        @Override
         public String getZoneOfApp(String packagename) {
             final SQLiteDatabase db = openHelper.getReadableDatabase();
             String zonename = null;
@@ -538,7 +531,7 @@ public class ExecutionZoneService extends SystemService {
 
         }
 
-        @override
+        @Override
         public String[] getPoliciesOfZone(String zonename) {
             final SQLiteDatabase db = openHelper.getReadableDatabase();
             List<String> policies = new ArrayList<String>();
@@ -584,7 +577,7 @@ public class ExecutionZoneService extends SystemService {
             return policies.toArray(policyNames);
         }
 
-        @override
+        @Override
         public Map<String, String> getPoliciesOfZoneWithRules(String zonename) {
             final SQLiteDatabase db = openHelper.getReadableDatabase();
             Map<String, String> policiesAndRules = new HashMap<String, String>();
@@ -640,7 +633,7 @@ public class ExecutionZoneService extends SystemService {
             return policiesAndRules;
         }
 
-        @override
+        @Override
         public int checkZonePermission(String permission, int uid) {
             Slog.i(TAG, "Log SHAH check zone permission " + permission + " of uid " + uid);
 
@@ -648,159 +641,148 @@ public class ExecutionZoneService extends SystemService {
             PackageManager pm = mContext.getPackageManager();
             String[] packages = pm.getPackagesForUid(uid);
 
-            for(String packageName: packages)
-            {
-                if(checkIfPackageExists(packageName)) {
+            for (String packageName : packages) {
+                if (checkIfPackageExists(packageName)) {
                     if (DEBUG_ENABLE)
                         Slog.d(TAG, "package name of uid: " + uid + " is " + packageName);
-                    if (checkZonePermission(permission, packageName) == PERMISSION_NOT_PERMITTED_IN_ZONE) {
+                    if (checkZonePermissionOfPackage(permission, packageName) == PERMISSION_NOT_PERMITTED_IN_ZONE) {
                         if (DEBUG_ENABLE)
-                            Slog.d(TAG, "package uid: " + uid + " packagename: " + packageName+" permission "+permission+" denied by zone service");
+                            Slog.d(TAG, "package uid: " + uid + " packagename: " + packageName + " permission " + permission + " denied by zone service");
                         return PackageManager.PERMISSION_DENIED;
                     }
                 }
             }
 
             if (DEBUG_ENABLE)
-                Slog.d(TAG, "package uid: " + uid +" permission "+permission+" denied by zone service");
+                Slog.d(TAG, "package uid: " + uid + " permission " + permission + " denied by zone service");
 
             return PackageManager.PERMISSION_GRANTED;
         }
 
-    };
 
-    private boolean checkIfPackageExists(String packagename)
-    {
-        final SQLiteDatabase db = openHelper.getReadableDatabase();
+        private boolean checkIfPackageExists(String packagename) {
+            final SQLiteDatabase db = openHelper.getReadableDatabase();
 
-        long isPackageInstalled = 0;
-        try {
-            isPackageInstalled = DatabaseUtils.queryNumEntries(db, TABLE_APPZONES, APPZONES_APP_NAME + "=?", new String[]{packagename});
-            if(DEBUG_ENABLE)
-                Slog.d(TAG,"ispackageinstalled value in checkIfPackageExists: "+isPackageInstalled+" packagename: "+packagename);
-        }
-        catch (Exception e)
-        {
-            Slog.e(TAG,"Error in queryNumEntries in checkIfPackageExists");
-            return false;
-        }
-        if(isPackageInstalled>0)
-            return true;
-        else return false;
-    }
-
-
-    private int checkZonePermission (String permission, String packageName)
-    {
+            long isPackageInstalled = 0;
             try {
-                if(DEBUG_ENABLE)
-                    Slog.d(TAG,"SHAH in checkzonepermission permission: "+permission+" packagename: "+packageName );
-                //a zone can have multiple policies, each policy can have multiple rules separated by ;
-                Map<String,String> policyRules = getPoliciesOfZoneWithRules(getZoneOfApp(packageName));
+                isPackageInstalled = DatabaseUtils.queryNumEntries(db, TABLE_APPZONES, APPZONES_APP_NAME + "=?", new String[]{packagename});
+                if (DEBUG_ENABLE)
+                    Slog.d(TAG, "ispackageinstalled value in checkIfPackageExists: " + isPackageInstalled + " packagename: " + packagename);
+            } catch (Exception e) {
+                Slog.e(TAG, "Error in queryNumEntries in checkIfPackageExists");
+                return false;
+            }
+            if (isPackageInstalled > 0)
+                return true;
+            else return false;
+        }
 
-                if(policyRules == null)
-                {
-                    if(DEBUG_ENABLE)
-                        Slog.d(TAG,"SHAH Debug Log in checkzonepermission policylist null null pssst whats wrong man");
+
+        private int checkZonePermissionOfPackage(String permission, String packageName) {
+            try {
+                if (DEBUG_ENABLE)
+                    Slog.d(TAG, "SHAH in checkzonepermission permission: " + permission + " packagename: " + packageName);
+                //a zone can have multiple policies, each policy can have multiple rules separated by ;
+                Map<String, String> policyRules = getPoliciesOfZoneWithRules(getZoneOfApp(packageName));
+
+                if (policyRules == null) {
+                    if (DEBUG_ENABLE)
+                        Slog.d(TAG, "SHAH Debug Log in checkzonepermission policylist null null pssst whats wrong man");
                     return PERMISSION_PERMITTED_IN_ZONE;
                 }
 
                 Set<String> rules = new HashSet<String>();
 
-                if(DEBUG_ENABLE)
-                    Slog.d(TAG,"SHAH in checkzonepermission getPoliciesOfZoneWithRules call successful" );
+                if (DEBUG_ENABLE)
+                    Slog.d(TAG, "SHAH in checkzonepermission getPoliciesOfZoneWithRules call successful");
 
 
-                for(String value:policyRules.values()) {
-                    String []tmpRules = value.split(";"); //separating rules of a policy
+                for (String value : policyRules.values()) {
+                    String[] tmpRules = value.split(";"); //separating rules of a policy
 
-                    for(String ss: tmpRules)
-                    {
-                        String []tmpRuleParams = ss.split(",");
+                    for (String ss : tmpRules) {
+                        String[] tmpRuleParams = ss.split(",");
 
-                        if(DEBUG_ENABLE)
-                            Slog.d(TAG,"SHAH in checkzonepermission permission in db: "+tmpRuleParams[1]+" permission checking: "+permission );
+                        if (DEBUG_ENABLE)
+                            Slog.d(TAG, "SHAH in checkzonepermission permission in db: " + tmpRuleParams[1] + " permission checking: " + permission);
 
-                        if(tmpRuleParams[1].equals(permission))
-                        {
-                            rules.add(tmpRuleParams[2]+"{"+tmpRuleParams[3]+"}"); //adding to hashset in a format [TIME_ALWAYS+PHONENUMBER_3433333599]{DENY}
+                        if (tmpRuleParams[1].equals(permission)) {
+                            rules.add(tmpRuleParams[2] + "{" + tmpRuleParams[3] + "}"); //adding to hashset in a format [TIME_ALWAYS+PHONENUMBER_3433333599]{DENY}
                         }
                     }
                 }
 
-                for(String check: rules)//only allows time for now, phone number will be added later
+                for (String check : rules)//only allows time for now, phone number will be added later
                 {
-                    String time = check.substring(check.indexOf('['),check.lastIndexOf(']'));
-                    String allowordeny = check.substring(check.indexOf('{',check.lastIndexOf(']')+1),check.lastIndexOf('}'));
+                    String time = check.substring(check.indexOf('['), check.lastIndexOf(']'));
+                    String allowordeny = check.substring(check.indexOf('{', check.lastIndexOf(']') + 1), check.lastIndexOf('}'));
 
-                    String []startendTime = time.split("_");
+                    String[] startendTime = time.split("_");
 
                     SimpleDateFormat simpleDateFormat = new SimpleDateFormat("HH:mm");
                     Date startTime = simpleDateFormat.parse(startendTime[1]);
                     Date endTime = simpleDateFormat.parse(startendTime[2]);
 
-                    if(DEBUG_ENABLE)
-                        Slog.d(TAG,"SHAH in checkzonepermission current rule: "+check+" parsed starttime: "+startTime.toString()+" endtime:"+endTime.toString());
+                    if (DEBUG_ENABLE)
+                        Slog.d(TAG, "SHAH in checkzonepermission current rule: " + check + " parsed starttime: " + startTime.toString() + " endtime:" + endTime.toString());
 
                     Date now = new Date();
 
                     if (startTime.before(now) && endTime.after(now)) {
-                        if(allowordeny.equals("DENY"))
+                        if (allowordeny.equals("DENY"))
                             return PERMISSION_NOT_PERMITTED_IN_ZONE;
 
                     }
 
                 }
-            } catch (Exception e)
-            {
-                Slog.e(TAG, "Log SHAH something bad happened man, in checkzonepermission in executionzoneservice, exception: "+e.getMessage());
+            } catch (Exception e) {
+                Slog.e(TAG, "Log SHAH something bad happened man, in checkzonepermission in executionzoneservice, exception: " + e.getMessage());
             }
 
-        return PERMISSION_PERMITTED_IN_ZONE;
-    }
-
-    private int getZoneID (String zoneName)
-    {
-        long zone_id_long = -1111;
-
-        final SQLiteDatabase db = openHelper.getReadableDatabase();
-
-        try {
-            zone_id_long = DatabaseUtils.longForQuery(db,
-                    "select "+ ZONES_ID +" from " + TABLE_ZONES
-                            + " WHERE " + ZONES_NAME + "=?",
-                    new String[]{zoneName});
-        } catch (Exception e) {
-            // Log, don't crash!
-            Slog.e(TAG, "Log SHAH Exception in getZoneID");
-            zone_id_long = -11111;
+            return PERMISSION_PERMITTED_IN_ZONE;
         }
 
-        return (int) zone_id_long;
-    }
+        private int getZoneID(String zoneName) {
+            long zone_id_long = -1111;
 
-    private int getPolicyID (String policyName)
-    {
-        long policy_id_long = -1111;
+            final SQLiteDatabase db = openHelper.getReadableDatabase();
 
-        final SQLiteDatabase db = openHelper.getReadableDatabase();
+            try {
+                zone_id_long = DatabaseUtils.longForQuery(db,
+                        "select " + ZONES_ID + " from " + TABLE_ZONES
+                                + " WHERE " + ZONES_NAME + "=?",
+                        new String[]{zoneName});
+            } catch (Exception e) {
+                // Log, don't crash!
+                Slog.e(TAG, "Log SHAH Exception in getZoneID");
+                zone_id_long = -11111;
+            }
 
-        try {
-            policy_id_long = DatabaseUtils.longForQuery(db,
-                    "select "+ POLICIES_ID +" from " + TABLE_POLICIES
-                            + " WHERE " + POLICIES_NAME + "=?",
-                    new String[]{policyName});
-
-
-        } catch (Exception e) {
-            // Log, don't crash!
-            Slog.e(TAG, "Log SHAH Exception in getPolicyID");
-            policy_id_long = -11111;
+            return (int) zone_id_long;
         }
 
-        return (int) policy_id_long;
-    }
+        private int getPolicyID(String policyName) {
+            long policy_id_long = -1111;
 
+            final SQLiteDatabase db = openHelper.getReadableDatabase();
+
+            try {
+                policy_id_long = DatabaseUtils.longForQuery(db,
+                        "select " + POLICIES_ID + " from " + TABLE_POLICIES
+                                + " WHERE " + POLICIES_NAME + "=?",
+                        new String[]{policyName});
+
+
+            } catch (Exception e) {
+                // Log, don't crash!
+                Slog.e(TAG, "Log SHAH Exception in getPolicyID");
+                policy_id_long = -11111;
+            }
+
+            return (int) policy_id_long;
+        }
+
+    };
     private static String getDatabaseName() {
         File systemDir = Environment.getSystemSecureDirectory();
         File databaseFile = new File(systemDir, DATABASE_NAME);

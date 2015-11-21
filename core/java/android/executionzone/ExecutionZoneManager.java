@@ -25,12 +25,12 @@ public class ExecutionZoneManager {
     /** Get a handle to the Service.
      * @return the Service, or null.
      */
-    public static synchronized ExecutionZoneManager getExecutionZoneManager() {
+    public static synchronized ExecutionZoneManager getExecutionZoneManager(Context context){ 
         if(executionZoneManager == null) {
             IBinder binder = android.os.ServiceManager.getService(Context.EXECUTIONZONE_SERVICE);
             if(binder != null) {
                 IExecutionZoneService managerService = IExecutionZoneService.Stub.asInterface(binder);
-                executionZoneManager = new ExecutionZoneManager(managerService);
+                executionZoneManager = new ExecutionZoneManager(context,managerService);
             } else {
                 Log.e(TAG, "Log SHAH ExecutionZoneService binder is null");
             }
@@ -41,7 +41,7 @@ public class ExecutionZoneManager {
     /**
      * Use {@link #getExecutionZoneManager} to get the ExecutionZoneManager instance.
      */
-    ExecutionZoneManager(Context ctx, IExecutionZoneService executionZoneService) {
+    public ExecutionZoneManager(Context ctx, IExecutionZoneService executionZoneService) {
         if(executionZoneService == null){
             throw new IllegalArgumentException("executionzoneservice is null");
         }
