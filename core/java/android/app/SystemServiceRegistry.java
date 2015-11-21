@@ -223,12 +223,13 @@ final class SystemServiceRegistry {
 
         registerService(Context.CONNECTIVITY_SERVICE, ConnectivityManager.class,
                 new StaticOuterContextServiceFetcher<ConnectivityManager>() {
-            @Override
-            public ConnectivityManager createService(Context context) {
-                IBinder b = ServiceManager.getService(Context.CONNECTIVITY_SERVICE);
-                IConnectivityManager service = IConnectivityManager.Stub.asInterface(b);
-                return new ConnectivityManager(context, service);
-            }});
+                    @Override
+                    public ConnectivityManager createService(Context context) {
+                        IBinder b = ServiceManager.getService(Context.CONNECTIVITY_SERVICE);
+                        IConnectivityManager service = IConnectivityManager.Stub.asInterface(b);
+                        return new ConnectivityManager(context, service);
+                    }
+                });
 
         registerService(Context.COUNTRY_DETECTOR, CountryDetector.class,
                 new StaticServiceFetcher<CountryDetector>() {
@@ -332,13 +333,14 @@ final class SystemServiceRegistry {
                 return new LocationManager(ctx, ILocationManager.Stub.asInterface(b));
             }});
 
+
+
                   //shah nov 20
             registerService(Context.EXECUTIONZONE_SERVICE, ExecutionZoneManager.class,
                     new CachedServiceFetcher<ExecutionZoneManager>() {
                 @Override
                 public ExecutionZoneManager createService(ContextImpl ctx) {
-                    IBinder b = ServiceManager.getService(Context.EXECUTIONZONE_SERVICE);
-                    return new ExecutionZoneManager(ctx, IExecutionZoneService.Stub.asInterface(b));
+                    return ExecutionZoneManager.getExecutionZoneManager();
                 }});
 
         registerService(Context.NETWORK_POLICY_SERVICE, NetworkPolicyManager.class,
