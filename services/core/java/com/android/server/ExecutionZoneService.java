@@ -1,4 +1,4 @@
-package com.android.server.executionzone;
+package com.android.server;
 
 import android.content.ContentValues;
 import android.content.pm.ApplicationInfo;
@@ -9,7 +9,7 @@ import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.os.Environment;
 import android.os.Handler;
-import android.executionzone.IExecutionZoneService;
+import android.os.IExecutionZoneService;
 import android.os.Looper;
 import android.os.Bundle;
 import android.content.Context;
@@ -97,7 +97,7 @@ public class ExecutionZoneService extends IExecutionZoneService.Stub {
         private static final int SET_POLICY = 201;
         private static final int EDIT_POLICY = 202;
 
-        private static final int CHECK_ZONE_PERMISSION = 300;
+
         @Override
         public void handleMessage(Message msg) {
             try {

@@ -27,7 +27,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
-import android.content.res.Resources.Theme;
 import android.os.Build;
 import android.os.Environment;
 import android.os.FactoryTest;
@@ -59,7 +58,6 @@ import com.android.server.content.ContentService;
 import com.android.server.devicepolicy.DevicePolicyManagerService;
 import com.android.server.display.DisplayManagerService;
 import com.android.server.dreams.DreamManagerService;
-import com.android.server.executionzone.ExecutionZoneService;
 import com.android.server.fingerprint.FingerprintService;
 import com.android.server.hdmi.HdmiControlService;
 import com.android.server.input.InputManagerService;
@@ -92,7 +90,7 @@ import com.android.server.usb.UsbService;
 import com.android.server.wallpaper.WallpaperManagerService;
 import com.android.server.webkit.WebViewUpdateService;
 import com.android.server.wm.WindowManagerService;
-
+import com.android.server.ExecutionZoneService;
 import dalvik.system.VMRuntime;
 
 import java.io.File;
@@ -475,10 +473,6 @@ public final class SystemServer {
             contentService = ContentService.main(context,
                     mFactoryTestMode == FactoryTest.FACTORY_TEST_LOW_LEVEL);
 
-            //shah nov 20
-
-            mSystemServiceManager.startService(ExecutionZoneService.class);
-            //shah
 
             Slog.i(TAG, "System Content Providers");
             mActivityManagerService.installSystemProviders();
@@ -490,6 +484,18 @@ public final class SystemServer {
             Slog.i(TAG, "Consumer IR Service");
             consumerIr = new ConsumerIrService(context);
             ServiceManager.addService(Context.CONSUMER_IR_SERVICE, consumerIr);
+
+
+            //shah nov 20
+            //try {
+                Slog.i(TAG, "Starting ExecutionZone Service");
+                ServiceManager.addService(Context.EXECUTIONZONE_SERVICE, new ExecutionZoneService(context));
+                Slog.i(TAG, "ExecutionZone Service Started");
+//            } catch (Throwable e) {
+//                Slog.e(TAG, "Failure starting ExecutionZoneService Service", e);
+//            }
+
+            //shah
 
             mSystemServiceManager.startService(AlarmManagerService.class);
             alarm = IAlarmManager.Stub.asInterface(

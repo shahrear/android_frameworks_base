@@ -5,17 +5,17 @@
  * exposed by service.
  * created by shah oct 5
  */
-package android.executionzone;
+package android.os;
 
 import java.util.Map;
 
 interface IExecutionZoneService {
-        boolean createZone(String zoneName, String policyList);
-        boolean setZone(String packageName, String zoneName);
-        boolean editZone(String zoneName, String action, String paramList);
-        boolean createPolicy(String policyName, String ruleList);
-        boolean setPolicy(String policyName, String zoneName);
-        boolean editPolicy(String policyName, String action, String paramList);
+        void createZone(String zoneName, String policyList);
+        void setZone(String packageName, String zoneName);
+        void editZone(String zoneName, String action, String paramList);
+        void createPolicy(String policyName, String ruleList);
+        void setPolicy(String policyName, String zoneName);
+        void editPolicy(String policyName, String action, String paramList);
         int checkZonePermission(String permission, int uid);
         String[] getAllZones();
         String[] getAllPolicies();

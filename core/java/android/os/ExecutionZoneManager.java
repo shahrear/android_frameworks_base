@@ -1,4 +1,4 @@
-package android.executionzone;
+package android.os;
 
 /**
  * Created by shahrear on 10/5/15.
@@ -9,7 +9,7 @@ package android.executionzone;
  */
 import android.util.Log;
 import android.os.IBinder;
-import android.executionzone.IExecutionZoneService;
+import android.os.IExecutionZoneService;
 import android.os.RemoteException;
 import android.util.Log;
 import android.content.Context;
@@ -27,7 +27,7 @@ public class ExecutionZoneManager {
      */
     public static synchronized ExecutionZoneManager getExecutionZoneManager(Context context){ 
         if(executionZoneManager == null) {
-            IBinder binder = android.os.ServiceManager.getService(Context.EXECUTIONZONE_SERVICE);
+            IBinder binder = android.os.ServiceManager.getService(context.EXECUTIONZONE_SERVICE);
             if(binder != null) {
                 IExecutionZoneService managerService = IExecutionZoneService.Stub.asInterface(binder);
                 executionZoneManager = new ExecutionZoneManager(context,managerService);

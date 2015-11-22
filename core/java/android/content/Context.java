@@ -3013,7 +3013,7 @@ public abstract class Context {
       //shah
         /**
          * Use with {@link #getSystemService} to retrieve a
-         * {@link android.executionzone.ExecutionZoneManager} for controlling Execution Zones
+         * {@link android.os.ExecutionZoneManager} for controlling Execution Zones
          *
          * @see #getSystemService
          */

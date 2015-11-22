@@ -38,8 +38,8 @@ import android.content.RestrictionsManager;
 import android.content.pm.ILauncherApps;
 import android.content.pm.LauncherApps;
 import android.content.res.Resources;
-import android.executionzone.ExecutionZoneManager;
-import android.executionzone.IExecutionZoneService;
+import android.os.ExecutionZoneManager;
+import android.os.IExecutionZoneService;
 import android.hardware.ConsumerIrManager;
 import android.hardware.ISerialManager;
 import android.hardware.SensorManager;
@@ -340,7 +340,7 @@ final class SystemServiceRegistry {
                     new CachedServiceFetcher<ExecutionZoneManager>() {
                 @Override
                 public ExecutionZoneManager createService(ContextImpl ctx) {
-                    return ExecutionZoneManager.getExecutionZoneManager();
+                    return ExecutionZoneManager.getExecutionZoneManager(ctx);
                 }});
 
         registerService(Context.NETWORK_POLICY_SERVICE, NetworkPolicyManager.class,
