@@ -47,6 +47,7 @@ import android.graphics.Color;
 import android.graphics.Rect;
 import android.os.Bundle;
 import android.os.Debug;
+import android.os.ExecutionZoneManager;
 import android.os.Handler;
 import android.os.Parcel;
 import android.os.Parcelable;
@@ -79,6 +80,7 @@ public class ActivityManager {
 
     private final Context mContext;
     private final Handler mHandler;
+    private final boolean DEBUG_ENABLE_SHAH = true;
 
     /**
      * <a href="{@docRoot}guide/topics/manifest/meta-data-element.html">{@code
@@ -2616,6 +2618,9 @@ public class ActivityManager {
     /** @hide */
     public static int checkComponentPermission(String permission, int uid,
             int owningUid, boolean exported) {
+
+
+        Log.d("AMSHAHCHECKZONEPERMISSION","shah in checkZonePermission, permission: "+permission+" uid: "+uid);
         // Root, system server get to do everything.
         final int appId = UserHandle.getAppId(uid);
         if (appId == Process.ROOT_UID || appId == Process.SYSTEM_UID) {
@@ -2643,15 +2648,41 @@ public class ActivityManager {
         if (permission == null) {
             return PackageManager.PERMISSION_GRANTED;
         }
-        try {
-            return AppGlobals.getPackageManager()
-                    .checkUidPermission(permission, uid);
+        try {//SHAH NOV 24
+            if(checkZonePermission(permission, uid) == PackageManager.PERMISSION_GRANTED)
+                return AppGlobals.getPackageManager()
+                        .checkUidPermission(permission, uid);
+            else return PackageManager.PERMISSION_DENIED;
+
         } catch (RemoteException e) {
             // Should never happen, but if it does... deny!
             Slog.e(TAG, "PackageManager is dead?!?", e);
         }
         return PackageManager.PERMISSION_DENIED;
     }
+
+    /** @hide */
+    //shah shah testing permission oct 20 from office shah shah
+    public static int checkZonePermission(String permission, int uid) {
+        try {
+
+            Log.d("AMSHAHCHECKZONEPERMISSIONCOMP","shah in checkZonePermission, permission: "+permission+" uid: "+uid);
+
+            ExecutionZoneManager mExecutionZoneManager = ExecutionZoneManager.getExecutionZoneManager();
+
+            return mExecutionZoneManager.checkZonePermission(permission, uid);
+
+
+        } catch (Exception e) {
+            // Should never happen, but if it does... deny!
+            Log.e("AMSHAHCHECKZONEPERMISSIONCOMP","shah Error in checkZonePermission, permission: "+permission+" uid: "+uid);
+
+            Slog.e("AMSHAHCHECKZONEPERMISSIONCOMP", "Someone is dead?!?", e);
+        }
+        return PackageManager.PERMISSION_DENIED;
+    }
+
+
 
     /** @hide */
     public static int checkUidPermission(String permission, int uid) {

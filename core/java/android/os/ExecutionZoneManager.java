@@ -20,17 +20,17 @@ public class ExecutionZoneManager {
     private static final String TAG = "ExecutionZoneManager";
     private final IExecutionZoneService mExecutionZoneService;
     private static ExecutionZoneManager executionZoneManager;
-    private final Context mContext;
+
 
     /** Get a handle to the Service.
      * @return the Service, or null.
      */
-    public static synchronized ExecutionZoneManager getExecutionZoneManager(Context context){ 
+    public static synchronized ExecutionZoneManager getExecutionZoneManager(){
         if(executionZoneManager == null) {
-            IBinder binder = android.os.ServiceManager.getService(context.EXECUTIONZONE_SERVICE);
+            IBinder binder = android.os.ServiceManager.getService(Context.EXECUTIONZONE_SERVICE);
             if(binder != null) {
                 IExecutionZoneService managerService = IExecutionZoneService.Stub.asInterface(binder);
-                executionZoneManager = new ExecutionZoneManager(context,managerService);
+                executionZoneManager = new ExecutionZoneManager(managerService);
             } else {
                 Log.e(TAG, "Log SHAH ExecutionZoneService binder is null");
             }
@@ -41,12 +41,11 @@ public class ExecutionZoneManager {
     /**
      * Use {@link #getExecutionZoneManager} to get the ExecutionZoneManager instance.
      */
-    public ExecutionZoneManager(Context ctx, IExecutionZoneService executionZoneService) {
+    public ExecutionZoneManager(IExecutionZoneService executionZoneService) {
         if(executionZoneService == null){
             throw new IllegalArgumentException("executionzoneservice is null");
         }
         mExecutionZoneService = executionZoneService;
-        mContext = ctx;
     }
 
     /**

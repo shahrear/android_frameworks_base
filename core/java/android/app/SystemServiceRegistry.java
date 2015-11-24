@@ -335,12 +335,12 @@ final class SystemServiceRegistry {
 
 
 
-                  //shah nov 20
+                  //shah nov 24
             registerService(Context.EXECUTIONZONE_SERVICE, ExecutionZoneManager.class,
-                    new CachedServiceFetcher<ExecutionZoneManager>() {
+                    new StaticServiceFetcher<ExecutionZoneManager>() {
                 @Override
-                public ExecutionZoneManager createService(ContextImpl ctx) {
-                    return ExecutionZoneManager.getExecutionZoneManager(ctx);
+                public ExecutionZoneManager createService() {
+                    return ExecutionZoneManager.getExecutionZoneManager();
                 }});
 
         registerService(Context.NETWORK_POLICY_SERVICE, NetworkPolicyManager.class,

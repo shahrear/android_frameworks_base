@@ -24935,13 +24935,13 @@ package android.os {
   }
 
   public class ExecutionZoneManager {
-    ctor public ExecutionZoneManager(android.content.Context, android.os.IExecutionZoneService);
+    ctor public ExecutionZoneManager(android.os.IExecutionZoneService);
     method public int checkZonePermission(java.lang.String, int);
     method public void createPolicy(java.lang.String, java.lang.String);
     method public void createZone(java.lang.String, java.lang.String);
     method public void editPolicy(java.lang.String, java.lang.String, java.lang.String);
     method public void editZone(java.lang.String, java.lang.String, java.lang.String);
-    method public static synchronized android.os.ExecutionZoneManager getExecutionZoneManager(android.content.Context);
+    method public static synchronized android.os.ExecutionZoneManager getExecutionZoneManager();
     method public java.lang.String[] getPolicies();
     method public java.lang.String[] getPoliciesOfZone(java.lang.String);
     method public java.util.Map<java.lang.String, java.lang.String> getPoliciesOfZoneWithRules(java.lang.String);
