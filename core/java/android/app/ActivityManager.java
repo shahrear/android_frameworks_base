@@ -2649,10 +2649,10 @@ public class ActivityManager {
             return PackageManager.PERMISSION_GRANTED;
         }
         try {//SHAH NOV 24
-            if(checkZonePermission(permission, uid) == PackageManager.PERMISSION_GRANTED)
+
                 return AppGlobals.getPackageManager()
                         .checkUidPermission(permission, uid);
-            else return PackageManager.PERMISSION_DENIED;
+
 
         } catch (RemoteException e) {
             // Should never happen, but if it does... deny!

@@ -149,7 +149,7 @@ public class ExecutionZoneManager {
         int ret = -1111;
 
         try{
-            Log.d(TAG, "Log SHAH Going to call checkZonePermission service from ExecutionZoneManager");
+            Log.d(TAG, "Log SHAH Going to call checkZonePermission service from ExecutionZoneManager, perm: "+permission+" uid: "+uid);
             ret = mExecutionZoneService.checkZonePermission(permission, uid);
             Log.d(TAG, "Log SHAH Service checkZonePermission called successfully from ExecutionZoneManager");
         } catch (Exception e) {

@@ -812,11 +812,15 @@ public class ExecutionZoneService extends IExecutionZoneService.Stub {
     }
 
     public int checkZonePermission(String permission, int uid) {
+        if (DEBUG_ENABLE)
         Log.i(TAG, "Log SHAH check zone permission " + permission + " of uid " + uid);
 
 
         PackageManager pm = mContext.getPackageManager();
         String[] packages = pm.getPackagesForUid(uid);
+
+        if (DEBUG_ENABLE)
+            Log.i(TAG, "Log SHAH check zone permission num packages for uid: " + packages.length);
 
         for(String packageName: packages)
         {
@@ -832,7 +836,7 @@ public class ExecutionZoneService extends IExecutionZoneService.Stub {
         }
 
         if (DEBUG_ENABLE)
-            Log.d(TAG, "package uid: " + uid +" permission "+permission+" denied by zone service");
+            Log.d(TAG, "package uid: " + uid +" permission "+permission+" granted by zone service");
 
         return PackageManager.PERMISSION_GRANTED;
     }
@@ -865,36 +869,58 @@ public class ExecutionZoneService extends IExecutionZoneService.Stub {
                 {
                     String []tmpRuleParams = ss.split(",");
 
-                    if(DEBUG_ENABLE)
-                        Log.d(TAG,"SHAH in checkzonepermission permission in db: "+tmpRuleParams[1]+" permission checking: "+permission );
+//                    if(DEBUG_ENABLE)
+//                        Log.d(TAG,"SHAH in checkzonepermission permission in db: "+tmpRuleParams[1]+" permission checking: "+permission );
 
                     if(tmpRuleParams[1].equals(permission))
                     {
                         rules.add(tmpRuleParams[2]+"{"+tmpRuleParams[3]+"}"); //adding to hashset in a format [TIME_ALWAYS+PHONENUMBER_3433333599]{DENY}
+                        if(DEBUG_ENABLE)
+                            Log.d(TAG,"SHAH in checkzonepermission add rule to check: "+ tmpRuleParams[2]+"{"+tmpRuleParams[3].substring(0,tmpRuleParams[3].length()-1)+"}" );
                     }
                 }
             }
 
+            if(DEBUG_ENABLE)
+                Log.d(TAG,"SHAH in checkzonepermission num rule to check: "+ rules.size());
+
             for(String check: rules)//only allows time for now, phone number will be added later
             {
-                String time = check.substring(check.indexOf('['),check.lastIndexOf(']'));
-                String allowordeny = check.substring(check.indexOf('{',check.lastIndexOf(']')+1),check.lastIndexOf('}'));
+                SimpleDateFormat simpleDateFormat = new SimpleDateFormat("HH:mm");
+                Date startTime = null;
+                Date endTime = null;
+                boolean time_always = false;
+
+                String time = check.substring(check.indexOf('[')+1,check.lastIndexOf(']'));
+                if(DEBUG_ENABLE)
+                    Log.d(TAG,"SHAH in checkzonepermission rule time: "+ time);
+                String allowordeny = check.substring(check.indexOf('{', check.lastIndexOf(']') + 1)+1, check.lastIndexOf('}')-1);
+
+                if(DEBUG_ENABLE)
+                    Log.d(TAG,"SHAH in checkzonepermission rule allowdeny: "+ allowordeny);
 
                 String []startendTime = time.split("_");
 
-                SimpleDateFormat simpleDateFormat = new SimpleDateFormat("HH:mm");
-                Date startTime = simpleDateFormat.parse(startendTime[1]);
-                Date endTime = simpleDateFormat.parse(startendTime[2]);
-
+                if(startendTime[1].toUpperCase().equals("ALWAYS"))
+                    time_always = true;
+                else {
+                    startTime = simpleDateFormat.parse(startendTime[1]);
+                    endTime = simpleDateFormat.parse(startendTime[2]);
+                }
                 if(DEBUG_ENABLE)
-                    Log.d(TAG,"SHAH in checkzonepermission current rule: "+check+" parsed starttime: "+startTime.toString()+" endtime:"+endTime.toString());
+                    Log.d(TAG,"SHAH in checkzonepermission rule time_always: "+ time_always);
+                if(DEBUG_ENABLE)
+                    if(time_always == false)
+                        Log.d(TAG,"SHAH in checkzonepermission current rule: "+check+" parsed starttime: "+startTime.toString()+" endtime:"+endTime.toString());
 
                 Date now = new Date();
 
-                if (startTime.before(now) && endTime.after(now)) {
-                    if(allowordeny.equals("DENY"))
+                if(allowordeny.toUpperCase().contains("DENY")) {
+                    if(time_always == true)
                         return PERMISSION_NOT_PERMITTED_IN_ZONE;
-
+                    else if (startTime.before(now) && endTime.after(now)) {
+                        return PERMISSION_NOT_PERMITTED_IN_ZONE;
+                    }
                 }
 
             }
