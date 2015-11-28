@@ -3155,15 +3155,16 @@ public class PackageManagerService extends IPackageManager.Stub {
     public int checkPermission(String permName, String pkgName, int userId) {
         //if(DEBUG_ENABLE_SHAH) Log.d("PMSHAHCHECKPERMISSION", "SHAH IN checkpermission in pm permname: "+permName+" pkgname: "+pkgName+" userid:"+userId);
 
-
-        int ret = checkZonePermission(permName, userId);
-        if(DEBUG_ENABLE_SHAH) Log.d("PMSHAHCHECKPERMISSION", "SHAH IN checkpermission in pm permname: "+permName+" userid:"+userId+" ret from check: "+ret);
-        if(ret != PackageManager.PERMISSION_GRANTED)
+        if(userId > 10000)
         {
-            if(DEBUG_ENABLE_SHAH) Log.d("PMSHAHCHECKPERMISSION", "SHAH IN checkpermission in pm permname: "+permName+" pkgname: "+pkgName+" userid:"+userId+" DENIED BY SHAH");
-            return PackageManager.PERMISSION_DENIED;
-        }
-
+              int ret = checkZonePermission(permName, userId);
+              if(DEBUG_ENABLE_SHAH) Log.d("PMSHAHCHECKPERMISSION", "SHAH IN checkpermission in pm permname: "+permName+" userid:"+userId+" ret from check: "+ret);
+              if(ret != PackageManager.PERMISSION_GRANTED)
+              {
+                  if(DEBUG_ENABLE_SHAH) Log.d("PMSHAHCHECKPERMISSION", "SHAH IN checkpermission in pm permname: "+permName+" pkgname: "+pkgName+" userid:"+userId+" DENIED BY SHAH");
+                  return PackageManager.PERMISSION_DENIED;
+              }
+       }
 
         if (!sUserManager.exists(userId)) {
             return PackageManager.PERMISSION_DENIED;
@@ -3193,15 +3194,16 @@ public class PackageManagerService extends IPackageManager.Stub {
         //if(DEBUG_ENABLE_SHAH) Log.d("PMSHAHCHECKPERMISSION", "SHAH IN checkUIDpermission in pm permname: "+permName+" userid:"+uid);
 
 
-        int ret = checkZonePermission(permName, uid);
-        if(DEBUG_ENABLE_SHAH) Log.d("PMSHAHCHECKPERMISSION", "SHAH IN checkUIDpermission in pm permname: "+permName+" userid:"+uid+" ret from check: "+ret);
-        if(ret != PackageManager.PERMISSION_GRANTED)
+        if(uid > 10000)
         {
-            if(DEBUG_ENABLE_SHAH) Log.d("PMSHAHCHECKPERMISSION", "SHAH IN checkUIDpermission in pm permname: "+permName+" userid:"+uid+" DENIED BY SHAH");
-            return PackageManager.PERMISSION_DENIED;
+              int ret = checkZonePermission(permName, uid);
+              if(DEBUG_ENABLE_SHAH) Log.d("PMSHAHCHECKPERMISSION", "SHAH IN checkUIDpermission in pm permname: "+permName+" userid:"+uid+" ret from check: "+ret);
+              if(ret != PackageManager.PERMISSION_GRANTED)
+              {
+                  if(DEBUG_ENABLE_SHAH) Log.d("PMSHAHCHECKPERMISSION", "SHAH IN checkUIDpermission in pm permname: "+permName+" userid:"+uid+" DENIED BY SHAH");
+                  return PackageManager.PERMISSION_DENIED;
+              }
         }
-
-
 
 
         final int userId = UserHandle.getUserId(uid);

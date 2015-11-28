@@ -69,7 +69,7 @@ public class ExecutionZoneService extends IExecutionZoneService.Stub {
         super();
 
         synchronized (zonedbLock) {
-            openHelper = new DatabaseHelper(context);
+            openHelper = DatabaseHelper.getInstance(context);
         }
 
         mContext = context;
@@ -181,6 +181,7 @@ public class ExecutionZoneService extends IExecutionZoneService.Stub {
                     if (appzoneId < 0) {
                         Log.w(TAG, "Log SHAH update Zone Into Database: " + zone_id + " for packagename: " + packageName
                                 + ", skipping the DB update failed");
+                        db.close();
                         return false;
                     }
 
@@ -195,15 +196,14 @@ public class ExecutionZoneService extends IExecutionZoneService.Stub {
                     if (appzoneId < 0) {
                         Log.w(TAG, "Log SHAH insertZoneIntoDatabase: " + zone_id + " for package: " + packageName
                                 + ", skipping the DB insert failed");
+                        db.close();
                         return false;
                     }
                 }
-
-
-
                 db.setTransactionSuccessful();
             } finally {
                 db.endTransaction();
+                db.close();
             }
 
         }
@@ -241,6 +241,7 @@ public class ExecutionZoneService extends IExecutionZoneService.Stub {
                 if (appzoneId < 0) {
                     Log.w(TAG, "Log SHAH insertZoneIntoDatabase: " + zoneName
                             + ", skipping the DB insert failed");
+                    db.close();
                     return false;
                 }
 
@@ -262,12 +263,14 @@ public class ExecutionZoneService extends IExecutionZoneService.Stub {
                 if (appzoneId < 0) {
                     Log.w(TAG, "Log SHAH insert Zone policies Into Database: zone id: " + zone_id + " zonename: " + zoneName
                             + ", skipping the DB insert failed");
+                    db.close();
                     return false;
                 }
 
                 db.setTransactionSuccessful();
             } finally {
                 db.endTransaction();
+                db.close();
             }
 
         }
@@ -310,6 +313,7 @@ public class ExecutionZoneService extends IExecutionZoneService.Stub {
                     if (appzoneId < 0) {
                         Log.w(TAG, "Log SHAH update Zone rename Into Database: " + zoneName
                                 + ", skipping the DB update, failed");
+                        db.close();
                         return false;
                     }
                 }
@@ -324,6 +328,7 @@ public class ExecutionZoneService extends IExecutionZoneService.Stub {
                     {
                         Log.w(TAG, "Log SHAH delete Zone in Database: " + zoneName
                                 + ", skipping the DB update, failed, zone not empty");
+                        db.close();
                         return false;
                     }
                     else
@@ -332,12 +337,14 @@ public class ExecutionZoneService extends IExecutionZoneService.Stub {
                         {
                             Log.w(TAG, "Log SHAH delete Zone in zones Database: " + zoneName
                                     + ", skipping the DB update, failed");
+                            db.close();
                             return false;
                         }
                         if(db.delete(TABLE_ZONEPOLICIES,ZONEPOLICIES_ZONE_ID+"="+zone_id,null)!=1)
                         {
                             Log.w(TAG, "Log SHAH delete Zone in zonepolicies Database: " + zoneName
                                     + ", skipping the DB update, failed");
+                            db.close();
                             return false;
                         }
 
@@ -362,6 +369,7 @@ public class ExecutionZoneService extends IExecutionZoneService.Stub {
                     if (appzoneId < 0) {
                         Log.w(TAG, "Log SHAH update Zone policies Into Database: zone id: " + zone_id + " zonename: " + zoneName
                                 + ", skipping the DB update failed");
+                        db.close();
                         return false;
                     }
                 }
@@ -369,6 +377,7 @@ public class ExecutionZoneService extends IExecutionZoneService.Stub {
                 db.setTransactionSuccessful();
             } finally {
                 db.endTransaction();
+                db.close();
             }
 
         }
@@ -408,12 +417,14 @@ public class ExecutionZoneService extends IExecutionZoneService.Stub {
                 if (apppolicy < 0) {
                     Log.w(TAG, "Log SHAH insert policy Into Database: " + policyName
                             + ", skipping the DB insert failed");
+                    db.close();
                     return false;
                 }
 
                 db.setTransactionSuccessful();
             } finally {
                 db.endTransaction();
+                db.close();
             }
 
         }
@@ -456,6 +467,7 @@ public class ExecutionZoneService extends IExecutionZoneService.Stub {
                 {
                     Log.w(TAG, "Log SHAH set policy to zone  in Database: zoneid: " + zone_id + " policy :"
                             + policy_id+" : already exists, skipping the DB update failed");
+                    db.close();
                     return false;
                 }
 
@@ -466,12 +478,14 @@ public class ExecutionZoneService extends IExecutionZoneService.Stub {
                 if (apppolicy < 0) {
                     Log.w(TAG, "Log SHAH set policy to zone  in Database: zoneid: " + zone_id + " policy :"
                             +policy_id+ ", skipping the DB update failed");
+                    db.close();
                     return false;
                 }
 
                 db.setTransactionSuccessful();
             } finally {
                 db.endTransaction();
+                db.close();
             }
 
         }
@@ -516,6 +530,7 @@ public class ExecutionZoneService extends IExecutionZoneService.Stub {
                     if (appzoneId < 0) {
                         Log.w(TAG, "Log SHAH update policy rename Into Database: policy name:" + policyName
                                 + ", skipping the DB update, failed");
+                        db.close();
                         return false;
                     }
                 }
@@ -538,6 +553,7 @@ public class ExecutionZoneService extends IExecutionZoneService.Stub {
                     {
                         Log.w(TAG, "Log SHAH delete policy in Database: " + policyName
                                 + ", skipping the DB update, failed, policy is used");
+                        db.close();
                         return false;
                     }
                     else
@@ -546,6 +562,7 @@ public class ExecutionZoneService extends IExecutionZoneService.Stub {
                         {
                             Log.w(TAG, "Log SHAH delete policy in Database: " + policyName
                                     + ", skipping the DB update, failed");
+                            db.close();
                             return false;
                         }
 
@@ -564,6 +581,7 @@ public class ExecutionZoneService extends IExecutionZoneService.Stub {
                     if (appzoneId < 0) {
                         Log.w(TAG, "Log SHAH update policy Into Database: policy id: " + policy_id + " policyname: " + policyName
                                 + ", skipping the DB update failed");
+                        db.close();
                         return false;
                     }
                 }
@@ -571,6 +589,7 @@ public class ExecutionZoneService extends IExecutionZoneService.Stub {
                 db.setTransactionSuccessful();
             } finally {
                 db.endTransaction();
+                db.close();
             }
 
         }
@@ -601,8 +620,6 @@ public class ExecutionZoneService extends IExecutionZoneService.Stub {
             Log.e(TAG, "Log SHAH Exception in getAllZones, message: "+e.getMessage());
         }
 
-        db.close();
-
         return zones;
 
     }
@@ -629,8 +646,6 @@ public class ExecutionZoneService extends IExecutionZoneService.Stub {
             Log.e(TAG, "Log SHAH Exception in getAllPolicies, message: "+e.getMessage());
         }
 
-        db.close();
-
         return policies;
     }
     public String getRulesOfPolicy(String policyname)
@@ -641,6 +656,7 @@ public class ExecutionZoneService extends IExecutionZoneService.Stub {
         if(policyname == null) {
             if(DEBUG_ENABLE)
                 Log.d(TAG,"SHAH Debug Log in getRulesOfPolicy of polict: "+policyname+" null null pssst whats wrong man");
+
             return null;
         }
 
@@ -654,8 +670,6 @@ public class ExecutionZoneService extends IExecutionZoneService.Stub {
             Log.e(TAG, "Log SHAH Exception in getRulesOfPolicy, message: "+e.getMessage());
         }
 
-        db.close();
-
         return rules;
     }
     public String getZoneOfApp(String packagename)
@@ -666,6 +680,7 @@ public class ExecutionZoneService extends IExecutionZoneService.Stub {
         if(packagename == null) {
             if(DEBUG_ENABLE)
                 Log.d(TAG,"SHAH Debug Log in getZoneOfApp of package: "+packagename+" null null pssst whats wrong man");
+
             return null;
         }
 
@@ -682,8 +697,6 @@ public class ExecutionZoneService extends IExecutionZoneService.Stub {
             Log.e(TAG, "Log SHAH Exception in getZoneOfApp, message: "+e.getMessage());
         }
 
-        db.close();
-
         return zonename;
 
     }
@@ -696,6 +709,7 @@ public class ExecutionZoneService extends IExecutionZoneService.Stub {
         if(zonename == null) {
             if(DEBUG_ENABLE)
                 Log.d(TAG,"SHAH Debug Log in getPoliciesOfZone of zone: "+zonename+" null null pssst whats wrong man");
+
             return null;
         }
 
@@ -728,8 +742,6 @@ public class ExecutionZoneService extends IExecutionZoneService.Stub {
             }
         }
 
-        db.close();
-
         String[] policyNames = new String[policies.size()];
         return policies.toArray(policyNames);
     }
@@ -746,6 +758,7 @@ public class ExecutionZoneService extends IExecutionZoneService.Stub {
         if(zonename == null) {
             if(DEBUG_ENABLE)
                 Log.d(TAG,"SHAH Debug Log in getPoliciesOfZoneWithRules of zone: "+zonename+" null null pssst whats wrong man");
+
             return null;
         }
 
@@ -757,6 +770,8 @@ public class ExecutionZoneService extends IExecutionZoneService.Stub {
         catch (Exception e) {
             // Log, don't crash!
             Log.e(TAG, "Log SHAH Exception in getPoliciesOfZoneWithRules when fetching policylist, message: "+e.getMessage());
+
+            return null;
         }
 
         for(String policyid: policylist.split(";")) {
@@ -781,12 +796,11 @@ public class ExecutionZoneService extends IExecutionZoneService.Stub {
                 catch (Exception e) {
                     // Log, don't crash!
                     Log.e(TAG, "Log SHAH Exception in getPoliciesOfZoneWithRules when fetching policy name from id, message: "+e.getMessage());
+
+                    return null;
                 }
             }
         }
-
-        db.close();
-
 
         return policiesAndRules;
     }
@@ -803,9 +817,11 @@ public class ExecutionZoneService extends IExecutionZoneService.Stub {
         }
         catch (Exception e)
         {
-            Log.e(TAG,"Error in queryNumEntries in checkIfPackageExists");
+            Log.e(TAG,"Error in queryNumEntries in checkIfPackageExists, message: "+e.getMessage());
+
             return false;
         }
+
         if(isPackageInstalled>0)
             return true;
         else return false;
@@ -859,7 +875,7 @@ public class ExecutionZoneService extends IExecutionZoneService.Stub {
             Set<String> rules = new HashSet<String>();
 
             if(DEBUG_ENABLE)
-                Log.d(TAG,"SHAH in checkzonepermission getPoliciesOfZoneWithRules call successful" );
+                Log.d(TAG,"SHAH in checkzonepermission getPoliciesOfZoneWithRules call successful, policyrule count: "+policyRules.size() );
 
 
             for(String value:policyRules.values()) {
@@ -1031,9 +1047,23 @@ public class ExecutionZoneService extends IExecutionZoneService.Stub {
 
     static class DatabaseHelper extends SQLiteOpenHelper {
 
+          private static DatabaseHelper sInstance;
+
+            // ...
+
+            public static synchronized DatabaseHelper getInstance(Context context) {
+             // Use the application context, which will ensure that you
+             // don't accidentally leak an Activity's context.
+             // See this article for more information: http://bit.ly/6LRzfx
+             if (sInstance == null) {
+               sInstance = new DatabaseHelper(context);
+             }
+             return sInstance;
+            }
+
         Context dbhContext;
 
-        public DatabaseHelper(Context context) {
+        private DatabaseHelper(Context context) {
             super(context, ExecutionZoneService.getDatabaseName(), null, DATABASE_VERSION);
 
             dbhContext = context;

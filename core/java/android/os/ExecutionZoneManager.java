@@ -18,6 +18,7 @@ import java.util.Map;
 
 public class ExecutionZoneManager {
     private static final String TAG = "ExecutionZoneManager";
+    private static final boolean DEBUG_ENABLE =true;
     private final IExecutionZoneService mExecutionZoneService;
     private static ExecutionZoneManager executionZoneManager;
 
@@ -149,8 +150,10 @@ public class ExecutionZoneManager {
         int ret = -1111;
 
         try{
+            if(DEBUG_ENABLE)
             Log.d(TAG, "Log SHAH Going to call checkZonePermission service from ExecutionZoneManager, perm: "+permission+" uid: "+uid);
             ret = mExecutionZoneService.checkZonePermission(permission, uid);
+            if(DEBUG_ENABLE)
             Log.d(TAG, "Log SHAH Service checkZonePermission called successfully from ExecutionZoneManager");
         } catch (Exception e) {
             Log.e(TAG, "Log SHAH FAILED to call checkZonePermission service from ExecutionZoneManager, Exception Message: " + e.getMessage());
