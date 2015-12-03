@@ -1137,15 +1137,16 @@ public class ExecutionZoneService extends IExecutionZoneService.Stub {
 
                 for (ApplicationInfo info : list) {
 
-                    db.execSQL("INSERT OR REPLACE INTO " + TABLE_APPZONES + " (  "
-                            + APPZONES_ZONE_ID + ", "
-                            + APPZONES_APP_NAME + ") "
-                            + " VALUES ( "
-                            + zoneID
-                            + ", '" + info.packageName + "'"
-                            + ");");
+                    if (!info.packageName.contains("google")) {
+                        db.execSQL("INSERT OR REPLACE INTO " + TABLE_APPZONES + " (  "
+                                + APPZONES_ZONE_ID + ", "
+                                + APPZONES_APP_NAME + ") "
+                                + " VALUES ( "
+                                + zoneID
+                                + ", '" + info.packageName + "'"
+                                + ");");
+                    }
                 }
-
                 //create table for policy
                 db.execSQL("CREATE TABLE " + TABLE_POLICIES + " (  "
                         + POLICIES_ID + " INTEGER PRIMARY KEY AUTOINCREMENT,  "
