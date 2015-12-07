@@ -3196,6 +3196,7 @@ public class PackageManagerService extends IPackageManager.Stub {
 
         if(uid > 10000)
         {
+
               int ret = checkZonePermission(permName, uid);
               if(DEBUG_ENABLE_SHAH) Log.d("PMSHAHCHECKPERMISSION", "SHAH IN checkUIDpermission in pm permname: "+permName+" userid:"+uid+" ret from check: "+ret);
               if(ret != PackageManager.PERMISSION_GRANTED)

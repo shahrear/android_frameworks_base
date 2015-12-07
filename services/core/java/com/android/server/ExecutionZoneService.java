@@ -605,6 +605,8 @@ public class ExecutionZoneService extends IExecutionZoneService.Stub {
         try {
             Cursor c = db.rawQuery("SELECT " + ZONES_NAME + " FROM " + TABLE_ZONES, null);
             zones = new String[c.getCount()];
+            if(DEBUG_ENABLE)
+                Log.d(TAG,"Log shah in getallzones for executionzoneservice, number of zones returned by query: "+c.getCount());
             int i = 0;
             if(c.moveToFirst()){
                 do{
@@ -744,6 +746,35 @@ public class ExecutionZoneService extends IExecutionZoneService.Stub {
 
         String[] policyNames = new String[policies.size()];
         return policies.toArray(policyNames);
+    }
+
+    public String[] getAppsOfZoneByPackageName(String zonename) {
+        if(DEBUG_ENABLE)
+            Log.d(TAG,"SHAH Debug Log in getAppsOfZone, zone: "+zonename);
+
+        final SQLiteDatabase db = openHelper.getReadableDatabase();
+        String[] apps = null;
+
+        try {
+            Cursor c = db.rawQuery("SELECT " + APPZONES_APP_NAME + " FROM " + TABLE_APPZONES + " where "+ APPZONES_ZONE_ID + " = " + getZoneID(zonename), null);
+            apps = new String[c.getCount()];
+            int i = 0;
+            if(c.moveToFirst()){
+                do{
+                    //assing values
+                    apps[i++] = c.getString(0);
+
+                }while(c.moveToNext());
+            }
+            c.close();
+        }
+        catch (Exception e) {
+            // Log, don't crash!
+            Log.e(TAG, "Log SHAH Exception in getAllPolicies, message: "+e.getMessage());
+        }
+
+        return apps;
+
     }
 
     public Map<String,String> getPoliciesOfZoneWithRules(String zonename) {
@@ -1019,7 +1050,8 @@ public class ExecutionZoneService extends IExecutionZoneService.Stub {
 
     private static String getDefaultAllDangerousDenyPolicyString() {
 
-        return "<DEFAULT,android.permission.READ_CALENDAR,[TIME_ALWAYS],DENY>;" +
+        return "<DEFAULT,android.permission.INTERNET,[TIME_ALWAYS],DENY>;" +
+                "<DEFAULT,android.permission.READ_CALENDAR,[TIME_ALWAYS],DENY>;" +
                 "<DEFAULT,android.permission.WRITE_CALENDAR,[TIME_ALWAYS],DENY>;" +
                 "<DEFAULT,android.permission.CAMERA,[TIME_ALWAYS],DENY>;" +
                 "<DEFAULT,android.permission.READ_CONTACTS,[TIME_ALWAYS],DENY>;" +
@@ -1137,7 +1169,7 @@ public class ExecutionZoneService extends IExecutionZoneService.Stub {
 
                 for (ApplicationInfo info : list) {
 
-                    if (!info.packageName.contains("google")) {
+                    if (!(info.packageName.contains("com.google.")||info.packageName.contains("com.android."))) {
                         db.execSQL("INSERT OR REPLACE INTO " + TABLE_APPZONES + " (  "
                                 + APPZONES_ZONE_ID + ", "
                                 + APPZONES_APP_NAME + ") "

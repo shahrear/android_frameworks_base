@@ -179,6 +179,23 @@ public class ExecutionZoneManager {
     }
 
     /**
+     * Get all apps of a zone
+     */
+    public String[] getAppsOfZoneByPackageName(String zonename)
+    {
+        String []appzones = null;
+        try{
+            Log.d(TAG, "Log SHAH Going to call getAppsOfZoneByPackageName service from ExecutionZoneManager");
+            appzones = mExecutionZoneService.getAppsOfZoneByPackageName(zonename);
+            Log.d(TAG, "Log SHAH Service getAppsOfZoneByPackageName called successfully from ExecutionZoneManager");
+        } catch (Exception e) {
+            Log.e(TAG, "Log SHAH FAILED to call getAppsOfZoneByPackageName service from ExecutionZoneManager, Exception Message: " + e.getMessage());
+        }
+
+        return appzones;
+    }
+
+    /**
      * Get all policy names
      */
     public String[] getPolicies()

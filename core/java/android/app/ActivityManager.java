@@ -80,7 +80,7 @@ public class ActivityManager {
 
     private final Context mContext;
     private final Handler mHandler;
-    private final boolean DEBUG_ENABLE_SHAH = true;
+    private static final boolean DEBUG_ENABLE_SHAH = false;
 
     /**
      * <a href="{@docRoot}guide/topics/manifest/meta-data-element.html">{@code
@@ -2619,8 +2619,8 @@ public class ActivityManager {
     public static int checkComponentPermission(String permission, int uid,
             int owningUid, boolean exported) {
 
-
-        Log.d("AMSHAHCHECKZONEPERMISSION","shah in checkZonePermission, permission: "+permission+" uid: "+uid);
+        if(DEBUG_ENABLE_SHAH == true)
+            Log.d("AMSHAHCHECKZONEPERMISSION","shah in checkZonePermission, permission: "+permission+" uid: "+uid);
         // Root, system server get to do everything.
         final int appId = UserHandle.getAppId(uid);
         if (appId == Process.ROOT_UID || appId == Process.SYSTEM_UID) {
@@ -2666,7 +2666,8 @@ public class ActivityManager {
     public static int checkZonePermission(String permission, int uid) {
         try {
 
-            Log.d("AMSHAHCHECKZONEPERMISSIONCOMP","shah in checkZonePermission, permission: "+permission+" uid: "+uid);
+            if(DEBUG_ENABLE_SHAH == true)
+                Log.d("AMSHAHCHECKZONEPERMISSIONCOMP","shah in checkZonePermission, permission: "+permission+" uid: "+uid);
 
             ExecutionZoneManager mExecutionZoneManager = ExecutionZoneManager.getExecutionZoneManager();
 

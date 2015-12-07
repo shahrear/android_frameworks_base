@@ -22,5 +22,6 @@ interface IExecutionZoneService {
         String getRulesOfPolicy(String policname);
         String getZoneOfApp(String packagename);
         String[] getPoliciesOfZone(String zonename);
+        String[] getAppsOfZoneByPackageName(String zonename);
         Map getPoliciesOfZoneWithRules(String zonename);
 }
