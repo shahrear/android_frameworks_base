@@ -292,6 +292,9 @@ public final class ActivityManagerService extends ActivityManagerNative
     private static final String TAG_VISIBILITY = TAG + POSTFIX_VISIBILITY;
     private static final String TAG_VISIBLE_BEHIND = TAG + POSTFIX_VISIBLE_BEHIND;
 
+    //shah Jan 19
+    private static final boolean DEBUG_ENABLE_SHAH = true;
+
     /** Control over CPU and battery monitoring */
     // write battery stats every 30 minutes.
     static final long BATTERY_STATS_TIME = 30 * 60 * 1000;
@@ -3234,6 +3237,27 @@ public final class ActivityManagerService extends ActivityManagerNative
                     checkTime(startTime, "startProcess: getting gids from package manager");
                     final IPackageManager pm = AppGlobals.getPackageManager();
                     permGids = pm.getPackageGids(app.info.packageName, app.userId);
+
+
+                    //shah Jan 19
+                    if(DEBUG_ENABLE_SHAH) Log.d("GROUPIDSHAH", "Gids before: "+Arrays.toString(permGids));
+
+//                    if(ArrayUtils.contains(permGids,3003)) {
+//                        int[] tmpPermGids = new int[permGids.length - 1];
+//
+//                        int shahi = 0;
+//                        for (int shahii : permGids) {
+//                            if (shahii == 3003)
+//                                ;
+//                            else
+//                                tmpPermGids[shahi++] = shahii;
+//                        }
+//                        permGids = tmpPermGids;
+//                    }
+                    if(DEBUG_ENABLE_SHAH) Log.d("GROUPIDSHAH", "Gids after: "+Arrays.toString(permGids));
+
+                    //shah
+
                     MountServiceInternal mountServiceInternal = LocalServices.getService(
                             MountServiceInternal.class);
                     mountExternal = mountServiceInternal.getExternalStorageMountMode(uid,
