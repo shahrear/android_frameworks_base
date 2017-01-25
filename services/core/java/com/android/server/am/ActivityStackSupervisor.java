@@ -99,6 +99,7 @@ import android.service.voice.IVoiceInteractionSession;
 import android.util.ArrayMap;
 import android.util.ArraySet;
 import android.util.EventLog;
+import android.util.Log;
 import android.util.Slog;
 import android.util.SparseArray;
 
@@ -146,6 +147,10 @@ public final class ActivityStackSupervisor implements DisplayListener {
     private static final String TAG_USER_LEAVING = TAG + POSTFIX_USER_LEAVING;
 
     public static final int HOME_STACK_ID = 0;
+
+
+    //shah June 16
+    private static final boolean DEBUG_ENABLE_SHAH = true;
 
     /** How long we wait until giving up on the last activity telling us it is idle. */
     static final int IDLE_TIMEOUT = 10 * 1000;
@@ -943,6 +948,8 @@ public final class ActivityStackSupervisor implements DisplayListener {
                 resolveActivity(intent, resolvedType, startFlags, profilerInfo, userId);
 
         ActivityContainer container = (ActivityContainer)iContainer;
+
+        if(DEBUG_ENABLE_SHAH) Log.d(TAG, "SHAHAMSECCONTEXT: starting activity may wait calling package:" + callingPackage + " intent: " + intent.getComponent().getPackageName());
         synchronized (mService) {
             if (container != null && container.mParentActivity != null &&
                     container.mParentActivity.state != RESUMED) {
