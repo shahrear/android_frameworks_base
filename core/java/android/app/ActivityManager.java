@@ -80,6 +80,7 @@ public class ActivityManager {
 
     private final Context mContext;
     private final Handler mHandler;
+    //shah
     private static final boolean DEBUG_ENABLE_SHAH = false;
 
     /**
