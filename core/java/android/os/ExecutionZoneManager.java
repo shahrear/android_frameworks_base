@@ -23,6 +23,7 @@ public class ExecutionZoneManager {
     private static ExecutionZoneManager executionZoneManager;
 
 
+
     /** Get a handle to the Service.
      * @return the Service, or null.
      */
@@ -33,6 +34,7 @@ public class ExecutionZoneManager {
                 IExecutionZoneService managerService = IExecutionZoneService.Stub.asInterface(binder);
                 executionZoneManager = new ExecutionZoneManager(managerService);
             } else {
+                if(DEBUG_ENABLE)
                 Log.e(TAG, "Log SHAH ExecutionZoneService binder is null");
             }
         }
@@ -56,10 +58,15 @@ public class ExecutionZoneManager {
      */
     public void createZone(String zoneName, String policyList){
         try{
+            if(DEBUG_ENABLE)
             Log.d(TAG, "Log SHAH Going to call createZone service from ExecutionZoneManager");
+      long shahStarttime = System.currentTimeMillis();
             mExecutionZoneService.createZone(zoneName, policyList);
-            Log.d(TAG, "Log SHAH Service createZone called successfully from ExecutionZoneManager");
+            long shahStopTime = System.currentTimeMillis();
+            if(DEBUG_ENABLE)
+            Log.d(TAG, "Log SHAH Service createZone called successfully from ExecutionZoneManager, time elapsed: "+(shahStopTime - shahStarttime));
         } catch (Exception e) {
+            if(DEBUG_ENABLE)
             Log.e(TAG, "Log SHAH FAILED to call createZone service from ExecutionZoneManager, Exception Message: " + e.getMessage());
         }
     }
@@ -71,10 +78,15 @@ public class ExecutionZoneManager {
      */
     public void setZone(String packageName, String zoneName){
         try{
+            if(DEBUG_ENABLE)
             Log.d(TAG, "Log SHAH Going to call setZone service from ExecutionZoneManager");
+      long shahStarttime = System.currentTimeMillis();
             mExecutionZoneService.setZone(packageName, zoneName);
-            Log.d(TAG, "Log SHAH Service setZone called successfully from ExecutionZoneManager");
-        } catch (Exception e) {
+            long shahStopTime = System.currentTimeMillis();
+            if(DEBUG_ENABLE)
+            Log.d(TAG, "Log SHAH Service setZone called successfully from ExecutionZoneManager, time elapsed: " +(shahStopTime - shahStarttime));
+        } catch(Exception e) {
+            if(DEBUG_ENABLE)
             Log.e(TAG, "Log SHAH FAILED to call setZone service from ExecutionZoneManager, Exception Message: " + e.getMessage());
         }
     }
@@ -87,10 +99,15 @@ public class ExecutionZoneManager {
      */
     public void editZone(String zoneName, String action, String paramList){
         try{
+            if(DEBUG_ENABLE)
             Log.d(TAG, "Log SHAH Going to call editZone service from ExecutionZoneManager");
+      long shahStarttime = System.currentTimeMillis();
             mExecutionZoneService.editZone(zoneName, action, paramList);
-            Log.d(TAG, "Log SHAH Service editZone called successfully from ExecutionZoneManager");
+            long shahStopTime = System.currentTimeMillis();
+            if(DEBUG_ENABLE)
+            Log.d(TAG, "Log SHAH Service editZone called successfully from ExecutionZoneManager, time elapsed: "+(shahStopTime - shahStarttime));
         } catch (Exception e) {
+            if(DEBUG_ENABLE)
             Log.e(TAG, "Log SHAH FAILED to call editZone service from ExecutionZoneManager, Exception Message: " + e.getMessage());
         }
     }
@@ -102,10 +119,15 @@ public class ExecutionZoneManager {
      */
     public void createPolicy(String policyName, String ruleList){
         try{
+            if(DEBUG_ENABLE)
             Log.d(TAG, "Log SHAH Going to call createPolicy service from ExecutionZoneManager");
+      long shahStarttime = System.currentTimeMillis();
             mExecutionZoneService.createPolicy(policyName, ruleList);
-            Log.d(TAG, "Log SHAH Service createPolicy called successfully from ExecutionZoneManager");
+            long shahStopTime = System.currentTimeMillis();
+            if(DEBUG_ENABLE)
+            Log.d(TAG, "Log SHAH Service createPolicy called successfully from ExecutionZoneManager, time elapsed: "+(shahStopTime - shahStarttime));
         } catch (Exception e) {
+            if(DEBUG_ENABLE)
             Log.e(TAG, "Log SHAH FAILED to call createPolicy service from ExecutionZoneManager, Exception Message: " + e.getMessage());
         }
     }
@@ -117,10 +139,15 @@ public class ExecutionZoneManager {
      */
     public void setPolicy(String policyName, String zoneName){
         try{
+            if(DEBUG_ENABLE)
             Log.d(TAG, "Log SHAH Going to call setPolicy service from ExecutionZoneManager");
+      long shahStarttime = System.currentTimeMillis();
             mExecutionZoneService.setPolicy(policyName, zoneName);
-            Log.d(TAG, "Log SHAH Service setPolicy called successfully from ExecutionZoneManager");
+            long shahStopTime = System.currentTimeMillis();
+            if(DEBUG_ENABLE)
+            Log.d(TAG, "Log SHAH Service setPolicy called successfully from ExecutionZoneManager, time elapsed: "+(shahStopTime - shahStarttime));
         } catch (Exception e) {
+            if(DEBUG_ENABLE)
             Log.e(TAG, "Log SHAH FAILED to call setPolicy service from ExecutionZoneManager, Exception Message: " + e.getMessage());
         }
     }
@@ -133,10 +160,15 @@ public class ExecutionZoneManager {
      */
     public void editPolicy(String policyName, String action, String paramList){
         try{
+            if(DEBUG_ENABLE)
             Log.d(TAG, "Log SHAH Going to call editPolicy service from ExecutionZoneManager");
+      long shahStarttime = System.currentTimeMillis();
             mExecutionZoneService.editPolicy(policyName, action, paramList);
-            Log.d(TAG, "Log SHAH Service editPolicy called successfully from ExecutionZoneManager");
+            long shahStopTime = System.currentTimeMillis();
+            if(DEBUG_ENABLE)
+            Log.d(TAG, "Log SHAH Service editPolicy called successfully from ExecutionZoneManager, time elapsed: "+(shahStopTime - shahStarttime));
         } catch (Exception e) {
+            if(DEBUG_ENABLE)
             Log.e(TAG, "Log SHAH FAILED to call editPolicy service from ExecutionZoneManager, Exception Message: " + e.getMessage());
         }
     }
@@ -151,11 +183,16 @@ public class ExecutionZoneManager {
 
         try{
             if(DEBUG_ENABLE)
-            Log.d(TAG, "Log SHAH Going to call checkZonePermission service from ExecutionZoneManager, perm: "+permission+" uid: "+uid);
-            ret = mExecutionZoneService.checkZonePermission(permission, uid);
             if(DEBUG_ENABLE)
-            Log.d(TAG, "Log SHAH Service checkZonePermission called successfully from ExecutionZoneManager");
+                Log.d(TAG, "Log SHAH Going to call checkZonePermission service from ExecutionZoneManager, perm: "+permission+" uid: "+uid);
+            long shahStarttime = System.currentTimeMillis();
+            ret = mExecutionZoneService.checkZonePermission(permission, uid);
+            long shahStopTime = System.currentTimeMillis();
+            if(DEBUG_ENABLE)
+            if(DEBUG_ENABLE)
+                Log.d(TAG, "Log SHAH Service checkZonePermission called successfully from ExecutionZoneManager, time elapsed: " +(shahStopTime - shahStarttime));
         } catch (Exception e) {
+            if(DEBUG_ENABLE)
             Log.e(TAG, "Log SHAH FAILED to call checkZonePermission service from ExecutionZoneManager, Exception Message: " + e.getMessage());
         }
         return ret;
@@ -168,11 +205,16 @@ public class ExecutionZoneManager {
     {
         String []zones = null;
         try{
+            if(DEBUG_ENABLE)
             Log.d(TAG, "Log SHAH Going to call getZones service from ExecutionZoneManager");
+            long shahStarttime = System.currentTimeMillis();
             zones = mExecutionZoneService.getAllZones();
-            Log.d(TAG, "Log SHAH Service getZones called successfully from ExecutionZoneManager");
+            long shahStopTime = System.currentTimeMillis();
+            if(DEBUG_ENABLE)
+            Log.d(TAG, "Log SHAH Service getZones called successfully from ExecutionZoneManager, time elapsed: " +(shahStopTime - shahStarttime));
         } catch (Exception e) {
-            Log.e(TAG, "Log SHAH FAILED to call getzones service from ExecutionZoneManager, Exception Message: " + e.getMessage());
+        if(DEBUG_ENABLE)
+        Log.e(TAG, "Log SHAH FAILED to call getzones service from ExecutionZoneManager, Exception Message: " + e.getMessage());
         }
 
         return zones;
@@ -185,10 +227,15 @@ public class ExecutionZoneManager {
     {
         String []appzones = null;
         try{
+            if(DEBUG_ENABLE)
             Log.d(TAG, "Log SHAH Going to call getAppsOfZoneByPackageName service from ExecutionZoneManager");
+            long shahStarttime = System.currentTimeMillis();
             appzones = mExecutionZoneService.getAppsOfZoneByPackageName(zonename);
-            Log.d(TAG, "Log SHAH Service getAppsOfZoneByPackageName called successfully from ExecutionZoneManager");
+            long shahStopTime = System.currentTimeMillis();
+            if(DEBUG_ENABLE)
+            Log.d(TAG, "Log SHAH Service getAppsOfZoneByPackageName called successfully from ExecutionZoneManager, time elapsed: "+(shahStopTime - shahStarttime));
         } catch (Exception e) {
+            if(DEBUG_ENABLE)
             Log.e(TAG, "Log SHAH FAILED to call getAppsOfZoneByPackageName service from ExecutionZoneManager, Exception Message: " + e.getMessage());
         }
 
@@ -202,11 +249,16 @@ public class ExecutionZoneManager {
     {
         String []policies = null;
         try{
+            if(DEBUG_ENABLE)
             Log.d(TAG, "Log SHAH Going to call getPolicies service from ExecutionZoneManager");
+            long shahStarttime = System.currentTimeMillis();
             policies = mExecutionZoneService.getAllPolicies();
-            Log.d(TAG, "Log SHAH Service getPolicies called successfully from ExecutionZoneManager");
+            long shahStopTime = System.currentTimeMillis();
+            if(DEBUG_ENABLE)
+            Log.d(TAG, "Log SHAH Service getPolicies called successfully from ExecutionZoneManager, time elapsed: "+(shahStopTime - shahStarttime));
         } catch (Exception e) {
-            Log.e(TAG, "Log SHAH FAILED to call getPolicies service from ExecutionZoneManager, Exception Message: " + e.getMessage());
+        if(DEBUG_ENABLE)
+        Log.e(TAG, "Log SHAH FAILED to call getPolicies service from ExecutionZoneManager, Exception Message: " + e.getMessage());
         }
 
         return policies;
@@ -220,10 +272,15 @@ public class ExecutionZoneManager {
     {
         String ret = null;
         try{
+            if(DEBUG_ENABLE)
             Log.d(TAG, "Log SHAH Going to call getRulesOfPolicy service from ExecutionZoneManager");
+            long shahStarttime = System.currentTimeMillis();
             ret = mExecutionZoneService.getRulesOfPolicy(policyname);
-            Log.d(TAG, "Log SHAH Service getRulesOfPolicy called successfully from ExecutionZoneManager");
-        } catch (Exception e) {
+            long shahStopTime = System.currentTimeMillis();
+            if(DEBUG_ENABLE)
+            Log.d(TAG, "Log SHAH Service getRulesOfPolicy called successfully from ExecutionZoneManager, time elapsed:  "+(shahStopTime - shahStarttime));
+      } catch (Exception e) {
+            if(DEBUG_ENABLE)
             Log.e(TAG, "Log SHAH FAILED to call getRulesOfPolicy service from ExecutionZoneManager, Exception Message: " + e.getMessage());
         }
         return ret;
@@ -237,11 +294,16 @@ public class ExecutionZoneManager {
     {
         String ret = null;
         try{
+            if(DEBUG_ENABLE)
             Log.d(TAG, "Log SHAH Going to call getZoneOfApp service from ExecutionZoneManager");
+            long shahStarttime = System.currentTimeMillis();
             ret = mExecutionZoneService.getZoneOfApp(packagename);
-            Log.d(TAG, "Log SHAH Service getZoneOfApp called successfully from ExecutionZoneManager");
+            long shahStopTime = System.currentTimeMillis();
+            if(DEBUG_ENABLE)
+            Log.d(TAG, "Log SHAH Service getZoneOfApp called successfully from ExecutionZoneManager, time elapsed: "+(shahStopTime - shahStarttime));
         } catch (Exception e) {
-            Log.e(TAG, "Log SHAH FAILED to call getZoneOfApp service from ExecutionZoneManager, Exception Message: " + e.getMessage());
+        if(DEBUG_ENABLE)
+        Log.e(TAG, "Log SHAH FAILED to call getZoneOfApp service from ExecutionZoneManager, Exception Message: " + e.getMessage());
         }
         return ret;
     }
@@ -254,10 +316,15 @@ public class ExecutionZoneManager {
     {
         String[] ret = null;
         try{
+            if(DEBUG_ENABLE)
             Log.d(TAG, "Log SHAH Going to call getPoliciesOfZone service from ExecutionZoneManager");
+            long shahStarttime = System.currentTimeMillis();
             ret = mExecutionZoneService.getPoliciesOfZone(zonename);
-            Log.d(TAG, "Log SHAH Service getPoliciesOfZone called successfully from ExecutionZoneManager");
-        } catch (Exception e) {
+            long shahStopTime = System.currentTimeMillis();
+            if(DEBUG_ENABLE)
+            Log.d(TAG, "Log SHAH Service getPoliciesOfZone called successfully from ExecutionZoneManager, time elapsed:  "+(shahStopTime - shahStarttime));
+     } catch (Exception e) {
+            if(DEBUG_ENABLE)
             Log.e(TAG, "Log SHAH FAILED to call getPoliciesOfZone service from ExecutionZoneManager, Exception Message: " + e.getMessage());
         }
         return ret;
@@ -271,10 +338,15 @@ public class ExecutionZoneManager {
     {
         Map<String,String> ret = null;
         try{
+            if(DEBUG_ENABLE)
             Log.d(TAG, "Log SHAH Going to call getPoliciesOfZoneWithRules service from ExecutionZoneManager");
+            long shahStarttime = System.currentTimeMillis();
             ret = mExecutionZoneService.getPoliciesOfZoneWithRules(zonename);
-            Log.d(TAG, "Log SHAH Service getPoliciesOfZoneWithRules called successfully from ExecutionZoneManager");
+            long shahStopTime = System.currentTimeMillis();
+            if(DEBUG_ENABLE)
+            Log.d(TAG, "Log SHAH Service getPoliciesOfZoneWithRules called successfully from ExecutionZoneManager, time elapsed: "+(shahStopTime - shahStarttime));
         } catch (Exception e) {
+            if(DEBUG_ENABLE)
             Log.e(TAG, "Log SHAH FAILED to call getPoliciesOfZoneWithRules service from ExecutionZoneManager, Exception Message: " + e.getMessage());
         }
         return ret;
