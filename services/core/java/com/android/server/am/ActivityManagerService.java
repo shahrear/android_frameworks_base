@@ -3835,6 +3835,8 @@ public final class ActivityManagerService extends ActivityManagerNative
         enforceNotIsolatedCaller("startActivity");
         userId = handleIncomingUser(Binder.getCallingPid(), Binder.getCallingUid(), userId,
                 false, ALLOW_FULL_ONLY, "startActivity", null);
+
+        if(DEBUG_ENABLE_SHAH) Log.d(TAG, "SHAHAMSECCONTEXT: starting activity as user calling package:" + callingPackage + " intent: " + intent.getComponent().getPackageName());
         // TODO: Switch to user app stacks here.
         return mStackSupervisor.startActivityMayWait(caller, -1, callingPackage, intent,
                 resolvedType, null, null, resultTo, resultWho, requestCode, startFlags,
@@ -3854,6 +3856,10 @@ public final class ActivityManagerService extends ActivityManagerNative
         final ActivityRecord sourceRecord;
         final int targetUid;
         final String targetPackage;
+
+
+        if(DEBUG_ENABLE_SHAH) Log.d(TAG, "SHAHAMSECCONTEXT: starting activity as user calling package:" + callingPackage + " intent: " + intent.getComponent().getPackageName());
+
         synchronized (this) {
             if (resultTo == null) {
                 throw new SecurityException("Must be called from an activity");
@@ -4132,6 +4138,7 @@ public final class ActivityManagerService extends ActivityManagerNative
             Slog.w(TAG, msg);
             throw new SecurityException(msg);
         }
+
         return startActivityFromRecentsInner(taskId, options);
     }
 

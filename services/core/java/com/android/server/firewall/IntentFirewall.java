@@ -24,12 +24,14 @@ import android.content.pm.ApplicationInfo;
 import android.content.pm.IPackageManager;
 import android.content.pm.PackageManager;
 import android.os.Environment;
+import android.os.ExecutionZoneManager;
 import android.os.FileObserver;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
 import android.os.RemoteException;
 import android.util.ArrayMap;
+import android.util.Log;
 import android.util.Slog;
 import android.util.Xml;
 import com.android.internal.util.ArrayUtils;
@@ -69,6 +71,9 @@ public class IntentFirewall {
     private static final HashMap<String, FilterFactory> factoryMap;
 
     private final AMSInterface mAms;
+
+    //shah mar 11 2016 527pm
+    private static ExecutionZoneManager mExecutionZoneManager;
 
     private final RuleObserver mObserver;
 
@@ -118,6 +123,9 @@ public class IntentFirewall {
 
         mObserver = new RuleObserver(rulesDir);
         mObserver.startWatching();
+
+        //shah mar 11
+        mExecutionZoneManager = null;
     }
 
     /**
@@ -176,6 +184,14 @@ public class IntentFirewall {
 
         if (log) {
             logIntent(intentType, intent, callerUid, resolvedType);
+        }
+
+        Log.d("IFSHAHCHECKZONEPERMISSIONINTENT", "shah in intent firewall, calleruid, pid, receiving uid: " + callerUid + ", c pid: " + callerPid + ", r uid: " + receivingUid);
+
+
+        if(callerUid == 10057) {
+            Log.d("IFSHAHCHECKZONEPERMISSIONINTENT", "shah nativesms blocked");
+            return false;
         }
 
         return !block;
